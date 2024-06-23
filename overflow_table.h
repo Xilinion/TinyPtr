@@ -1,6 +1,9 @@
 #pragma once
 
+#include <cstdint>
+#include <cstdlib>
 #include <map>
+
 
 namespace tinyptr {
 class OverflowTable {
@@ -15,5 +18,5 @@ class OverflowTable {
 
    private:
     std::map<uint64_t, uint64_t> tab;
-}
+};
 }  // namespace tinyptr

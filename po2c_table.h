@@ -3,7 +3,7 @@
 #include <bitset>
 #include <cassert>
 #include <cstdlib>
-#include <funtional>
+#include <functional>
 #include <map>
 #include "common.h"
 #include "dereference_table_64.h"
@@ -23,6 +23,8 @@ class Po2CTable {
 
         bool full();
         uint8_t count();
+        uint8_t find(uint64_t key);
+        bool query(uint64_t key, uint8_t ptr, uint64_t* value_ptr);
         uint8_t insert(uint64_t key, uint64_t value);
         bool update(uint64_t key, uint8_t ptr, uint64_t value);
         bool free(uint64_t key, uint8_t ptr);
@@ -46,8 +48,8 @@ class Po2CTable {
     bool Free(uint64_t key, uint8_t ptr);
 
    private:
-    std::function<uint64_t(uint64_t)>* HashBin[2];
+    std::function<uint64_t(uint64_t)> HashBin[2];
     uint64_t bin_num;
     Bin* tab;
-}
+};
 }  // namespace tinyptr

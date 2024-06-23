@@ -111,8 +111,9 @@ Po2CTable::Po2CTable(int n) {
         hash_seed[1] = rand();
     for (int i = 0; i < 2; ++i)
         HashBin[i] =
-            new std::function<uint64_t(uint64_t)>([](uint64_t key) -> uint64_t {
-                return XXHash64::hash(&key, sizeof(uint64_t), hash_seed[i]) % bin_num;
+            std::function<uint64_t(uint64_t)>([=](uint64_t key) -> uint64_t {
+                return XXHash64::hash(&key, sizeof(uint64_t), hash_seed[i]) %
+                       bin_num;
             });
 }
 
@@ -120,7 +121,7 @@ uint8_t Po2CTable::Allocate(uint64_t key, uint64_t value) {
     uint64_t hashbin[2];
     for (int i = 0; i < 2; ++i) {
         hashbin[i] = HashBin[i](key);
-        if (hashbin[i].find(key))
+        if (tab[hashbin[i]].find(key))
             return 0;
     }
 
