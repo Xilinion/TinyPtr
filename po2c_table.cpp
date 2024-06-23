@@ -106,10 +106,13 @@ Po2CTable::Po2CTable(int n) {
     bin_num = (n + DeferenceTable64::kBinSize - 1) / DeferenceTable64::kBinSize;
     tab = new Bin[bin_num];
     srand(time(0));
+    int hash_seed[2] = {rand(), rand()};
+    while (hash_seed[1] == hash_seed[0])
+        hash_seed[1] = rand();
     for (int i = 0; i < 2; ++i)
         HashBin[i] =
             new std::function<uint64_t(uint64_t)>([](uint64_t key) -> uint64_t {
-                return XXHash64::hash(&key, sizeof(uint64_t), rand()) % bin_num;
+                return XXHash64::hash(&key, sizeof(uint64_t), hash_seed[i]) % bin_num;
             });
 }
 
