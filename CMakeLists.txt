@@ -11,19 +11,26 @@ endif()
 
 set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 
+include_directories(src)
+
 # Add the source files recursively
-file(GLOB_RECURSE SOURCES "src/*.h" "src/*.cpp")
+file(GLOB_RECURSE SOURCES "src/*.h" "src/*.cpp" "src/*.hpp")
 
 # Test source files, only in test/
-file(GLOB_RECURSE TEST_SRC "test/*_test.cpp")
+file(GLOB_RECURSE TEST_SRC "test/*_test.cpp" "src/*_test.cpp")
 file(GLOB_RECURSE DEPRECATED_TEST_SRC "src/*_test.cpp")
 list(REMOVE_ITEM SOURCES ${DEPRECATED_TEST_SRC})
+
+include(FetchContent)
 
 add_library(tinyptr_lib ${SOURCES})
 
 
 add_executable(${PROJECT_NAME} src/main.cpp)
 target_link_libraries(${PROJECT_NAME} PRIVATE tinyptr_lib)
+
+# Options
+option(BUILD_TESTING "Whether to enable unit test support" ON)
 
 if (BUILD_TESTING)
     FetchContent_Declare(
@@ -43,8 +50,12 @@ if (BUILD_TESTING)
         add_executable(${TEST_EXE} ${TEST_FILE})
         target_link_libraries(
                 ${TEST_EXE}
+                PUBLIC
                 tinyptr_lib
+                GTest::gtest_main
+                GTest::gmock
         )
+        # target_include_directories(${TEST_EXE} PUBLIC src)
         message(STATUS ${TEST_FILE})
         gtest_discover_tests(${TEST_EXE})
     endforeach ()

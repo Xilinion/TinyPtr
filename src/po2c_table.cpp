@@ -3,12 +3,12 @@
 namespace tinyptr {
 
 Po2CTable::Bin::Bin() {
-    for (int i = 0; i < DeferenceTable64::kBinSize; ++i)
+    for (int i = 0; i < DereferenceTable64::kBinSize; ++i)
         bin[i].key = i + 2;
 }
 
 bool Po2CTable::Bin::full() {
-    return cnt == DeferenceTable64::kBinSize;
+    return cnt == DereferenceTable64::kBinSize;
 }
 
 uint8_t Po2CTable::Bin::count() {
@@ -21,7 +21,7 @@ uint8_t Po2CTable::Bin::find(uint64_t key) {
     uint8_t key_cnt = 0;
     uint8_t key_pos[2];
     // not duplicate key
-    for (int i = 0; i < DeferenceTable64::kBinSize; ++i)
+    for (int i = 0; i < DereferenceTable64::kBinSize; ++i)
         if (bin[i].key == key)
             key_pos[key_cnt++] = i + 1;
 
@@ -103,7 +103,7 @@ bool Po2CTable::Bin::free(uint64_t key, uint8_t ptr) {
 }
 
 Po2CTable::Po2CTable(int n) {
-    bin_num = (n + DeferenceTable64::kBinSize - 1) / DeferenceTable64::kBinSize;
+    bin_num = (n + DereferenceTable64::kBinSize - 1) / DereferenceTable64::kBinSize;
     tab = new Bin[bin_num];
     srand(time(0));
     int hash_seed[2] = {rand(), rand()};
@@ -133,13 +133,13 @@ uint8_t Po2CTable::Allocate(uint64_t key, uint64_t value) {
     // ptr should not be 0 after the previous check in both bins
     assert(ptr);
 
-    ptr ^= flag * (ptr != DeferenceTable64::kOverflowTinyPtr) * ((1 << 8) - 1);
+    ptr ^= flag * (ptr != DereferenceTable64::kOverflowTinyPtr) * ((1 << 8) - 1);
     return ptr;
 }
 
 bool Po2CTable::Update(uint64_t key, uint8_t ptr, uint64_t value) {
-    assert(ptr != DeferenceTable64::kOverflowTinyPtr);
-    assert(ptr != DeferenceTable64::kNullTinyPtr);
+    assert(ptr != DereferenceTable64::kOverflowTinyPtr);
+    assert(ptr != DereferenceTable64::kNullTinyPtr);
 
     uint8_t flag = (ptr >= (1 << 7));
     ptr ^= flag * ((1 << 8) - 1);
@@ -147,8 +147,8 @@ bool Po2CTable::Update(uint64_t key, uint8_t ptr, uint64_t value) {
 }
 
 bool Po2CTable::Query(uint64_t key, uint8_t ptr, uint64_t* value_ptr) {
-    assert(ptr != DeferenceTable64::kOverflowTinyPtr);
-    assert(ptr != DeferenceTable64::kNullTinyPtr);
+    assert(ptr != DereferenceTable64::kOverflowTinyPtr);
+    assert(ptr != DereferenceTable64::kNullTinyPtr);
 
     uint8_t flag = (ptr >= (1 << 7));
     ptr ^= flag * ((1 << 8) - 1);
@@ -156,8 +156,8 @@ bool Po2CTable::Query(uint64_t key, uint8_t ptr, uint64_t* value_ptr) {
 }
 
 bool Po2CTable::Free(uint64_t key, uint8_t ptr) {
-    assert(ptr != DeferenceTable64::kOverflowTinyPtr);
-    assert(ptr != DeferenceTable64::kNullTinyPtr);
+    assert(ptr != DereferenceTable64::kOverflowTinyPtr);
+    assert(ptr != DereferenceTable64::kNullTinyPtr);
 
     uint8_t flag = (ptr >= (1 << 7));
     ptr ^= flag * ((1 << 8) - 1);

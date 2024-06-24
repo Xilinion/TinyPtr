@@ -11,7 +11,7 @@ namespace tinyptr {
 class Po2CTable;
 class OverflowTable;
 
-class DeferenceTable64 : DeferenceTable {
+class DereferenceTable64 : DereferenceTable {
 
    public:
     static constexpr size_t kBinSize = 127;
@@ -19,9 +19,9 @@ class DeferenceTable64 : DeferenceTable {
     static constexpr uint8_t kOverflowTinyPtr = ((1 << 8) - 1);
 
    public:
-    DeferenceTable64() = delete;
-    DeferenceTable64(int n);
-    ~DeferenceTable64() = default;
+    DereferenceTable64() = delete;
+    DereferenceTable64(int n);
+    ~DereferenceTable64() = default;
 
     uint8_t Allocate(uint64_t key, uint64_t value);
     bool Update(uint64_t key, uint8_t ptr, uint64_t value);

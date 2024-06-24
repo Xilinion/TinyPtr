@@ -32,7 +32,7 @@ class Po2CTable {
        private:
         uint8_t cnt = 0;
         uint8_t head = 1;
-        KV bin[DeferenceTable64::kBinSize];
+        KV bin[DereferenceTable64::kBinSize];
     };
 
    public:

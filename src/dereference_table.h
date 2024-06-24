@@ -2,7 +2,7 @@
 
 namespace tinyptr{
 
-class DeferenceTable {
+class DereferenceTable {
     // public:
     //     void* 
 };
