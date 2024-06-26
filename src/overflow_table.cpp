@@ -2,8 +2,17 @@
 
 namespace tinyptr {
 
+bool OverflowTable::allocation_check(uint64_t key) {
+#ifdef TINYPTR_DEREFTAB64_KEY_UNIQUENESS_CHECK
+    return tab.find(key) == tab.end();
+#else
+    return 1;
+#endif
+}
+
+// We leave the sanity check of keys' uniqueness to users and promise allocation will success
 uint8_t OverflowTable::Allocate(uint64_t key, uint64_t value) {
-    if (tab.find(key) == tab.end()) {
+    if (allocation_check(key)) {
         tab[key] = value;
         return ~0;
     }

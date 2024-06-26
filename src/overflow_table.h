@@ -4,13 +4,16 @@
 #include <cstdlib>
 #include <map>
 
-
 namespace tinyptr {
 class OverflowTable {
    public:
     OverflowTable() = default;
     ~OverflowTable() = default;
 
+   private:
+    bool allocation_check(uint64_t key);
+
+   public:
     uint8_t Allocate(uint64_t key, uint64_t value);
     bool Update(uint64_t key, uint64_t value);
     bool Query(uint64_t key, uint64_t* value_ptr);

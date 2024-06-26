@@ -21,10 +21,12 @@ class Po2CTable {
         Bin();
         ~Bin() = default;
 
+       public:
         bool full();
         uint8_t count();
         uint8_t find(uint64_t key);
         bool query(uint64_t key, uint8_t ptr, uint64_t* value_ptr);
+        bool insert_check(uint64_t key);
         uint8_t insert(uint64_t key, uint64_t value);
         bool update(uint64_t key, uint8_t ptr, uint64_t value);
         bool free(uint64_t key, uint8_t ptr);
