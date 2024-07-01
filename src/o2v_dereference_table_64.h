@@ -28,7 +28,9 @@ class O2VDereferenceTable64 : DereferenceTable {
     void UpdateFirst(uint64_t key, uint8_t ptr, uint64_t value);
     void UpdateSecond(uint64_t key, uint8_t ptr, uint64_t value);
     void QueryFirst(uint64_t key, uint8_t ptr, uint64_t* value_ptr);
+    uint64_t QueryFirst(uint64_t key, uint8_t ptr);
     void QuerySecond(uint64_t key, uint8_t ptr, uint64_t* value_ptr);
+    uint64_t QuerySecond(uint64_t key, uint8_t ptr);
     void Free(uint64_t key, uint8_t ptr);
 
    private:
