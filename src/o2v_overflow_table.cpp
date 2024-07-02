@@ -20,8 +20,16 @@ void O2VOverflowTable::QueryFirst(uint64_t key, uint64_t* value_ptr) {
     *value_ptr = tab[key].value_1;
 }
 
+uint64_t O2VOverflowTable::QueryFirst(uint64_t key) {
+    return tab[key].value_1;
+}
+
 void O2VOverflowTable::QuerySecond(uint64_t key, uint64_t* value_ptr) {
     *value_ptr = tab[key].value_2;
+}
+
+uint64_t O2VOverflowTable::QuerySecond(uint64_t key) {
+    return tab[key].value_2;
 }
 
 void O2VOverflowTable::Free(uint64_t key) {

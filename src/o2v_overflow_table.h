@@ -20,7 +20,9 @@ class O2VOverflowTable {
     void UpdateFirst(uint64_t key, uint64_t value);
     void UpdateSecond(uint64_t key, uint64_t value);
     void QueryFirst(uint64_t key, uint64_t* value_ptr);
+    uint64_t QueryFirst(uint64_t key);
     void QuerySecond(uint64_t key, uint64_t* value_ptr);
+    uint64_t QuerySecond(uint64_t key);
     void Free(uint64_t key);
 
    private:
