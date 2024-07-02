@@ -25,7 +25,9 @@ class O2VPo2CTable {
         bool full();
         uint8_t count();
         void query_first(uint8_t ptr, uint64_t* value_ptr);
+        uint64_t query_first(uint8_t ptr);
         void query_second(uint8_t ptr, uint64_t* value_ptr);
+        uint64_t query_second(uint8_t ptr);
         uint8_t insert(uint64_t value_1, uint64_t value_2);
         void update_first(uint8_t ptr, uint64_t value);
         void update_second(uint8_t ptr, uint64_t value);
@@ -48,7 +50,9 @@ class O2VPo2CTable {
     void UpdateFirst(uint64_t key, uint8_t ptr, uint64_t value);
     void UpdateSecond(uint64_t key, uint8_t ptr, uint64_t value);
     void QueryFirst(uint64_t key, uint8_t ptr, uint64_t* value_ptr);
+    uint64_t QueryFirst(uint64_t key, uint8_t ptr);
     void QuerySecond(uint64_t key, uint8_t ptr, uint64_t* value_ptr);
+    uint64_t QuerySecond(uint64_t key, uint8_t ptr);
     void Free(uint64_t key, uint8_t ptr);
 
    private:
