@@ -73,9 +73,12 @@ ChainedHT64::ChainedHT64(int n) {
     quot_tab = new uint8_t[1 << kQuotientingTailSize];
     memset(quot_tab, 0, sizeof(uint8_t) * (1 << kQuotientingTailSize));
 
+    auto hash_seed = rand();
+
     quot_head_hash =
-        std::function<uint32_t(uint64_t)>([](uint64_t key) -> uint32_t {
-            return XXHash64::hash(&key, sizeof(uint64_t), rand()) &
+        std::function<uint32_t(uint64_t)>([=](uint64_t key) -> uint32_t {
+            key = key >> kQuotientingTailSize << kQuotientingTailSize;
+            return XXHash64::hash(&key, sizeof(uint64_t), hash_seed) &
                    ((1 << kQuotientingTailSize) - 1);
         });
 }

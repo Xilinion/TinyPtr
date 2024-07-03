@@ -25,7 +25,8 @@ void O2VDereferenceTable64::UpdateFirst(uint64_t key, uint8_t ptr,
 
     if (ptr == kOverflowTinyPtr)
         o_tab->UpdateFirst(key, value);
-    p_tab->UpdateFirst(key, ptr, value);
+    else
+        p_tab->UpdateFirst(key, ptr, value);
 }
 
 void O2VDereferenceTable64::UpdateSecond(uint64_t key, uint8_t ptr,
@@ -34,7 +35,8 @@ void O2VDereferenceTable64::UpdateSecond(uint64_t key, uint8_t ptr,
 
     if (ptr == kOverflowTinyPtr)
         o_tab->UpdateSecond(key, value);
-    p_tab->UpdateSecond(key, ptr, value);
+    else
+        p_tab->UpdateSecond(key, ptr, value);
 }
 
 void O2VDereferenceTable64::QueryFirst(uint64_t key, uint8_t ptr,
@@ -43,7 +45,8 @@ void O2VDereferenceTable64::QueryFirst(uint64_t key, uint8_t ptr,
 
     if (ptr == kOverflowTinyPtr)
         o_tab->QueryFirst(key, value_ptr);
-    p_tab->QueryFirst(key, ptr, value_ptr);
+    else
+        p_tab->QueryFirst(key, ptr, value_ptr);
 }
 
 uint64_t O2VDereferenceTable64::QueryFirst(uint64_t key, uint8_t ptr) {
@@ -60,7 +63,8 @@ void O2VDereferenceTable64::QuerySecond(uint64_t key, uint8_t ptr,
 
     if (ptr == kOverflowTinyPtr)
         o_tab->QuerySecond(key, value_ptr);
-    p_tab->QuerySecond(key, ptr, value_ptr);
+    else
+        p_tab->QuerySecond(key, ptr, value_ptr);
 }
 
 uint64_t O2VDereferenceTable64::QuerySecond(uint64_t key, uint8_t ptr) {
@@ -75,8 +79,9 @@ void O2VDereferenceTable64::Free(uint64_t key, uint8_t ptr) {
     assert(ptr);
 
     if (ptr == kOverflowTinyPtr)
-        return o_tab->Free(key);
-    return p_tab->Free(key, ptr);
+        o_tab->Free(key);
+    else
+        p_tab->Free(key, ptr);
 }
 
 }  // namespace tinyptr
