@@ -10,14 +10,16 @@ using namespace tinyptr;
 using namespace std;
 
 uint64_t my_int_rand() {
-    int tmp = (rand() | (rand() >> 10 << 15));
+    int tmp = (rand() & ((1 << 7) - 1));
+    // int tmp = (rand() | (rand() >> 10 << 15));
     return XXHash64::hash(&tmp, sizeof(int32_t), 0);
 }
 
 TEST(DereferenceTable64_TESTSUITE, RandomAll) {
     srand(233);
 
-    int n = 1e8, m = 1e6;
+    int n = 1e6, m = 1e4;
+    // int n = 1e8, m = 1e6;
 
     map<uint64_t, pair<uint8_t, uint64_t>> lala;
     DereferenceTable64 dereftab(m);

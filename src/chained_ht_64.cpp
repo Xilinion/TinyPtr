@@ -73,9 +73,12 @@ ChainedHT64::ChainedHT64(int n) {
     quot_tab = new uint8_t[1 << kQuotientingTailSize];
     memset(quot_tab, 0, sizeof(uint8_t) * (1 << kQuotientingTailSize));
 
+    auto hash_seed = rand();
+
     quot_head_hash =
-        std::function<uint32_t(uint64_t)>([](uint64_t key) -> uint32_t {
-            return XXHash64::hash(&key, sizeof(uint64_t), rand()) &
+        std::function<uint32_t(uint64_t)>([=](uint64_t key) -> uint32_t {
+            key = key >> kQuotientingTailSize << kQuotientingTailSize;
+            return XXHash64::hash(&key, sizeof(uint64_t), hash_seed) &
                    ((1 << kQuotientingTailSize) - 1);
         });
 }
@@ -151,7 +154,7 @@ void ChainedHT64::Insert(uint64_t key, uint64_t value) {
             new_entry_ind.set_ptr(ptr);
         }
         quot_tab[bin_num] =
-            deref_tab->Allocate(key, new_entry_ind.get_bit_str(), value);
+            deref_tab->Allocate(base_key, new_entry_ind.get_bit_str(), value);
     }
 }
 
