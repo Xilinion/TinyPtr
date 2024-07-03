@@ -154,7 +154,7 @@ void ChainedHT64::Insert(uint64_t key, uint64_t value) {
             new_entry_ind.set_ptr(ptr);
         }
         quot_tab[bin_num] =
-            deref_tab->Allocate(key, new_entry_ind.get_bit_str(), value);
+            deref_tab->Allocate(base_key, new_entry_ind.get_bit_str(), value);
     }
 }
 
