@@ -11,6 +11,8 @@
 #include "dereference_table_64.h"
 #include "xxhash64.h"
 
+using namespace tinyptr;
+
 int main(int argc, char** argv) {
 
     BenchmarkCLIPara para;

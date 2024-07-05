@@ -3,12 +3,12 @@
 #include "chained_ht_64.h"
 #include "dereference_table_64.h"
 
-using namespace tinyptr;
+namespace tinyptr {
 
 Benchmark::Benchmark(BenchmarkCLIPara& para)
     : output_stream(para.GetOuputFileName()) {
-    switch (para.case_id) {
-        case static_cast<int>(CaseIndicator::LOAD_FACTOR_INSERT_ONLY_RAND):
+    switch (static_cast<BenchmarkCaseType>(para.case_id)) {
+        case BenchmarkCaseType::INSERT_ONLY_LOAD_FACTOR_SUPPORT:
             run = [this]() {
             };
             break;
@@ -38,3 +38,4 @@ void Benchmark::Run() {
         assert(tmp == value[i]);
     }
 }
+}  // namespace tinyptr
