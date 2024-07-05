@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <cstdlib>
 #include <map>
+#include <unordered_map>
 
 namespace tinyptr {
 class OverflowTable {
@@ -20,6 +21,6 @@ class OverflowTable {
     bool Free(uint64_t key);
 
    private:
-    std::map<uint64_t, uint64_t> tab;
+    std::unordered_map<uint64_t, uint64_t> tab;
 };
 }  // namespace tinyptr
