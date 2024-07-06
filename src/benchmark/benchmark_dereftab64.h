@@ -5,9 +5,10 @@
 #include "benchmark_object_type.h"
 
 namespace tinyptr {
+
 class BenchmarkDerefTab64 : public BenchmarkObject64 {
    public:
-    static constexpr BenchmarkObjectType TYPE = BenchmarkObjectType::DEREFTAB64;
+    static const BenchmarkObjectType TYPE;
 
    public:
     BenchmarkDerefTab64(int n);
@@ -22,5 +23,8 @@ class BenchmarkDerefTab64 : public BenchmarkObject64 {
    private:
     DereferenceTable64* tab;
 };
+
+const BenchmarkObjectType BenchmarkDerefTab64::TYPE =
+    BenchmarkObjectType::DEREFTAB64;
 
 }  // namespace tinyptr

@@ -1,5 +1,3 @@
-#pragma once
-
 #include "benchmark_std_unordered_map_64.h"
 
 namespace tinyptr {

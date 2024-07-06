@@ -6,9 +6,10 @@
 #include "benchmark_object_type.h"
 
 namespace tinyptr {
+
 class BenchmarkStdUnorderedMap64 : public BenchmarkObject64 {
    public:
-    static constexpr BenchmarkObjectType TYPE = BenchmarkObjectType::INTARRAY64;
+    static const BenchmarkObjectType TYPE;
 
    public:
     BenchmarkStdUnorderedMap64(int n);
@@ -23,4 +24,8 @@ class BenchmarkStdUnorderedMap64 : public BenchmarkObject64 {
    private:
     std::unordered_map<uint64_t, uint64_t> ht;
 };
+
+const BenchmarkObjectType BenchmarkStdUnorderedMap64::TYPE =
+    BenchmarkObjectType::INTARRAY64;
+
 }  // namespace tinyptr

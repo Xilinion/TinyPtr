@@ -3,9 +3,10 @@
 #include "benchmark_object_type.h"
 
 namespace tinyptr {
+
 class BenchmarkObject64 {
    public:
-    static constexpr BenchmarkObjectType TYPE = BenchmarkObjectType::INVALID;
+    static const BenchmarkObjectType TYPE;
 
    public:
     BenchmarkObject64(BenchmarkObjectType type_) : type(type_) {}
@@ -20,4 +21,8 @@ class BenchmarkObject64 {
    public:
     BenchmarkObjectType type;
 };
+
+const BenchmarkObjectType BenchmarkObject64::TYPE =
+    BenchmarkObjectType::INVALID;
+
 }  // namespace tinyptr

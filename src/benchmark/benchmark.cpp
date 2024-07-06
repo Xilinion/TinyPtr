@@ -1,13 +1,13 @@
 #include "benchmark.h"
 #include "benchmark_cli_para.h"
-#include "chained_ht_64.h"
-#include "dereference_table_64.h"
+#include "../chained_ht_64.h"
+#include "../dereference_table_64.h"
 
 namespace tinyptr {
 
 Benchmark::Benchmark(BenchmarkCLIPara& para)
     : output_stream(para.GetOuputFileName()) {
-    switch (static_cast<BenchmarkCaseType>(para.case_id)) {
+    switch (para.case_id) {
         case BenchmarkCaseType::INSERT_ONLY_LOAD_FACTOR_SUPPORT:
             run = [this]() {
             };

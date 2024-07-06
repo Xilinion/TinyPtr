@@ -4,9 +4,10 @@
 #include "benchmark_object_type.h"
 
 namespace tinyptr {
+
 class BenchmarkIntArray64 : public BenchmarkObject64 {
    public:
-    static constexpr BenchmarkObjectType TYPE = BenchmarkObjectType::INTARRAY64;
+    static const BenchmarkObjectType TYPE;
 
    public:
     BenchmarkIntArray64(int n);
@@ -22,5 +23,8 @@ class BenchmarkIntArray64 : public BenchmarkObject64 {
     int tab_size;
     uint64_t* tab;
 };
+
+const BenchmarkObjectType BenchmarkIntArray64::TYPE =
+    BenchmarkObjectType::INTARRAY64;
 
 }  // namespace tinyptr

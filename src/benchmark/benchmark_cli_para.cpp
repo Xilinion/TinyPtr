@@ -1,9 +1,8 @@
 
+#include "benchmark_cli_para.h"
 #include <unistd.h>
 #include <cstdio>
 #include <string>
-#include "benchmark.h"
-#include "benchmark_cli_para.h"
 
 namespace tinyptr {
 

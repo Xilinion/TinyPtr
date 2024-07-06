@@ -1,5 +1,3 @@
-#pragma once
-
 #include "benchmark_intarray64.h"
 #include "benchmark_object_64.h"
 
