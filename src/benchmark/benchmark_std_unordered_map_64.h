@@ -25,7 +25,4 @@ class BenchmarkStdUnorderedMap64 : public BenchmarkObject64 {
     std::unordered_map<uint64_t, uint64_t> ht;
 };
 
-const BenchmarkObjectType BenchmarkStdUnorderedMap64::TYPE =
-    BenchmarkObjectType::INTARRAY64;
-
 }  // namespace tinyptr

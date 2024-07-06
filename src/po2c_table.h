@@ -7,7 +7,7 @@
 #include <map>
 #include "common.h"
 #include "dereference_table_64.h"
-#include "xxhash64.h"
+#include "utils/xxhash64.h"
 
 namespace tinyptr {
 class Po2CTable {

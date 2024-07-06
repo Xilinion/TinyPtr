@@ -24,7 +24,4 @@ class BenchmarkIntArray64 : public BenchmarkObject64 {
     uint64_t* tab;
 };
 
-const BenchmarkObjectType BenchmarkIntArray64::TYPE =
-    BenchmarkObjectType::INTARRAY64;
-
 }  // namespace tinyptr

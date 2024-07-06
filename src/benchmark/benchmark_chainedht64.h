@@ -24,7 +24,4 @@ class BenchmarkChainedHT64 : public BenchmarkObject64 {
     ChainedHT64* tab;
 };
 
-const BenchmarkObjectType BenchmarkChainedHT64::TYPE =
-    BenchmarkObjectType::DEREFTAB64;
-
 }  // namespace tinyptr

@@ -2,6 +2,9 @@
 
 namespace tinyptr {
 
+const BenchmarkObjectType BenchmarkChainedHT64::TYPE =
+    BenchmarkObjectType::CHAINEDHT64;
+
 BenchmarkChainedHT64::BenchmarkChainedHT64(int n) : BenchmarkObject64(TYPE) {
     tab = new ChainedHT64(n);
 }

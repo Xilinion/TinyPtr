@@ -2,6 +2,9 @@
 
 namespace tinyptr {
 
+const BenchmarkObjectType BenchmarkStdUnorderedMap64::TYPE =
+    BenchmarkObjectType::STDUNORDEREDMAP64;
+
 BenchmarkStdUnorderedMap64::BenchmarkStdUnorderedMap64(int n)
     : BenchmarkObject64(TYPE) {
     ht.reserve(n);

@@ -6,7 +6,7 @@
 #include <utility>
 #include "chained_ht_64.h"
 #include "dereference_table_64.h"
-#include "xxhash64.h"
+#include "utils/xxhash64.h"
 
 using namespace tinyptr;
 using namespace std;

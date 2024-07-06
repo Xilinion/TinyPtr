@@ -24,7 +24,4 @@ class BenchmarkDerefTab64 : public BenchmarkObject64 {
     DereferenceTable64* tab;
 };
 
-const BenchmarkObjectType BenchmarkDerefTab64::TYPE =
-    BenchmarkObjectType::DEREFTAB64;
-
 }  // namespace tinyptr

@@ -22,6 +22,7 @@ void BenchmarkCLIPara::Parse(int argc, char** argv) {
     this->configuring_getopt();
     for (int c; (c = getopt(argc, argv, "o:c:e:t:p:l:h:f:")) != -1;) {
         switch (c) {
+            // TODO: add validity check of parameters
             case 'o':
                 object_id = std::stoi(optarg);
                 break;

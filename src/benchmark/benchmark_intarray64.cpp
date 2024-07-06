@@ -3,6 +3,9 @@
 
 namespace tinyptr {
 
+const BenchmarkObjectType BenchmarkIntArray64::TYPE =
+    BenchmarkObjectType::INTARRAY64;
+
 BenchmarkIntArray64::BenchmarkIntArray64(int n)
     : BenchmarkObject64(TYPE), tab_size(n) {
     tab = new uint64_t[n];

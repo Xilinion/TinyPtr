@@ -1,3 +1,5 @@
+#pragma once
+
 #include <functional>
 #include "common.h"
 #include "o2v_dereference_table_64.h"

@@ -2,6 +2,9 @@
 
 namespace tinyptr {
 
+const BenchmarkObjectType BenchmarkDerefTab64::TYPE =
+    BenchmarkObjectType::DEREFTAB64;
+
 BenchmarkDerefTab64::BenchmarkDerefTab64(int n) : BenchmarkObject64(TYPE) {
     tab = new DereferenceTable64(n);
 }
