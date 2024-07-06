@@ -1,12 +1,15 @@
 #pragma once
 
+#include <cstdint>
+
 namespace tinyptr {
 
-enum class BenchmarkObjectType : uint8_t {
+enum class BenchmarkObjectType : int8_t {
+    INVALID = -1,
     DEREFTAB64 = 0,
     CHAINEDHT64,
-    INTARRAY,
-    STDUNORDEREDMAP,
+    INTARRAY64,
+    STDUNORDEREDMAP64,
     COUNT
 };
 

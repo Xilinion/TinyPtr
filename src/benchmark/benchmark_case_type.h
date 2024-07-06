@@ -1,8 +1,11 @@
 #pragma once
 
+#include <cstdint>
+
 namespace tinyptr {
 
-enum class BenchmarkCaseType : int {
+enum class BenchmarkCaseType : int8_t {
+    INVALID = -1,
     INSERT_ONLY_LOAD_FACTOR_SUPPORT = 0,
     INSERT_ONLY,
     UPDATE_ONLY,
