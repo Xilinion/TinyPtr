@@ -12,10 +12,10 @@ void BenchmarkCLIPara::configuring_getopt() {
 
 std::string BenchmarkCLIPara::GetOuputFileName() {
 
-    return std::string("object_") + std::to_string(object_id) +
-           std::string("_case_") + std::to_string(case_id) +
-           std::string("_entry_") + std::to_string(entry_id) +
-           std::string("_.txt");
+    return path + std::string("/") + std::string("object_") +
+           std::to_string(object_id) + std::string("_case_") +
+           std::to_string(case_id) + std::string("_entry_") +
+           std::to_string(entry_id) + std::string("_.txt");
 }
 
 void BenchmarkCLIPara::Parse(int argc, char** argv) {
@@ -45,7 +45,8 @@ void BenchmarkCLIPara::Parse(int argc, char** argv) {
                 hit_percent = std::stod(optarg);
                 break;
             case 'f':
-                fprintf(stderr, "Not supported yet.\n");
+                path = std::string(optarg);
+                // fprintf(stderr, "Not supported yet.\n");
                 break;
             case '?':
                 // if (optopt == 'f')

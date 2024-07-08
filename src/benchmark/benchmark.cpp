@@ -3,8 +3,10 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
+#include <ctime>
 #include <cstdlib>
 #include <iterator>
+#include <ostream>
 #include <random>
 #include "../chained_ht_64.h"
 #include "../dereference_table_64.h"
@@ -176,70 +178,128 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
     switch (para.case_id) {
         case BenchmarkCaseType::INSERT_ONLY_LOAD_FACTOR_SUPPORT:
             run = [this]() {
+                std::clock_t start = std::clock();
+
                 int load_cnt = insert_cnt_to_overflow();
+
+                output_stream << "Table Size: " << table_size << std::endl;
+                output_stream << "Load Capacity: " << load_cnt << std::endl;
+                output_stream << "CPU Time: " << 1000.0 * (std::clock() - start) / CLOCKS_PER_SEC << std::endl;
             };
             break;
         case BenchmarkCaseType::INSERT_ONLY:
             run = [this]() {
+                std::clock_t start = std::clock();
+                
                 obj_fill(opt_num);
+
+                output_stream << "CPU Time: " << 1000.0 * (std::clock() - start) / CLOCKS_PER_SEC << std::endl;
             };
             break;
         case BenchmarkCaseType::UPDATE_ONLY:
             run = [this]() {
                 obj_fill(table_size);
+
+                std::clock_t start = std::clock();
+
                 batch_update(opt_num);
+
+                output_stream << "CPU Time: " << 1000.0 * (std::clock() - start) / CLOCKS_PER_SEC << std::endl;
             };
             break;
         case BenchmarkCaseType::ERASE_ONLY:
             run = [this]() {
                 obj_fill(table_size);
+
+                std::clock_t start = std::clock();
+
                 erase_all();
+
+                output_stream << "CPU Time: " << 1000.0 * (std::clock() - start) / CLOCKS_PER_SEC << std::endl;
             };
             break;
         case BenchmarkCaseType::ALTERNATING_INSERT_ERASE:
             run = [this]() {
+                std::clock_t start = std::clock();
+
                 alternating_insert_erase(opt_num);
+
+                output_stream << "CPU Time: " << 1000.0 * (std::clock() - start) / CLOCKS_PER_SEC << std::endl;
             };
             break;
         case BenchmarkCaseType::QUERY_HIT_ONLY:
             run = [this]() {
                 obj_fill(table_size);
+
+                std::clock_t start = std::clock();
+
                 batch_query(opt_num, 1);
+
+                output_stream << "CPU Time: " << 1000.0 * (std::clock() - start) / CLOCKS_PER_SEC << std::endl;
             };
             break;
         case BenchmarkCaseType::QUERY_MISS_ONLY:
             run = [this]() {
                 obj_fill(table_size);
+
+                std::clock_t start = std::clock();
+
                 batch_query(opt_num, 0);
+
+                output_stream << "CPU Time: " << 1000.0 * (std::clock() - start) / CLOCKS_PER_SEC << std::endl;
             };
             break;
         case BenchmarkCaseType::QUERY_HIT_PERCENT:
             run = [this]() {
                 obj_fill(table_size);
+
+                std::clock_t start = std::clock();
+
                 batch_query(opt_num, hit_ratio);
+
+                output_stream << "CPU Time: " << 1000.0 * (std::clock() - start) / CLOCKS_PER_SEC << std::endl;
             };
             break;
         case BenchmarkCaseType::QUERY_HIT_ONLY_CUSTOM_LOAD_FACTOR:
             run = [this]() {
                 obj_fill(int(floor(table_size * load_factor)));
+
+                std::clock_t start = std::clock();
+
                 batch_query(opt_num, 1);
+
+                output_stream << "CPU Time: " << 1000.0 * (std::clock() - start) / CLOCKS_PER_SEC << std::endl;
             };
             break;
         case BenchmarkCaseType::QUERY_MISS_ONLY_CUSTOM_LOAD_FACTOR:
             run = [this]() {
                 obj_fill(int(floor(table_size * load_factor)));
+
+                std::clock_t start = std::clock();
+
                 batch_query(opt_num, 0);
+
+                output_stream << "CPU Time: " << 1000.0 * (std::clock() - start) / CLOCKS_PER_SEC << std::endl;
             };
             break;
         case BenchmarkCaseType::QUERY_HIT_PERCENT_CUSTOM_LOAD_FACTOR:
             run = [this]() {
                 obj_fill(int(floor(table_size * load_factor)));
+
+                std::clock_t start = std::clock();
+
                 batch_query(opt_num, hit_ratio);
+
+                output_stream << "CPU Time: " << 1000.0 * (std::clock() - start) / CLOCKS_PER_SEC << std::endl;
             };
             break;
         case BenchmarkCaseType::ALL_OPERATION_RAND:
             run = [this]() {
+                std::clock_t start = std::clock();
+
                 all_operation_rand(opt_num);
+
+                output_stream << "CPU Time: " << 1000.0 * (std::clock() - start) / CLOCKS_PER_SEC << std::endl;
             };
             break;
         default:
