@@ -3,8 +3,8 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
-#include <ctime>
 #include <cstdlib>
+#include <ctime>
 #include <iterator>
 #include <ostream>
 #include <random>
@@ -49,7 +49,7 @@ uint64_t Benchmark::gen_value() {
 
 int Benchmark::insert_cnt_to_overflow() {
     for (int res = 0;; ++res) {
-        if (~obj->Insert(gen_key_hittable(), gen_value()))
+        if (!((uint8_t)(~obj->Insert(gen_key_hittable(), gen_value()))))
             return res;
     }
 }
@@ -184,16 +184,22 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
 
                 output_stream << "Table Size: " << table_size << std::endl;
                 output_stream << "Load Capacity: " << load_cnt << std::endl;
-                output_stream << "CPU Time: " << 1000.0 * (std::clock() - start) / CLOCKS_PER_SEC << std::endl;
+                output_stream
+                    << "CPU Time: "
+                    << 1000.0 * (std::clock() - start) / CLOCKS_PER_SEC
+                    << std::endl;
             };
             break;
         case BenchmarkCaseType::INSERT_ONLY:
             run = [this]() {
                 std::clock_t start = std::clock();
-                
+
                 obj_fill(opt_num);
 
-                output_stream << "CPU Time: " << 1000.0 * (std::clock() - start) / CLOCKS_PER_SEC << std::endl;
+                output_stream
+                    << "CPU Time: "
+                    << 1000.0 * (std::clock() - start) / CLOCKS_PER_SEC
+                    << std::endl;
             };
             break;
         case BenchmarkCaseType::UPDATE_ONLY:
@@ -204,7 +210,10 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
 
                 batch_update(opt_num);
 
-                output_stream << "CPU Time: " << 1000.0 * (std::clock() - start) / CLOCKS_PER_SEC << std::endl;
+                output_stream
+                    << "CPU Time: "
+                    << 1000.0 * (std::clock() - start) / CLOCKS_PER_SEC
+                    << std::endl;
             };
             break;
         case BenchmarkCaseType::ERASE_ONLY:
@@ -215,7 +224,10 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
 
                 erase_all();
 
-                output_stream << "CPU Time: " << 1000.0 * (std::clock() - start) / CLOCKS_PER_SEC << std::endl;
+                output_stream
+                    << "CPU Time: "
+                    << 1000.0 * (std::clock() - start) / CLOCKS_PER_SEC
+                    << std::endl;
             };
             break;
         case BenchmarkCaseType::ALTERNATING_INSERT_ERASE:
@@ -224,7 +236,10 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
 
                 alternating_insert_erase(opt_num);
 
-                output_stream << "CPU Time: " << 1000.0 * (std::clock() - start) / CLOCKS_PER_SEC << std::endl;
+                output_stream
+                    << "CPU Time: "
+                    << 1000.0 * (std::clock() - start) / CLOCKS_PER_SEC
+                    << std::endl;
             };
             break;
         case BenchmarkCaseType::QUERY_HIT_ONLY:
@@ -235,7 +250,10 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
 
                 batch_query(opt_num, 1);
 
-                output_stream << "CPU Time: " << 1000.0 * (std::clock() - start) / CLOCKS_PER_SEC << std::endl;
+                output_stream
+                    << "CPU Time: "
+                    << 1000.0 * (std::clock() - start) / CLOCKS_PER_SEC
+                    << std::endl;
             };
             break;
         case BenchmarkCaseType::QUERY_MISS_ONLY:
@@ -246,7 +264,10 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
 
                 batch_query(opt_num, 0);
 
-                output_stream << "CPU Time: " << 1000.0 * (std::clock() - start) / CLOCKS_PER_SEC << std::endl;
+                output_stream
+                    << "CPU Time: "
+                    << 1000.0 * (std::clock() - start) / CLOCKS_PER_SEC
+                    << std::endl;
             };
             break;
         case BenchmarkCaseType::QUERY_HIT_PERCENT:
@@ -257,7 +278,10 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
 
                 batch_query(opt_num, hit_ratio);
 
-                output_stream << "CPU Time: " << 1000.0 * (std::clock() - start) / CLOCKS_PER_SEC << std::endl;
+                output_stream
+                    << "CPU Time: "
+                    << 1000.0 * (std::clock() - start) / CLOCKS_PER_SEC
+                    << std::endl;
             };
             break;
         case BenchmarkCaseType::QUERY_HIT_ONLY_CUSTOM_LOAD_FACTOR:
@@ -268,7 +292,10 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
 
                 batch_query(opt_num, 1);
 
-                output_stream << "CPU Time: " << 1000.0 * (std::clock() - start) / CLOCKS_PER_SEC << std::endl;
+                output_stream
+                    << "CPU Time: "
+                    << 1000.0 * (std::clock() - start) / CLOCKS_PER_SEC
+                    << std::endl;
             };
             break;
         case BenchmarkCaseType::QUERY_MISS_ONLY_CUSTOM_LOAD_FACTOR:
@@ -279,7 +306,10 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
 
                 batch_query(opt_num, 0);
 
-                output_stream << "CPU Time: " << 1000.0 * (std::clock() - start) / CLOCKS_PER_SEC << std::endl;
+                output_stream
+                    << "CPU Time: "
+                    << 1000.0 * (std::clock() - start) / CLOCKS_PER_SEC
+                    << std::endl;
             };
             break;
         case BenchmarkCaseType::QUERY_HIT_PERCENT_CUSTOM_LOAD_FACTOR:
@@ -290,7 +320,10 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
 
                 batch_query(opt_num, hit_ratio);
 
-                output_stream << "CPU Time: " << 1000.0 * (std::clock() - start) / CLOCKS_PER_SEC << std::endl;
+                output_stream
+                    << "CPU Time: "
+                    << 1000.0 * (std::clock() - start) / CLOCKS_PER_SEC
+                    << std::endl;
             };
             break;
         case BenchmarkCaseType::ALL_OPERATION_RAND:
@@ -299,7 +332,10 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
 
                 all_operation_rand(opt_num);
 
-                output_stream << "CPU Time: " << 1000.0 * (std::clock() - start) / CLOCKS_PER_SEC << std::endl;
+                output_stream
+                    << "CPU Time: "
+                    << 1000.0 * (std::clock() - start) / CLOCKS_PER_SEC
+                    << std::endl;
             };
             break;
         default:
