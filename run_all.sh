@@ -27,7 +27,8 @@ fi
 exp_dir="$(realpath $exp_dir)"
 echo "$exp_dir"
 
-mkdir -p $exp_dir/results/
+mkdir -p "$exp_dir/results/"
+mkdir -p "$exp_dir/results/figure"
 
 cd ./scripts || exit
 bash benchmark.sh -d "$exp_dir"
