@@ -70,9 +70,9 @@ done
 entry_id=0
 for case_id in $(seq 1 7); do
     for object_id in $(seq 0 4); do
-        for table_size in 10000 100000 1000000 10000000 100000000; do
-            for opt_num in 10000 100000 1000000 10000000 100000000; do
-                for rep_cnt in $(seq 0 4); do
+        for table_size in 10000 100000 1000000 10000000; do
+            for opt_num in 100000 1000000 10000000 100000000; do
+                for rep_cnt in $(seq 0 0); do
                     Run
                     let "entry_id++"
                 done
@@ -84,10 +84,10 @@ done
 entry_id=0
 for case_id in 8; do
     for object_id in $(seq 0 4); do
-        for table_size in 10000 100000 1000000 10000000 100000000; do
-            for opt_num in 10000 100000 1000000 10000000 100000000; do
-                for hit_percent in 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9; do
-                    for rep_cnt in $(seq 0 4); do
+        for table_size in 10000 100000 1000000 10000000; do
+            for opt_num in 100000 1000000 10000000 100000000; do
+                for hit_percent in 0.1 0.2 0.4 0.8; do
+                    for rep_cnt in $(seq 0 0); do
                         Run
                         let "entry_id++"
                     done
@@ -100,10 +100,10 @@ done
 entry_id=0
 for case_id in 9 10; do
     for object_id in $(seq 0 4); do
-        for table_size in 10000 100000 1000000 10000000 100000000; do
-            for opt_num in 10000 100000 1000000 10000000 100000000; do
-                for load_factor in 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 0.95 0.97; do
-                    for rep_cnt in $(seq 0 4); do
+        for table_size in 10000 100000 1000000 10000000; do
+            for opt_num in 100000 1000000 10000000 100000000; do
+                for load_factor in 0.1 0.2 0.4 0.8 0.95 0.97; do
+                    for rep_cnt in $(seq 0 0); do
                         Run
                         let "entry_id++"
                     done
@@ -116,11 +116,11 @@ done
 entry_id=0
 for case_id in 11; do
     for object_id in $(seq 0 4); do
-        for table_size in 10000 100000 1000000 10000000 100000000; do
-            for opt_num in 10000 100000 1000000 10000000 100000000; do
-                for load_factor in 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 0.95 0.97; do
-                    for hit_percent in 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9; do
-                        for rep_cnt in $(seq 0 4); do
+        for table_size in 10000 100000 1000000 10000000; do
+            for opt_num in 100000 1000000 10000000 100000000; do
+                for load_factor in 0.1 0.2 0.4 0.8 0.95 0.97; do
+                    for hit_percent in 0.1 0.2 0.4 0.8; do
+                        for rep_cnt in $(seq 0 0); do
                             Run
                             let "entry_id++"
                         done
