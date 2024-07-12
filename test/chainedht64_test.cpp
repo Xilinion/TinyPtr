@@ -6,7 +6,7 @@
 #include <utility>
 #include "chained_ht_64.h"
 #include "dereference_table_64.h"
-#include "xxhash64.h"
+#include "utils/xxhash64.h"
 
 using namespace tinyptr;
 using namespace std;
@@ -33,7 +33,7 @@ uint64_t my_value_rand() {
     return XXHash64::hash(&tmp, sizeof(int32_t), 1);
 }
 
-TEST(ChainedHT64_TESTSUITE, STDMapComplianceWithinBin) {
+TEST(ChainedHT64_TESTSUITE, StdMapComplianceWithinBin) {
     srand(233);
 
     int n = 1e6, m = 1e3;
@@ -56,7 +56,7 @@ TEST(ChainedHT64_TESTSUITE, STDMapComplianceWithinBin) {
     }
 }
 
-TEST(ChainedHT64_TESTSUITE, STDMapComplianceMultipleBin) {
+TEST(ChainedHT64_TESTSUITE, StdMapComplianceMultipleBin) {
     srand(233);
 
     int n = 1e6, m = 1e3;

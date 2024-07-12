@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <cstdlib>
 #include <map>
+#include <unordered_map>
 
 namespace tinyptr {
 class O2VOverflowTable {
@@ -26,6 +27,6 @@ class O2VOverflowTable {
     void Free(uint64_t key);
 
    private:
-    std::map<uint64_t, VV> tab;
+    std::unordered_map<uint64_t, VV> tab;
 };
 }  // namespace tinyptr
