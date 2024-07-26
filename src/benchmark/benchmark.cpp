@@ -131,9 +131,9 @@ void Benchmark::alternating_insert_erase(int opt_cnt) {
 void Benchmark::all_operation_rand(int opt_cnt) {
     while (opt_cnt--) {
         int key_ind_range = key_vec.size();
-        int key_ind = rgen64() % key_ind_range;
-        uint64_t key = key_vec[key_ind];
-        uint8_t ptr = ptr_vec[key_ind];
+        int key_ind = key_ind_range ? rgen64() % key_ind_range : 0;
+        uint64_t key = key_ind_range ? key_vec[key_ind] : 0;
+        uint8_t ptr = key_ind_range ? ptr_vec[key_ind] : 0;
 
         uint8_t opt_rand = gen_rand_nonzero_8();
         if (opt_rand <= 0b1111) {
