@@ -10,6 +10,7 @@
 #include <random>
 #include "../chained_ht_64.h"
 #include "../dereference_table_64.h"
+#include "benchmark_bytearray_chainedht.h"
 #include "benchmark_chainedht64.h"
 #include "benchmark_cli_para.h"
 #include "benchmark_dereftab64.h"
@@ -170,6 +171,9 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
             break;
         case BenchmarkObjectType::STDUNORDEREDMAP64:
             obj = new BenchmarkStdUnorderedMap64(table_size);
+            break;
+        case BenchmarkObjectType::BYTEARRAYCHAINEDHT:
+            obj = new BenchmarkByteArrayChained(table_size);
             break;
         default:
             abort();
