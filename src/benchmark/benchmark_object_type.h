@@ -11,6 +11,7 @@ struct BenchmarkObjectType {
         CHAINEDHT64,
         INTARRAY64,
         STDUNORDEREDMAP64,
+        BYTEARRAYCHAINEDHT,
         COUNT
     };
 
