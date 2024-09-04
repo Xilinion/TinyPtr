@@ -40,3 +40,6 @@ results/
 # IDE
 .idea
 cmake-build-debug
+
+# Perf
+perf.data*

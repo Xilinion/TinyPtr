@@ -32,10 +32,12 @@ echo "$exp_dir"
 function compile() {
     cd ..
     cmake -B build | tail -n 90
-    cmake --build build --config Release -j8 | tail -n 90
+    # cmake --build build -j8 | tail -n 90
+    cmake --build build --config Debug -j8 | tail -n 90
+    # cmake --build build --config Release -j8 | tail -n 90
     cd scripts
 
-    sudo setcap CAP_SYS_RAWIO+eip ../tinyptr
+    sudo setcap CAP_SYS_RAWIO+eip ../build/tinyptr
 }
 
 function Run() {
@@ -47,12 +49,93 @@ function Run() {
     ../build/tinyptr -o $object_id -c $case_id -e $entry_id -t $table_size -p $opt_num -l $load_factor -h $hit_percent -f "$res_path"
 }
 
+function FlameGraph() {
+    #####native execution
+    echo "== benchmark with perf: -o $object_id -c $case_id -e $entry_id -t $table_size -p  $opt_num -l $load_factor -h $hit_percent -f "$res_path" =="
+
+    perf record -F 499 -a -g -- ../build/tinyptr -o $object_id -c $case_id -e $entry_id -t $table_size -p $opt_num -l $load_factor -h $hit_percent -f "$res_path"
+
+    perf script > "$res_path/out.perf"
+
+    ../build/stackcollapse-perf.pl "$res_path/out.perf" > "$res_path/out.folded"
+
+    ../build/flamegraph.pl "$res_path/out.folded" > "$res_path/${object_id}_${case_id}_${entry_id}_kernel.svg"
+}
+
 compile
 
 table_size=0
 opt_num=0
 load_factor=0
 hit_percent=0
+
+
+entry_id=0
+for case_id in $(seq 1 7); do
+    for object_id in $(seq 0 3); do
+        for table_size in 1000000; do
+            for opt_num in 10000000; do
+                for rep_cnt in $(seq 0 0); do
+                    FlameGraph
+                    let "entry_id++"
+                done
+            done
+        done
+    done
+done
+
+entry_id=0
+for case_id in 8; do
+    for object_id in $(seq 0 4); do
+        for table_size in 10000000; do
+            for opt_num in 100000000; do
+                for hit_percent in 0.1 0.4 0.8; do
+                    for rep_cnt in $(seq 0 0); do
+                        FlameGraph
+                        let "entry_id++"
+                    done
+                done
+            done
+        done
+    done
+done
+
+entry_id=0
+for case_id in 9 10; do
+    for object_id in $(seq 0 4); do
+        for table_size in 10000 100000 1000000 10000000; do
+            for opt_num in 100000 1000000 10000000 100000000; do
+                for load_factor in 0.1 0.97; do
+                    for rep_cnt in $(seq 0 0); do
+                        FlameGraph
+                        let "entry_id++"
+                    done
+                done
+            done
+        done
+    done
+done
+
+entry_id=0
+for case_id in 11; do
+    for object_id in $(seq 0 4); do
+        for table_size in 10000 100000 1000000 10000000; do
+            for opt_num in 100000 1000000 10000000 100000000; do
+                for load_factor in 0.1 0.97; do
+                    for hit_percent in 0.1 0.8; do
+                        for rep_cnt in $(seq 0 0); do
+                            FlameGraph
+                            let "entry_id++"
+                        done
+                    done
+                done
+            done
+        done
+    done
+done
+
+exit
+
 
 # TODO: share enums with scripts
 
