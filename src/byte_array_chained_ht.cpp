@@ -1,249 +1,243 @@
 #include "byte_array_chained_ht.h"
+#include <sys/types.h>
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
-#include "byte_array_dereference_table.h"
+#include <iterator>
+#include <regex>
 
 namespace tinyptr {
-ByteArrayChainedHT::ListIndicator::ListIndicator() {
-    bit_str = 0;
-}
+ByteArrayChainedHT::ByteArrayChainedHT(uint64_t size,
+                                       uint8_t quotiented_tail_length,
+                                       uint16_t bin_size)
+    : kHashSeed1(rand() & ((1 << 16) - 1)),
+      kHashSeed2(65536 + rand()),
+      kQuotientedTailLength(quotiented_tail_length),
+      kQuotientedTailMask((1ll << quotiented_tail_length) - 1),
+      kBaseTabSize(1 << quotiented_tail_length),
+      kBinSize(bin_size),
+      kBinNum((size + bin_size) / bin_size),
+      kTinyPtrOffset((64 + 7 - quotiented_tail_length) >> 3),
+      kValueOffset(kTinyPtrOffset + 1),
+      kQuotKeyByteLength((64 + 7 - quotiented_tail_length) >> 3),
+      kEntryByteLength(kQuotKeyByteLength + 1 + 8),
+      kBinByteLength(bin_size * kEntryByteLength) {
+    byte_array = new uint8_t[kBinNum * kBinSize * kEntryByteLength];
+    memset(byte_array, 0, kBinNum * kBinSize * kEntryByteLength);
 
-ByteArrayChainedHT::ListIndicator::ListIndicator(uint64_t bit_str_) {
-    bit_str = bit_str_;
-}
+    base_tab = new uint8_t[kBaseTabSize];
+    memset(base_tab, 0, kBaseTabSize);
 
-ByteArrayChainedHT::ListIndicator::ListIndicator(uint64_t quot_key,
-                                                 bool base_bit, uint8_t ptr) {
-    bit_str = 0;
-    set_quot_head(quot_key);
-    if (base_bit)
-        set_base_bit();
-    set_ptr(ptr);
-}
-
-void ByteArrayChainedHT::ListIndicator::set_base_bit() {
-    bit_str |= (1 << kBaseBitPos);
-}
-
-void ByteArrayChainedHT::ListIndicator::set_base_bit(bool base_bit) {
-    bit_str |= (1 << kBaseBitPos);
-    bit_str ^= (static_cast<uint64_t>(base_bit ^ 1) << kBaseBitPos);
-}
-
-void ByteArrayChainedHT::ListIndicator::erase_base_bit() {
-    bit_str ^=
-        (((bit_str << (64 - kBaseBitPos - 1)) >> (64 - 1)) << kBaseBitPos);
-}
-
-void ByteArrayChainedHT::ListIndicator::set_quot_head(uint64_t quot_key) {
-    bit_str = ((bit_str << kQuotientingHeadSize) >> kQuotientingHeadSize) |
-              (quot_key << kQuotientingTailSize);
-}
-
-void ByteArrayChainedHT::ListIndicator::set_bit_str(uint64_t bit_str_) {
-    bit_str = bit_str_;
-}
-
-void ByteArrayChainedHT::ListIndicator::set_ptr(uint8_t ptr) {
-    bit_str = ((bit_str >> kQuotientingTailSize) << kQuotientingTailSize) | ptr;
-}
-
-bool ByteArrayChainedHT::ListIndicator::get_base_bit() {
-    return bit_str & (1 << kBaseBitPos);
-}
-
-uint64_t ByteArrayChainedHT::ListIndicator::get_quot_head() {
-    return (bit_str >> kQuotientingTailSize) << kQuotientingTailSize;
-}
-
-uint64_t ByteArrayChainedHT::ListIndicator::get_quot_key() {
-    return (bit_str >> kQuotientingTailSize);
-}
-
-uint8_t ByteArrayChainedHT::ListIndicator::get_ptr() {
-    // it's implicitly truncated
-    return bit_str;
-}
-
-uint64_t ByteArrayChainedHT::ListIndicator::get_bit_str() {
-    return bit_str;
-}
-
-ByteArrayChainedHT::ByteArrayChainedHT(int n) {
-    deref_tab = new ByteArrayDereferenceTable(n);
-    quot_tab = new uint8_t[1 << kQuotientingTailSize];
-    memset(quot_tab, 0, sizeof(uint8_t) * (1 << kQuotientingTailSize));
-
-    auto hash_seed = rand();
-
-    quot_head_hash =
-        std::function<uint32_t(uint64_t)>([=](uint64_t key) -> uint32_t {
-            key = key >> kQuotientingTailSize << kQuotientingTailSize;
-            return XXHash64::hash(&key, sizeof(uint64_t), hash_seed) &
-                   ((1 << kQuotientingTailSize) - 1);
-        });
-}
-
-uint32_t ByteArrayChainedHT::get_bin_num(uint64_t key) {
-    return (quot_head_hash(key) ^ key) & ((1 << kQuotientingTailSize) - 1);
-}
-
-uint64_t ByteArrayChainedHT::encode_key(uint64_t key) {
-    return key >> kQuotientingTailSize;
-}
-
-uint64_t ByteArrayChainedHT::decode_key(uint64_t quot_key, uint32_t bin_num) {
-    uint64_t quot_head = quot_key << kQuotientingTailSize;
-    return quot_head | (bin_num ^ quot_head_hash(quot_head));
-}
-
-/*
-bool ByteArrayChainedHT::ContainsKey(uint64_t key) {
-    uint32_t bin_num = get_bin_num(key);
-
-    uint8_t iter_ptr = quot_tab[bin_num];
-    uint64_t iter_key = decode_key(kBaseDerefQuotKey, bin_num);
-
-    if (iter_ptr) {
-        ListIndicator list_ind(deref_tab->QueryFirst(iter_key, iter_ptr));
-
-        if (key == iter_key)
-            if (list_ind.get_base_bit())
-                return 1;
-            else
-                return 0;
-
-        iter_key = decode_key(list_ind.get_quot_key(), bin_num);
-        iter_ptr = list_ind.get_ptr();
-    }
-    while (iter_ptr) {
-        if (key == iter_key)
-            return 1;
-
-        ListIndicator list_ind(deref_tab->QueryFirst(iter_key, iter_ptr));
-        iter_key = decode_key(list_ind.get_quot_key(), bin_num);
-        iter_ptr = list_ind.get_ptr();
-    }
-    return 0;
-}
-*/
-
-void ByteArrayChainedHT::Insert(uint64_t key, uint64_t value) {
-    uint32_t bin_num = get_bin_num(key);
-
-    uint8_t ptr = quot_tab[bin_num];
-    uint64_t address_key = bin_num;
-    // decode_key(kBaseDerefQuotKey, bin_num);
-
-    if (ptr) {
-        // ListIndicator list_head(deref_tab->QueryFirst(base_key, ptr));
-        uint64_t tmp = address_key;
-        while (ptr) {
-            tmp = address_key;
-            address_key = deref_tab->QueryDataAddress(address_key, ptr);
-            ptr = deref_tab->QueryTinyPtr(tmp, ptr);
+    bin_cnt_head = new uint8_t[kBinNum << 1];
+    for (uint64_t i = 0, ptr_offset = kTinyPtrOffset; i < kBinNum; i++) {
+        for (uint8_t j = 0; j < kBinSize - 1; j++) {
+            byte_array[ptr_offset] = j + 2;
+            ptr_offset += kEntryByteLength;
         }
-        uint8_t new_ptr =
-            deref_tab->Allocate(address_key, encode_key(key), 0, value);
-        deref_tab->UpdateTinyptr(tmp, ptr, new_ptr);
+        // the last entry in the bin points to null
+        byte_array[ptr_offset] = 0;
+        ptr_offset += kEntryByteLength;
+
+        bin_cnt_head[i << 1] = 0;
+        bin_cnt_head[(i << 1) | 1] = 1;
+    }
+}
+
+uint64_t ByteArrayChainedHT::hash_1(uint64_t key) {
+    uint64_t tmp;
+    XXHash64::hash(&tmp, sizeof(uint64_t), kHashSeed1);
+    return tmp;
+}
+
+uint64_t ByteArrayChainedHT::hash_1_base_id(uint64_t key) {
+    uint64_t tmp;
+    XXHash64::hash(&tmp, sizeof(uint64_t), kHashSeed1);
+    return (tmp ^ key) & kQuotientedTailMask;
+}
+
+uint64_t ByteArrayChainedHT::hash_1_bin(uint64_t key) {
+    uint64_t tmp;
+    XXHash64::hash(&tmp, sizeof(uint64_t), kHashSeed1);
+    return tmp % kBinNum;
+}
+
+uint64_t ByteArrayChainedHT::hash_2(uint64_t key) {
+    uint64_t tmp;
+    XXHash64::hash(&tmp, sizeof(uint64_t), kHashSeed2);
+    return tmp;
+}
+
+uint64_t ByteArrayChainedHT::hash_2_bin(uint64_t key) {
+    uint64_t tmp;
+    XXHash64::hash(&tmp, sizeof(uint64_t), kHashSeed2);
+    return tmp % kBinNum;
+}
+
+uint8_t& ByteArrayChainedHT::bin_cnt(uint64_t bin_id) {
+    return bin_cnt_head[bin_id << 1];
+}
+
+uint8_t& ByteArrayChainedHT::bin_head(uint64_t bin_id) {
+    return bin_cnt_head[(bin_id << 1) | 1];
+}
+
+uint8_t& ByteArrayChainedHT::base_tab_ptr(uint64_t base_id) {
+    return base_tab[base_id];
+}
+
+uint8_t* ByteArrayChainedHT::ptab_query_entry_address(uint64_t key,
+                                                      uint8_t ptr) {
+    uint8_t flag = (ptr >= (1 << 7));
+    ptr ^= flag * ((1 << 8) - 1);
+    if (flag) {
+        return byte_array +
+               (hash_2_bin(key) * kBinSize + ptr - 1) * kEntryByteLength;
     } else {
-        // actually, this new field for value_1 is meaningful iff key == base_key
-        // whenever the ptr field of the indicator is 0, it implies the end of the list
-        // ListIndicator new_entry_ind(encode_key(key), base_key == key, 0);
-
-        quot_tab[bin_num] =
-            deref_tab->Allocate(address_key, encode_key(key), 0, value);
+        return byte_array +
+               (hash_1_bin(key) * kBinSize + ptr - 1) * kEntryByteLength;
     }
 }
 
-void ByteArrayChainedHT::Erase(uint64_t key) {
-    uint32_t bin_num = get_bin_num(key);
+uint8_t* ByteArrayChainedHT::ptab_insert_entry_address(uint64_t key) {
+    uint8_t bin1 = hash_1_bin(key);
+    uint8_t bin2 = hash_2_bin(key);
+    uint8_t bin_id = bin_cnt(bin1) < bin_cnt(bin2) ? bin1 : bin2;
 
-    uint8_t ptr = quot_tab[bin_num];
-    uint64_t address_key = bin_num;
+    uint8_t& head = bin_head(bin_id);
+    uint8_t& cnt = bin_cnt(bin_id);
 
-    uint64_t quotiented_key = encode_key(key);
-    // decode_key(kBaseDerefQuotKey, bin_num);
-
-    // ListIndicator list_head(deref_tab->QueryFirst(base_key, ptr));
-    uint64_t tmp = address_key;
-    while (ptr) {
-        if (deref_tab->QueryQuotientedKey(address_key, ptr) == quotiented_key) {
-            break;
-        }
-
-        tmp = address_key;
-        address_key = deref_tab->QueryDataAddress(address_key, ptr);
-        ptr = deref_tab->QueryTinyPtr(tmp, ptr);
-    }
-
-    while(ptr)
-    {
-        uint8_t tmp_ptr = deref_tab->QueryTinyPtr(address_key, ptr);
-        if (!tmp_ptr)
-        {
-            deref_tab->Free(address_key, ptr);
-            break;
-        }
-
-        tmp = address_key;
-        address_key = deref_tab->QueryDataAddress(address_key, ptr);
-        ptr = deref_tab->QueryTinyPtr(tmp, ptr);
-
-        deref_tab->UpdateQuotientedKey(tmp, tmp_ptr, deref_tab->QueryQuotientedKey(address_key, ptr));
-        deref_tab->UpdateTinyptr(tmp, tmp_ptr, deref_tab->QueryTinyPtr(address_key, ptr));
-        deref_tab->UpdateValue(tmp, tmp_ptr, deref_tab->QueryValue(address_key, ptr));
+    if (head) {
+        uint8_t* entry =
+            byte_array + (bin_id * kBinSize + head - 1) * kEntryByteLength;
+        *entry = head;
+        head = entry[kTinyPtrOffset];
+        cnt++;
+        return entry;
+    } else {
+        return nullptr;
     }
 }
 
-void ByteArrayChainedHT::Update(uint64_t key, uint64_t value) {
-    uint32_t bin_num = get_bin_num(key);
+bool ByteArrayChainedHT::Insert(uint64_t key, uint64_t value) {
 
-    uint8_t ptr = quot_tab[bin_num];
-    uint64_t address_key = bin_num;
+    uint64_t base_id = hash_1_base_id(key);
+    uint8_t* pre_tiny_ptr = &base_tab_ptr(base_id);
 
-    uint64_t quotiented_key = encode_key(key);
-    // decode_key(kBaseDerefQuotKey, bin_num);
-
-    // ListIndicator list_head(deref_tab->QueryFirst(base_key, ptr));
-    uint64_t tmp = address_key;
-    while (ptr) {
-        if (deref_tab->QueryQuotientedKey(address_key, ptr) == quotiented_key) {
-            deref_tab->UpdateValue(address_key, ptr, value);
-        }
-
-        tmp = address_key;
-        address_key = deref_tab->QueryDataAddress(address_key, ptr);
-        ptr = deref_tab->QueryTinyPtr(tmp, ptr);
+    while (*pre_tiny_ptr != 0) {
+        uint8_t* entry = ptab_query_entry_address(
+            reinterpret_cast<uint64_t>(pre_tiny_ptr), *pre_tiny_ptr);
+        pre_tiny_ptr = entry + kTinyPtrOffset;
     }
 
-    Insert(key, value);
+    uint8_t* entry =
+        ptab_insert_entry_address(reinterpret_cast<uint64_t>(pre_tiny_ptr));
+
+    if (entry) {
+        *pre_tiny_ptr = *entry;
+        // assuming little endian
+        *reinterpret_cast<uint64_t*>(entry) = key >> kQuotientedTailLength;
+        entry[kTinyPtrOffset] = 0;
+        *reinterpret_cast<uint64_t*>(entry + kValueOffset) = value;
+        return true;
+    } else {
+        return false;
+    }
 }
 
-uint64_t ByteArrayChainedHT::Query(uint64_t key) {
-    uint32_t bin_num = get_bin_num(key);
+bool ByteArrayChainedHT::Query(uint64_t key, uint64_t* value_ptr) {
+    uint64_t base_id = hash_1_base_id(key);
+    uint8_t* pre_tiny_ptr = &base_tab_ptr(base_id);
 
-    uint8_t ptr = quot_tab[bin_num];
-    uint64_t address_key = bin_num;
+    // quotienting
+    key >>= kQuotientedTailLength;
 
-    uint64_t quotiented_key = encode_key(key);
-    // decode_key(kBaseDerefQuotKey, bin_num);
-
-    // ListIndicator list_head(deref_tab->QueryFirst(base_key, ptr));
-    uint64_t tmp = address_key;
-    while (ptr) {
-        if (deref_tab->QueryQuotientedKey(address_key, ptr) == quotiented_key) {
-            return deref_tab->QueryValue(address_key, ptr);
+    while (*pre_tiny_ptr != 0) {
+        uint8_t* entry = ptab_query_entry_address(
+            reinterpret_cast<uint64_t>(pre_tiny_ptr), *pre_tiny_ptr);
+        if (((*reinterpret_cast<uint64_t*>(entry) << kQuotientedTailLength) >>
+             kQuotientedTailLength) == key) {
+            *value_ptr = *reinterpret_cast<uint64_t*>(entry + kValueOffset);
+            return true;
         }
-
-        tmp = address_key;
-        address_key = deref_tab->QueryDataAddress(address_key, ptr);
-        ptr = deref_tab->QueryTinyPtr(tmp, ptr);
+        pre_tiny_ptr = entry + kTinyPtrOffset;
     }
 
-    Insert(key, 0);
-    return 0;
+    return false;
+}
+
+bool ByteArrayChainedHT::Update(uint64_t key, uint64_t value) {
+    uint64_t base_id = hash_1_base_id(key);
+    uint8_t* pre_tiny_ptr = &base_tab_ptr(base_id);
+
+    // quotienting
+    key >>= kQuotientedTailLength;
+
+    while (*pre_tiny_ptr != 0) {
+        uint8_t* entry = ptab_query_entry_address(
+            reinterpret_cast<uint64_t>(pre_tiny_ptr), *pre_tiny_ptr);
+        if (((*reinterpret_cast<uint64_t*>(entry) << kQuotientedTailLength) >>
+             kQuotientedTailLength) == key) {
+            *reinterpret_cast<uint64_t*>(entry + kValueOffset) = value;
+            return true;
+        }
+        pre_tiny_ptr = entry + kTinyPtrOffset;
+    }
+
+    return false;
+}
+
+void ByteArrayChainedHT::Free(uint64_t key) {
+    uint64_t base_id = hash_1_base_id(key);
+    uint8_t* pre_tiny_ptr = &base_tab_ptr(base_id);
+    uint8_t* cur_tiny_ptr = nullptr;
+
+    // quotienting
+    key >>= kQuotientedTailLength;
+
+    uint8_t* cur_entry = nullptr;
+    uint8_t* aiming_entry = nullptr;
+
+    if (*pre_tiny_ptr != 0) {
+        cur_entry = ptab_query_entry_address(
+            reinterpret_cast<uint64_t>(pre_tiny_ptr), *pre_tiny_ptr);
+        if (((*reinterpret_cast<uint64_t*>(cur_entry)
+              << kQuotientedTailLength) >>
+             kQuotientedTailLength) == key) {
+            aiming_entry = cur_entry;
+        }
+        cur_tiny_ptr = cur_entry + kTinyPtrOffset;
+    }
+    else {
+        return;
+    }
+
+    while (*cur_tiny_ptr != 0) {
+        pre_tiny_ptr = cur_tiny_ptr;
+
+        cur_entry = ptab_query_entry_address(
+            reinterpret_cast<uint64_t>(cur_tiny_ptr), *cur_tiny_ptr);
+        if (((*reinterpret_cast<uint64_t*>(cur_entry)
+              << kQuotientedTailLength) >>
+             kQuotientedTailLength) == key) {
+            aiming_entry = cur_entry;
+        }
+        cur_tiny_ptr = cur_entry + kTinyPtrOffset;
+    }
+
+    if (aiming_entry == nullptr) {
+        return;
+    }
+
+    uint8_t tmp = aiming_entry[kTinyPtrOffset];
+    memcpy(aiming_entry, cur_entry, kEntryByteLength);
+    aiming_entry[kTinyPtrOffset] = tmp;
+
+    uint64_t bin_id = (cur_entry - byte_array) / kBinByteLength;
+    bin_cnt(bin_id)++;
+    uint8_t& head = bin_head(bin_id);
+    cur_entry[kTinyPtrOffset] = head;
+    head = (((*pre_tiny_ptr) << 1) >> 1);
+    *pre_tiny_ptr = 0;
 }
 
 }  // namespace tinyptr

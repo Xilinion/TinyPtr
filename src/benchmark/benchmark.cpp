@@ -342,6 +342,21 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
                     << std::endl;
             };
             break;
+        case BenchmarkCaseType::XXHASH64THROUGHPUT:
+            run = [this]() {
+                std::clock_t start = std::clock();
+
+                auto tmp = rgen64();
+                for (int i = 0; i < opt_num; ++i) {
+                    XXHash64::hash(&tmp, sizeof(uint64_t), 233);
+                }
+
+                output_stream
+                    << "CPU Time: "
+                    << 1000.0 * (std::clock() - start) / CLOCKS_PER_SEC
+                    << std::endl;
+            };
+            break;
         default:
             abort();
     }

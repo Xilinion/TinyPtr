@@ -71,13 +71,15 @@ hit_percent=0
 
 
 entry_id=0
-for case_id in $(seq 1 7); do
+for case_id in $(seq 1 1); do
     for object_id in $(seq 0 4); do
-        for table_size in 10000 60000 100000 1000000; do
-            for opt_num in 10000 60000 100000 1000000; do
+        for table_size in 10000 60000 100000 1000000 10000000; do
+            for opt_num in 9000 50000 90000 900000 9000000; do
                 for rep_cnt in $(seq 0 0); do
-                    Run
-                    let "entry_id++"
+                    if [ $table_size -ge $opt_num ]; then
+                        Run
+                        let "entry_id++"
+                    fi
                 done
             done
         done

@@ -1,65 +1,53 @@
 #pragma once
 
+#include <cstdint>
 #include <functional>
-#include "byte_array_dereference_table.h"
 #include "common.h"
 
 namespace tinyptr {
 
 class ByteArrayChainedHT {
-   private:
-    class ListIndicator {
-       public:
-        static constexpr uint64_t kBaseBitPos = 10 - 1;
-        static constexpr uint64_t kPtrLength = 8;
-
-       public:
-        ListIndicator();
-        ListIndicator(uint64_t bit_str_);
-        ListIndicator(uint64_t quot_key, bool base_bit, uint8_t ptr);
-        ~ListIndicator() = default;
-
-        void set_base_bit();
-        void set_base_bit(bool base_bit);
-        void erase_base_bit();
-        void set_quot_head(uint64_t quot_key);
-        void set_ptr(uint8_t ptr);
-        void set_bit_str(uint64_t bit_str_);
-        bool get_base_bit();
-        uint64_t get_quot_head();
-        uint64_t get_quot_key();
-        uint8_t get_ptr();
-        uint64_t get_bit_str();
-
-       private:
-        uint64_t bit_str;
-    };
+   public:
+    const uint64_t kHashSeed1;
+    const uint64_t kHashSeed2;
+    const uint8_t kQuotientedTailLength;
+    const uint64_t kQuotientedTailMask;
+    const uint64_t kBaseTabSize;
+    const uint16_t kBinSize;
+    const uint64_t kBinNum;
+    const uint8_t kTinyPtrOffset;
+    const uint8_t kValueOffset;
+    const uint8_t kQuotKeyByteLength;
+    const uint8_t kEntryByteLength;
+    const uint8_t kBinByteLength;
 
    public:
-    static constexpr uint64_t kQuotientingTailSize = 16;
-    static constexpr uint64_t kQuotientingHeadSize = 48;
-
-   public:
-    ByteArrayChainedHT() = delete;
-    ByteArrayChainedHT(int n);
-    ~ByteArrayChainedHT() = default;
+    ByteArrayChainedHT(uint64_t size, uint8_t quotiented_tail_length,
+                       uint16_t bin_size);
 
    private:
-    uint32_t get_bin_num(uint64_t key);
-    uint64_t encode_key(uint64_t key);
-    uint64_t decode_key(uint64_t quot_key, uint32_t bin_num);
+    uint64_t hash_1(uint64_t key);
+    uint64_t hash_1_bin(uint64_t key);
+    uint64_t hash_1_base_id(uint64_t key);
+    uint64_t hash_2(uint64_t key);
+    uint64_t hash_2_bin(uint64_t key);
+
+    uint8_t& bin_cnt(uint64_t bin_id);
+    uint8_t& bin_head(uint64_t bin_id);
+    uint8_t& base_tab_ptr(uint64_t base_id);
+
+    uint8_t *ptab_query_entry_address(uint64_t key, uint8_t ptr);
+    uint8_t *ptab_insert_entry_address(uint64_t key);
 
    public:
-    bool ContainsKey(uint64_t key);
-    void Insert(uint64_t key, uint64_t value);
-    void Erase(uint64_t key);
-    void Update(uint64_t key, uint64_t value);
-    uint64_t Query(uint64_t key);
-    // TODO: or not todo? supporting iterator & key/value set & vectorized operators
+    bool Insert(uint64_t key, uint64_t value);
+    bool Query(uint64_t key, uint64_t* value_ptr);
+    bool Update(uint64_t key, uint64_t value);
+    void Free(uint64_t key);
 
    private:
-    std::function<uint32_t(uint64_t)> quot_head_hash;
-    ByteArrayDereferenceTable* deref_tab;
-    uint8_t* quot_tab;
+    uint8_t* byte_array;
+    uint8_t* base_tab;
+    uint8_t* bin_cnt_head;
 };
 }  // namespace tinyptr
