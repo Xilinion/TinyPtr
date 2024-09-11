@@ -64,6 +64,8 @@ function FlameGraph() {
 
 compile
 
+exit
+
 table_size=0
 opt_num=0
 load_factor=0
