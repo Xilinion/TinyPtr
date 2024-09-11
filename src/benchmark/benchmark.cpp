@@ -173,7 +173,8 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
             obj = new BenchmarkStdUnorderedMap64(table_size);
             break;
         case BenchmarkObjectType::BYTEARRAYCHAINEDHT:
-            obj = new BenchmarkByteArrayChained(table_size);
+            obj = new BenchmarkByteArrayChained(
+                table_size, para.quotiented_tail_length, para.bin_size);
             break;
         default:
             abort();
@@ -181,7 +182,7 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
 
     switch (para.case_id) {
         case BenchmarkCaseType::INSERT_ONLY_LOAD_FACTOR_SUPPORT:
-            run = [this]() {
+            run = [this, para]() {
                 std::clock_t start = std::clock();
 
                 int load_cnt = insert_cnt_to_overflow();
@@ -190,8 +191,21 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
                 output_stream << "Load Capacity: " << load_cnt << std::endl;
                 output_stream
                     << "CPU Time: "
-                    << 1000.0 * (std::clock() - start) / CLOCKS_PER_SEC
+                    << int(1000.0 * (std::clock() - start) / CLOCKS_PER_SEC)
                     << std::endl;
+
+                if (para.object_id == BenchmarkObjectType::BYTEARRAYCHAINEDHT) {
+                    output_stream
+                        << "Avg Chain Length: "
+                        << dynamic_cast<BenchmarkByteArrayChained*>(obj)
+                               ->AvgChainLength()
+                        << std::endl;
+                    output_stream
+                        << "Max Chain Length: "
+                        << dynamic_cast<BenchmarkByteArrayChained*>(obj)
+                               ->MaxChainLength()
+                        << std::endl;
+                }
             };
             break;
         case BenchmarkCaseType::INSERT_ONLY:
@@ -202,7 +216,7 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
 
                 output_stream
                     << "CPU Time: "
-                    << 1000.0 * (std::clock() - start) / CLOCKS_PER_SEC
+                    << int(1000.0 * (std::clock() - start) / CLOCKS_PER_SEC)
                     << std::endl;
             };
             break;
@@ -216,7 +230,7 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
 
                 output_stream
                     << "CPU Time: "
-                    << 1000.0 * (std::clock() - start) / CLOCKS_PER_SEC
+                    << int(1000.0 * (std::clock() - start) / CLOCKS_PER_SEC)
                     << std::endl;
             };
             break;
@@ -230,7 +244,7 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
 
                 output_stream
                     << "CPU Time: "
-                    << 1000.0 * (std::clock() - start) / CLOCKS_PER_SEC
+                    << int(1000.0 * (std::clock() - start) / CLOCKS_PER_SEC)
                     << std::endl;
             };
             break;
@@ -242,7 +256,7 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
 
                 output_stream
                     << "CPU Time: "
-                    << 1000.0 * (std::clock() - start) / CLOCKS_PER_SEC
+                    << int(1000.0 * (std::clock() - start) / CLOCKS_PER_SEC)
                     << std::endl;
             };
             break;
@@ -256,7 +270,7 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
 
                 output_stream
                     << "CPU Time: "
-                    << 1000.0 * (std::clock() - start) / CLOCKS_PER_SEC
+                    << int(1000.0 * (std::clock() - start) / CLOCKS_PER_SEC)
                     << std::endl;
             };
             break;
@@ -270,7 +284,7 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
 
                 output_stream
                     << "CPU Time: "
-                    << 1000.0 * (std::clock() - start) / CLOCKS_PER_SEC
+                    << int(1000.0 * (std::clock() - start) / CLOCKS_PER_SEC)
                     << std::endl;
             };
             break;
@@ -284,7 +298,7 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
 
                 output_stream
                     << "CPU Time: "
-                    << 1000.0 * (std::clock() - start) / CLOCKS_PER_SEC
+                    << int(1000.0 * (std::clock() - start) / CLOCKS_PER_SEC)
                     << std::endl;
             };
             break;
@@ -298,7 +312,7 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
 
                 output_stream
                     << "CPU Time: "
-                    << 1000.0 * (std::clock() - start) / CLOCKS_PER_SEC
+                    << int(1000.0 * (std::clock() - start) / CLOCKS_PER_SEC)
                     << std::endl;
             };
             break;
@@ -312,7 +326,7 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
 
                 output_stream
                     << "CPU Time: "
-                    << 1000.0 * (std::clock() - start) / CLOCKS_PER_SEC
+                    << int(1000.0 * (std::clock() - start) / CLOCKS_PER_SEC)
                     << std::endl;
             };
             break;
@@ -326,7 +340,7 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
 
                 output_stream
                     << "CPU Time: "
-                    << 1000.0 * (std::clock() - start) / CLOCKS_PER_SEC
+                    << int(1000.0 * (std::clock() - start) / CLOCKS_PER_SEC)
                     << std::endl;
             };
             break;
@@ -338,11 +352,12 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
 
                 output_stream
                     << "CPU Time: "
-                    << 1000.0 * (std::clock() - start) / CLOCKS_PER_SEC
+                    << int(1000.0 * (std::clock() - start) / CLOCKS_PER_SEC)
                     << std::endl;
             };
             break;
         case BenchmarkCaseType::XXHASH64THROUGHPUT:
+            obj = new BenchmarkIntArray64(1);
             run = [this]() {
                 std::clock_t start = std::clock();
 
@@ -353,10 +368,25 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
 
                 output_stream
                     << "CPU Time: "
-                    << 1000.0 * (std::clock() - start) / CLOCKS_PER_SEC
+                    << int(1000.0 * (std::clock() - start) / CLOCKS_PER_SEC)
                     << std::endl;
             };
             break;
+        case BenchmarkCaseType::PRNGTHROUGHPUT:
+            obj = new BenchmarkIntArray64(1);
+            run = [this]() {
+                std::clock_t start = std::clock();
+
+                auto tmp = rgen64();
+                for (int i = 0; i < opt_num; ++i) {
+                    auto tmp = rgen64();
+                }
+
+                output_stream
+                    << "CPU Time: "
+                    << int(1000.0 * (std::clock() - start) / CLOCKS_PER_SEC)
+                    << std::endl;
+            };
         default:
             abort();
     }

@@ -16,12 +16,20 @@ uint8_t BenchmarkStdUnorderedMap64::Insert(uint64_t key, uint64_t value) {
 }
 
 uint64_t BenchmarkStdUnorderedMap64::Query(uint64_t key, uint8_t ptr) {
-    return ht[key];
+    auto it = ht.find(key);
+    if (it == ht.end()) {
+        return 0;
+    }
+    return it->second;
 }
 
 void BenchmarkStdUnorderedMap64::Update(uint64_t key, uint8_t ptr,
                                         uint64_t value) {
-    ht[key] = value;
+    auto it = ht.find(key);
+    if (it == ht.end()) {
+        return;
+    }
+    it->second = value;
 }
 
 void BenchmarkStdUnorderedMap64::Erase(uint64_t key, uint8_t ptr) {

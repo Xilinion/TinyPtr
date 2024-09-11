@@ -19,7 +19,8 @@ struct BenchmarkCaseType {
         QUERY_MISS_ONLY_CUSTOM_LOAD_FACTOR = 10,
         QUERY_HIT_PERCENT_CUSTOM_LOAD_FACTOR = 11,
         XXHASH64THROUGHPUT = 12,
-        COUNT = 13
+        PRNGTHROUGHPUT = 13,
+        COUNT = 14
     };;
 
     BenchmarkCaseType() = default;

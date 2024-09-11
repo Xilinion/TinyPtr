@@ -19,7 +19,7 @@ class ByteArrayChainedHT {
     const uint8_t kValueOffset;
     const uint8_t kQuotKeyByteLength;
     const uint8_t kEntryByteLength;
-    const uint8_t kBinByteLength;
+    const uint16_t kBinByteLength;
 
    public:
     ByteArrayChainedHT(uint64_t size, uint8_t quotiented_tail_length,
@@ -36,8 +36,8 @@ class ByteArrayChainedHT {
     uint8_t& bin_head(uint64_t bin_id);
     uint8_t& base_tab_ptr(uint64_t base_id);
 
-    uint8_t *ptab_query_entry_address(uint64_t key, uint8_t ptr);
-    uint8_t *ptab_insert_entry_address(uint64_t key);
+    uint8_t* ptab_query_entry_address(uint64_t key, uint8_t ptr);
+    uint8_t* ptab_insert_entry_address(uint64_t key);
 
    public:
     bool Insert(uint64_t key, uint64_t value);
@@ -45,9 +45,17 @@ class ByteArrayChainedHT {
     bool Update(uint64_t key, uint64_t value);
     void Free(uint64_t key);
 
+   public:
+    double AvgChainLength();
+    uint32_t MaxChainLength();
+
    private:
     uint8_t* byte_array;
     uint8_t* base_tab;
     uint8_t* bin_cnt_head;
+
+    // uint64_t* key_tab;
+    // uint8_t** pre_entry_tab;
+    // uint8_t** pre_ptr_tab;
 };
 }  // namespace tinyptr

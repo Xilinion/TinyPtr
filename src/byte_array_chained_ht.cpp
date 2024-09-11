@@ -1,8 +1,10 @@
 #include "byte_array_chained_ht.h"
 #include <sys/types.h>
 #include <cstdint>
+#include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <iostream>
 #include <iterator>
 #include <regex>
 
@@ -41,36 +43,60 @@ ByteArrayChainedHT::ByteArrayChainedHT(uint64_t size,
         bin_cnt_head[i << 1] = 0;
         bin_cnt_head[(i << 1) | 1] = 1;
     }
+
+    // key_tab = new uint64_t[kBaseTabSize];
+    // memset(key_tab, 0, kBaseTabSize * sizeof(uint64_t));
+    // pre_entry_tab = new uint8_t*[kBaseTabSize];
+    // memset(pre_entry_tab, 0, kBaseTabSize * sizeof(uint8_t*));
+    // pre_ptr_tab = new uint8_t*[kBaseTabSize];
+    // memset(pre_ptr_tab, 0, kBaseTabSize * sizeof(uint8_t*));
+
+    // for (uint64_t i = 0; i < kBinNum; i++) {
+    //     for (uint8_t j = 0; j < kBinSize; j++) {
+    //         std::cerr << int(byte_array[i * kBinByteLength + kEntryByteLength * j +
+    //                                     kTinyPtrOffset])
+    //                   << " ";
+    //     }
+    // }
+
+    // std::cerr << "ByteArrayChainedHT initialized" << std::endl;
+    // std::cerr << "kHashSeed1: " << kHashSeed1 << std::endl;
+    // std::cerr << "kHashSeed2: " << kHashSeed2 << std::endl;
+    // std::cerr << "kQuotientedTailLength: " << int(kQuotientedTailLength)
+    //           << std::endl;
+    // std::cerr << "kQuotientedTailMask: " << int(kQuotientedTailMask)
+    //           << std::endl;
+    // std::cerr << "kBaseTabSize: " << int(kBaseTabSize) << std::endl;
+    // std::cerr << "kBinSize: " << int(kBinSize) << std::endl;
+    // std::cerr << "kBinNum: " << int(kBinNum) << std::endl;
+    // std::cerr << "kTinyPtrOffset: " << int(kTinyPtrOffset) << std::endl;
+    // std::cerr << "kValueOffset: " << int(kValueOffset) << std::endl;
+    // std::cerr << "kQuotKeyByteLength: " << int(kQuotKeyByteLength) << std::endl;
+    // std::cerr << "kEntryByteLength: " << int(kEntryByteLength) << std::endl;
+    // std::cerr << "kBinByteLength: " << int(kBinByteLength) << std::endl;
+    // std::cerr << std::endl;
+    // fflush(stderr);
 }
 
 uint64_t ByteArrayChainedHT::hash_1(uint64_t key) {
-    uint64_t tmp;
-    XXHash64::hash(&tmp, sizeof(uint64_t), kHashSeed1);
-    return tmp;
+    return XXHash64::hash(&key, sizeof(uint64_t), kHashSeed1);
 }
 
 uint64_t ByteArrayChainedHT::hash_1_base_id(uint64_t key) {
-    uint64_t tmp;
-    XXHash64::hash(&tmp, sizeof(uint64_t), kHashSeed1);
-    return (tmp ^ key) & kQuotientedTailMask;
+    return (XXHash64::hash(&key, sizeof(uint64_t), kHashSeed1) ^ key) &
+           kQuotientedTailMask;
 }
 
 uint64_t ByteArrayChainedHT::hash_1_bin(uint64_t key) {
-    uint64_t tmp;
-    XXHash64::hash(&tmp, sizeof(uint64_t), kHashSeed1);
-    return tmp % kBinNum;
+    return (XXHash64::hash(&key, sizeof(uint64_t), kHashSeed1)) % kBinNum;
 }
 
 uint64_t ByteArrayChainedHT::hash_2(uint64_t key) {
-    uint64_t tmp;
-    XXHash64::hash(&tmp, sizeof(uint64_t), kHashSeed2);
-    return tmp;
+    return XXHash64::hash(&key, sizeof(uint64_t), kHashSeed2);
 }
 
 uint64_t ByteArrayChainedHT::hash_2_bin(uint64_t key) {
-    uint64_t tmp;
-    XXHash64::hash(&tmp, sizeof(uint64_t), kHashSeed2);
-    return tmp % kBinNum;
+    return (XXHash64::hash(&key, sizeof(uint64_t), kHashSeed2)) % kBinNum;
 }
 
 uint8_t& ByteArrayChainedHT::bin_cnt(uint64_t bin_id) {
@@ -88,7 +114,8 @@ uint8_t& ByteArrayChainedHT::base_tab_ptr(uint64_t base_id) {
 uint8_t* ByteArrayChainedHT::ptab_query_entry_address(uint64_t key,
                                                       uint8_t ptr) {
     uint8_t flag = (ptr >= (1 << 7));
-    ptr ^= flag * ((1 << 8) - 1);
+    // ptr ^= flag * ((1 << 8) - 1);
+    ptr = ptr & ((1 << 7) - 1);
     if (flag) {
         return byte_array +
                (hash_2_bin(key) * kBinSize + ptr - 1) * kEntryByteLength;
@@ -99,9 +126,10 @@ uint8_t* ByteArrayChainedHT::ptab_query_entry_address(uint64_t key,
 }
 
 uint8_t* ByteArrayChainedHT::ptab_insert_entry_address(uint64_t key) {
-    uint8_t bin1 = hash_1_bin(key);
-    uint8_t bin2 = hash_2_bin(key);
-    uint8_t bin_id = bin_cnt(bin1) < bin_cnt(bin2) ? bin1 : bin2;
+    uint64_t bin1 = hash_1_bin(key);
+    uint64_t bin2 = hash_2_bin(key);
+    uint8_t flag = bin_cnt(bin1) > bin_cnt(bin2);
+    uint64_t bin_id = flag ? bin2 : bin1;
 
     uint8_t& head = bin_head(bin_id);
     uint8_t& cnt = bin_cnt(bin_id);
@@ -109,7 +137,7 @@ uint8_t* ByteArrayChainedHT::ptab_insert_entry_address(uint64_t key) {
     if (head) {
         uint8_t* entry =
             byte_array + (bin_id * kBinSize + head - 1) * kEntryByteLength;
-        *entry = head;
+        *entry = head | (flag << 7);
         head = entry[kTinyPtrOffset];
         cnt++;
         return entry;
@@ -122,6 +150,12 @@ bool ByteArrayChainedHT::Insert(uint64_t key, uint64_t value) {
 
     uint64_t base_id = hash_1_base_id(key);
     uint8_t* pre_tiny_ptr = &base_tab_ptr(base_id);
+    // uint8_t* pre_tiny_ptr = &base_tab[base_id];
+
+    // std::cerr << "Inserting key: " << key << std::endl;
+    // std::cerr << "Inserting value: " << value << std::endl;
+    // std::cerr << "Inserting base_id: " << base_id << std::endl;
+    // std::cerr << "Inserting pre_tiny_ptr: " << uint64_t(pre_tiny_ptr) << std::endl;
 
     while (*pre_tiny_ptr != 0) {
         uint8_t* entry = ptab_query_entry_address(
@@ -129,15 +163,22 @@ bool ByteArrayChainedHT::Insert(uint64_t key, uint64_t value) {
         pre_tiny_ptr = entry + kTinyPtrOffset;
     }
 
+    // std::cerr << "Inserting pre_tiny_ptr: " << uint64_t(pre_tiny_ptr) << std::endl;
+
     uint8_t* entry =
         ptab_insert_entry_address(reinterpret_cast<uint64_t>(pre_tiny_ptr));
 
-    if (entry) {
+    // key_tab[base_id] = key;
+    // pre_entry_tab[base_id] = entry;
+    // pre_ptr_tab[base_id] = pre_tiny_ptr;
+
+    if (entry != nullptr) {
         *pre_tiny_ptr = *entry;
         // assuming little endian
         *reinterpret_cast<uint64_t*>(entry) = key >> kQuotientedTailLength;
         entry[kTinyPtrOffset] = 0;
         *reinterpret_cast<uint64_t*>(entry + kValueOffset) = value;
+        // entry[kTinyPtrOffset] = 0;
         return true;
     } else {
         return false;
@@ -206,8 +247,7 @@ void ByteArrayChainedHT::Free(uint64_t key) {
             aiming_entry = cur_entry;
         }
         cur_tiny_ptr = cur_entry + kTinyPtrOffset;
-    }
-    else {
+    } else {
         return;
     }
 
@@ -233,11 +273,43 @@ void ByteArrayChainedHT::Free(uint64_t key) {
     aiming_entry[kTinyPtrOffset] = tmp;
 
     uint64_t bin_id = (cur_entry - byte_array) / kBinByteLength;
-    bin_cnt(bin_id)++;
+    bin_cnt(bin_id)--;
     uint8_t& head = bin_head(bin_id);
     cur_entry[kTinyPtrOffset] = head;
     head = (((*pre_tiny_ptr) << 1) >> 1);
     *pre_tiny_ptr = 0;
+}
+
+double ByteArrayChainedHT::AvgChainLength() {
+    double sum = 0;
+    for (int base_id = 0; base_id < kBaseTabSize; base_id++) {
+        uint8_t* pre_tiny_ptr = &base_tab_ptr(base_id);
+        while (*pre_tiny_ptr != 0) {
+            sum++;
+            uint8_t* entry = ptab_query_entry_address(
+                reinterpret_cast<uint64_t>(pre_tiny_ptr), *pre_tiny_ptr);
+            pre_tiny_ptr = entry + kTinyPtrOffset;
+        }
+    }
+
+    return sum / kBaseTabSize;
+}
+
+uint32_t ByteArrayChainedHT::MaxChainLength() {
+    uint32_t max = 0;
+    for (int base_id = 0; base_id < kBaseTabSize; base_id++) {
+        uint8_t* pre_tiny_ptr = &base_tab_ptr(base_id);
+        uint32_t cnt = 0;
+        while (*pre_tiny_ptr != 0) {
+            cnt++;
+            uint8_t* entry = ptab_query_entry_address(
+                reinterpret_cast<uint64_t>(pre_tiny_ptr), *pre_tiny_ptr);
+            pre_tiny_ptr = entry + kTinyPtrOffset;
+        }
+        max = cnt > max ? cnt : max;
+    }
+
+    return max;
 }
 
 }  // namespace tinyptr

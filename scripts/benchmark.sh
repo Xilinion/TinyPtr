@@ -31,7 +31,7 @@ echo "$exp_dir"
 
 function compile() {
     cd ..
-    cmake -B build | tail -n 90
+    cmake -B build -DCMAKE_BUILD_TYPE=Debug | tail -n 90
     # cmake --build build -j8 | tail -n 90
     cmake --build build --config Debug -j8 | tail -n 90
     # cmake --build build --config Release -j8 | tail -n 90
@@ -42,126 +42,55 @@ function compile() {
 
 function Run() {
     #####native execution
-    echo "== benchmark with perf: -o $object_id -c $case_id -e $entry_id -t $table_size -p  $opt_num -l $load_factor -h $hit_percent -f "$res_path" =="
+    echo "== benchmark with perf: -o $object_id -c $case_id -e $entry_id -t $table_size -p  $opt_num -l $load_factor -h $hit_percent -b $bin_size -q $quotient_tail_length -f "$res_path" =="
 
-    perf stat -e task-clock,context-switches,cpu-migrations,page-faults,cycles,stalled-cycles-frontend,stalled-cycles-backend,instructions,branches,branch-misses,L1-dcache-loads,L1-dcache-load-misses,L1-dcache-prefetches,L1-icache-loads,L1-icache-load-misses,branch-load-misses,branch-loads,LLC-loads,LLC-load-misses,dTLB-loads,dTLB-load-misses,cache-misses,cache-references -o "$res_path/object_${object_id}_case_${case_id}_entry_${entry_id}_perf.txt" ../build/tinyptr -o $object_id -c $case_id -e $entry_id -t $table_size -p $opt_num -l $load_factor -h $hit_percent -f "$res_path"
+    perf stat -e task-clock,context-switches,cpu-migrations,page-faults,cycles,stalled-cycles-frontend,stalled-cycles-backend,instructions,branches,branch-misses,L1-dcache-loads,L1-dcache-load-misses,L1-dcache-prefetches,L1-icache-loads,L1-icache-load-misses,branch-load-misses,branch-loads,LLC-loads,LLC-load-misses,dTLB-loads,dTLB-load-misses,cache-misses,cache-references -o "$res_path/object_${object_id}_case_${case_id}_entry_${entry_id}_perf.txt" ../build/tinyptr -o $object_id -c $case_id -e $entry_id -t $table_size -p $opt_num -l $load_factor -h $hit_percent -b $bin_size -q $quotient_tail_length -f "$res_path"
 
-    ../build/tinyptr -o $object_id -c $case_id -e $entry_id -t $table_size -p $opt_num -l $load_factor -h $hit_percent -f "$res_path"
+    ../build/tinyptr -o $object_id -c $case_id -e $entry_id -t $table_size -p $opt_num -l $load_factor -h $hit_percent -b $bin_size -q $quotient_tail_length -f "$res_path"
 }
 
 function FlameGraph() {
     #####native execution
-    echo "== benchmark with perf: -o $object_id -c $case_id -e $entry_id -t $table_size -p  $opt_num -l $load_factor -h $hit_percent -f "$res_path" =="
+    echo "== benchmark with perf: -o $object_id -c $case_id -e $entry_id -t $table_size -p  $opt_num -l $load_factor -h $hit_percent -b $bin_size -q $quotient_tail_length -f "$res_path" =="
 
-    perf record -F 499 -a -g -- ../build/tinyptr -o $object_id -c $case_id -e $entry_id -t $table_size -p $opt_num -l $load_factor -h $hit_percent -f "$res_path"
+    perf record -F 499 -a -g -- ../build/tinyptr -o $object_id -c $case_id -e $entry_id -t $table_size -p $opt_num -l $load_factor -h $hit_percent -b $bin_size -q $quotient_tail_length -f "$res_path"
 
-    perf script > "$res_path/out.perf"
+    perf script >"$res_path/out.perf"
 
-    ../build/stackcollapse-perf.pl "$res_path/out.perf" > "$res_path/out.folded"
+    ../build/stackcollapse-perf.pl "$res_path/out.perf" >"$res_path/out.folded"
 
-    ../build/flamegraph.pl "$res_path/out.folded" > "$res_path/${object_id}_${case_id}_${entry_id}_kernel.svg"
+    ../build/flamegraph.pl "$res_path/out.folded" >"$res_path/${object_id}_${case_id}_${entry_id}_kernel.svg"
 }
 
 compile
-
-exit
 
 table_size=0
 opt_num=0
 load_factor=0
 hit_percent=0
+quotient_tail_length=16
+bin_size=127
 
-
-entry_id=0
-for case_id in $(seq 1 1); do
-    for object_id in $(seq 0 4); do
-        for table_size in 10000 60000 100000 1000000 10000000; do
-            for opt_num in 9000 50000 90000 900000 9000000; do
-                for rep_cnt in $(seq 0 0); do
-                    if [ $table_size -ge $opt_num ]; then
-                        Run
-                        let "entry_id++"
-                    fi
-                done
-            done
+for case_id in 0; do
+    # for object_id in 4; do
+    for object_id in 0 4; do
+        entry_id=0
+        # for table_size in 100000 ; do
+        for table_size in 100000 1000000 10000000 100000000; do
+            Run
+            let "entry_id++"
         done
     done
 done
 
-exit
+# exit
 
-entry_id=0
-for case_id in 8; do
-    for object_id in $(seq 0 4); do
-        for table_size in 10000000; do
-            for opt_num in 100000000; do
-                for hit_percent in 0.1 0.4 0.8; do
-                    for rep_cnt in $(seq 0 0); do
-                        FlameGraph
-                        let "entry_id++"
-                    done
-                done
-            done
-        done
-    done
-done
-
-entry_id=0
-for case_id in 9 10; do
-    for object_id in $(seq 0 4); do
-        for table_size in 10000 100000 1000000 10000000; do
-            for opt_num in 100000 1000000 10000000 100000000; do
-                for load_factor in 0.1 0.97; do
-                    for rep_cnt in $(seq 0 0); do
-                        FlameGraph
-                        let "entry_id++"
-                    done
-                done
-            done
-        done
-    done
-done
-
-entry_id=0
-for case_id in 11; do
-    for object_id in $(seq 0 4); do
-        for table_size in 10000 100000 1000000 10000000; do
-            for opt_num in 100000 1000000 10000000 100000000; do
-                for load_factor in 0.1 0.97; do
-                    for hit_percent in 0.1 0.8; do
-                        for rep_cnt in $(seq 0 0); do
-                            FlameGraph
-                            let "entry_id++"
-                        done
-                    done
-                done
-            done
-        done
-    done
-done
-
-exit
-
-
-# TODO: share enums with scripts
-
-# load factor support for derefence table
-entry_id=0
-case_id=0
-object_id=0
-for table_size in 10000 100000 1000000 10000000 100000000; do
-    for rep_cnt in $(seq 0 4); do
-        Run
-        let "entry_id++"
-    done
-done
-
-entry_id=0
-for case_id in $(seq 1 7); do
-    for object_id in $(seq 0 4); do
-        for table_size in 10000 100000 1000000 10000000; do
-            for opt_num in 100000 1000000 10000000 100000000; do
-                for rep_cnt in $(seq 0 0); do
+for case_id in 0; do
+    for object_id in 4; do
+        entry_id=10
+        for table_size in 100000 1000000 10000000 100000000; do
+            for bin_size in 127 63 31 15; do
+                for quotient_tail_length in {16..28}; do
                     Run
                     let "entry_id++"
                 done
@@ -170,12 +99,53 @@ for case_id in $(seq 1 7); do
     done
 done
 
-entry_id=0
+for case_id in $(seq 1 7); do
+    for object_id in 4; do
+        entry_id=1000
+        for table_size in 100000 1000000 10000000 100000000; do
+            for opt_num in 100000 1000000 10000000 100000000; do
+                for bin_size in 127 63 31 15; do
+                    for quotient_tail_length in {16..28}; do
+                        Run
+                        let "entry_id++"
+                    done
+                done
+            done
+        done
+    done
+done
+
+quotient_tail_length=16
+bin_size=127
+
+for case_id in 12 13; do
+    for object_id in 0; do
+        entry_id=0
+        for opt_num in 100000 1000000 10000000 100000000; do
+            Run
+            let "entry_id++"
+        done
+    done
+done
+
+for case_id in $(seq 1 7); do
+    for object_id in 0 2 3 4; do
+        entry_id=0
+        for table_size in 10000 100000 1000000 10000000; do
+            for opt_num in 10000 100000 1000000 10000000; do
+                Run
+                let "entry_id++"
+            done
+        done
+    done
+done
+
 for case_id in 8; do
     for object_id in $(seq 0 4); do
-        for table_size in 10000 100000 1000000 10000000; do
-            for opt_num in 100000 1000000 10000000 100000000; do
-                for hit_percent in 0.1 0.2 0.4 0.8; do
+        entry_id=0
+        for table_size in 10000000; do
+            for opt_num in 100000000; do
+                for hit_percent in 0.1 0.4 0.8; do
                     for rep_cnt in $(seq 0 0); do
                         Run
                         let "entry_id++"
@@ -186,12 +156,12 @@ for case_id in 8; do
     done
 done
 
-entry_id=0
 for case_id in 9 10; do
     for object_id in $(seq 0 4); do
+        entry_id=0
         for table_size in 10000 100000 1000000 10000000; do
             for opt_num in 100000 1000000 10000000 100000000; do
-                for load_factor in 0.1 0.2 0.4 0.8 0.95 0.97; do
+                for load_factor in 0.1 0.97; do
                     for rep_cnt in $(seq 0 0); do
                         Run
                         let "entry_id++"
@@ -202,13 +172,13 @@ for case_id in 9 10; do
     done
 done
 
-entry_id=0
 for case_id in 11; do
     for object_id in $(seq 0 4); do
+        entry_id=0
         for table_size in 10000 100000 1000000 10000000; do
             for opt_num in 100000 1000000 10000000 100000000; do
-                for load_factor in 0.1 0.2 0.4 0.8 0.95 0.97; do
-                    for hit_percent in 0.1 0.2 0.4 0.8; do
+                for load_factor in 0.1 0.97; do
+                    for hit_percent in 0.1 0.8; do
                         for rep_cnt in $(seq 0 0); do
                             Run
                             let "entry_id++"
