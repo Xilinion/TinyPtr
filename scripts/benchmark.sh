@@ -44,9 +44,11 @@ function Run() {
     #####native execution
     echo "== benchmark with perf: -o $object_id -c $case_id -e $entry_id -t $table_size -p  $opt_num -l $load_factor -h $hit_percent -b $bin_size -q $quotient_tail_length -f "$res_path" =="
 
-    perf stat -e task-clock,context-switches,cpu-migrations,page-faults,cycles,stalled-cycles-frontend,stalled-cycles-backend,instructions,branches,branch-misses,L1-dcache-loads,L1-dcache-load-misses,L1-dcache-prefetches,L1-icache-loads,L1-icache-load-misses,branch-load-misses,branch-loads,LLC-loads,LLC-load-misses,dTLB-loads,dTLB-load-misses,cache-misses,cache-references -o "$res_path/object_${object_id}_case_${case_id}_entry_${entry_id}_perf.txt" ../build/tinyptr -o $object_id -c $case_id -e $entry_id -t $table_size -p $opt_num -l $load_factor -h $hit_percent -b $bin_size -q $quotient_tail_length -f "$res_path"
+    # perf stat -e task-clock,context-switches,cpu-migrations,page-faults,cycles,stalled-cycles-frontend,stalled-cycles-backend,instructions,branches,branch-misses,L1-dcache-loads,L1-dcache-load-misses,L1-dcache-prefetches,L1-icache-loads,L1-icache-load-misses,branch-load-misses,branch-loads,LLC-loads,LLC-load-misses,dTLB-loads,dTLB-load-misses,cache-misses,cache-references -o "$res_path/object_${object_id}_case_${case_id}_entry_${entry_id}_perf.txt" ../build/tinyptr -o $object_id -c $case_id -e $entry_id -t $table_size -p $opt_num -l $load_factor -h $hit_percent -b $bin_size -q $quotient_tail_length -f "$res_path"
 
     ../build/tinyptr -o $object_id -c $case_id -e $entry_id -t $table_size -p $opt_num -l $load_factor -h $hit_percent -b $bin_size -q $quotient_tail_length -f "$res_path"
+
+    echo "== file path: "$res_path/object_${object_id}_case_${case_id}_entry_${entry_id}_.txt""
 }
 
 function FlameGraph() {
@@ -64,31 +66,57 @@ function FlameGraph() {
 
 compile
 
-table_size=0
+table_size=1
 opt_num=0
 load_factor=0
 hit_percent=0
 quotient_tail_length=16
 bin_size=127
 
-for case_id in 0; do
+for case_id in 6; do
     # for object_id in 4; do
-    for object_id in 0 4; do
+    for object_id in 0 3 4; do
         entry_id=0
         # for table_size in 100000 ; do
-        for table_size in 100000 1000000 10000000 100000000; do
+        for table_size in 10000000; do
+        # for table_size in 10000 100000 1000000 10000000; do
+            opt_num=100000000
+            for quotient_tail_length in 20 24 28; do
+                Run
+                let "entry_id++"
+            done
+        done
+    done
+done
+
+exit
+
+for case_id in 12 13; do
+    for object_id in 0; do
+        entry_id=0
+        for opt_num in 10000 100000 1000000 10000000 100000000; do
             Run
             let "entry_id++"
         done
     done
 done
 
-# exit
+for case_id in 0; do
+    # for object_id in 4; do
+    for object_id in 0 4; do
+        entry_id=0
+        # for table_size in 100000 ; do
+        for table_size in 10000 100000 1000000 10000000; do
+            Run
+            let "entry_id++"
+        done
+    done
+done
 
 for case_id in 0; do
     for object_id in 4; do
         entry_id=10
-        for table_size in 100000 1000000 10000000 100000000; do
+        for table_size in 10000 100000 1000000 10000000; do
             for bin_size in 127 63 31 15; do
                 for quotient_tail_length in {16..28}; do
                     Run
@@ -115,18 +143,10 @@ for case_id in $(seq 1 7); do
     done
 done
 
+exit
+
 quotient_tail_length=16
 bin_size=127
-
-for case_id in 12 13; do
-    for object_id in 0; do
-        entry_id=0
-        for opt_num in 100000 1000000 10000000 100000000; do
-            Run
-            let "entry_id++"
-        done
-    done
-done
 
 for case_id in $(seq 1 7); do
     for object_id in 0 2 3 4; do
