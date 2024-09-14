@@ -10,8 +10,8 @@ class ByteArrayChainedHT {
    public:
     const uint64_t kHashSeed1;
     const uint64_t kHashSeed2;
-    const uint8_t kQuotientedTailLength;
-    const uint64_t kQuotientedTailMask;
+    const uint8_t kQuotientingTailLength;
+    const uint64_t kQuotientingTailMask;
     const uint64_t kBaseTabSize;
     const uint16_t kBinSize;
     const uint64_t kBinNum;
@@ -22,10 +22,10 @@ class ByteArrayChainedHT {
     const uint16_t kBinByteLength;
 
    private:
-    uint8_t AutoQuotoinedTailLength(uint64_t size);
+    uint8_t AutoQuotTailLength(uint64_t size);
 
    public:
-    ByteArrayChainedHT(uint64_t size, uint8_t quotiented_tail_length,
+    ByteArrayChainedHT(uint64_t size, uint8_t quotienting_tail_length,
                        uint16_t bin_size);
     ByteArrayChainedHT(uint64_t size, uint16_t bin_size);
 

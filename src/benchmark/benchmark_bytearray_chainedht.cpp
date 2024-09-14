@@ -6,9 +6,9 @@ const BenchmarkObjectType BenchmarkByteArrayChained::TYPE =
     BenchmarkObjectType::BYTEARRAYCHAINEDHT;
 
 BenchmarkByteArrayChained::BenchmarkByteArrayChained(
-    int n, uint8_t quotiented_tail_length, uint16_t bin_size)
+    int n, uint8_t quotienting_tail_length, uint16_t bin_size)
     : BenchmarkObject64(TYPE) {
-    tab = new ByteArrayChainedHT(n, quotiented_tail_length, bin_size);
+    tab = new ByteArrayChainedHT(n, quotienting_tail_length, bin_size);
 }
 
 uint8_t BenchmarkByteArrayChained::Insert(uint64_t key, uint64_t value) {

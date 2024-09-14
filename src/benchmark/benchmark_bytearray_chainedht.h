@@ -13,7 +13,7 @@ class BenchmarkByteArrayChained : public BenchmarkObject64 {
     static const BenchmarkObjectType TYPE;
 
    public:
-    BenchmarkByteArrayChained(int n, uint8_t quotiented_tail_length, uint16_t bin_size);
+    BenchmarkByteArrayChained(int n, uint8_t quotienting_tail_length, uint16_t bin_size);
 
     ~BenchmarkByteArrayChained() = default;
 

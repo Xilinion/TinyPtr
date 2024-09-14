@@ -174,7 +174,7 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
             break;
         case BenchmarkObjectType::BYTEARRAYCHAINEDHT:
             obj = new BenchmarkByteArrayChained(
-                table_size, para.quotiented_tail_length, para.bin_size);
+                table_size, para.quotienting_tail_length, para.bin_size);
             break;
         default:
             abort();

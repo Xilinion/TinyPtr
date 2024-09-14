@@ -29,13 +29,21 @@ fi
 # Begin script in case all parameters are correct
 echo "$exp_dir"
 
-function compile() {
+function Compile() {
+    cd ..
+    rm -rf ./build
+    cmake --build build -j8 | tail -n 90
+    cmake --build build --config Release -j8 | tail -n 90
+    cd scripts
+
+    sudo setcap CAP_SYS_RAWIO+eip ../build/tinyptr
+}
+
+function DebugCompile() {
     cd ..
     rm -rf ./build
     cmake -B build -DCMAKE_BUILD_TYPE=Debug -Wno-dev | tail -n 90
-    # cmake --build build -j8 | tail -n 90
     cmake --build build --config Debug -j8 | tail -n 90
-    # cmake --build build --config Release -j8 | tail -n 90
     cd scripts
 
     sudo setcap CAP_SYS_RAWIO+eip ../build/tinyptr
@@ -65,7 +73,7 @@ function FlameGraph() {
     ../build/flamegraph.pl "$res_path/out.folded" >"$res_path/${object_id}_${case_id}_${entry_id}_kernel.svg"
 }
 
-compile
+Compile
 
 # exit
 

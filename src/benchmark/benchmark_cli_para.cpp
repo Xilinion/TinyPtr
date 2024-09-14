@@ -49,7 +49,7 @@ void BenchmarkCLIPara::Parse(int argc, char** argv) {
                 // fprintf(stderr, "Not supported yet.\n");
                 break;
             case 'q':
-                quotiented_tail_length = std::stoi(optarg);
+                quotienting_tail_length = std::stoi(optarg);
                 break;
             case 'b':
                 bin_size = std::stoi(optarg);

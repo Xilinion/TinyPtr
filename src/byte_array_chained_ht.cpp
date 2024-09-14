@@ -10,7 +10,7 @@
 
 namespace tinyptr {
 
-uint8_t ByteArrayChainedHT::AutoQuotoinedTailLength(uint64_t size) {
+uint8_t ByteArrayChainedHT::AutoQuotTailLength(uint64_t size) {
     uint8_t res = 16;
     size >>= 16;
     while (size) {
@@ -21,20 +21,20 @@ uint8_t ByteArrayChainedHT::AutoQuotoinedTailLength(uint64_t size) {
 }
 
 ByteArrayChainedHT::ByteArrayChainedHT(uint64_t size,
-                                       uint8_t quotiented_tail_length,
+                                       uint8_t quotienting_tail_length,
                                        uint16_t bin_size)
     : kHashSeed1(rand() & ((1 << 16) - 1)),
       kHashSeed2(65536 + rand()),
-      kQuotientedTailLength(quotiented_tail_length
-                                ? quotiented_tail_length
-                                : AutoQuotoinedTailLength(size)),
-      kQuotientedTailMask((1ll << quotiented_tail_length) - 1),
-      kBaseTabSize(1 << quotiented_tail_length),
+      kQuotientingTailLength(quotienting_tail_length
+                                ? quotienting_tail_length
+                                : AutoQuotTailLength(size)),
+      kQuotientingTailMask((1ll << quotienting_tail_length) - 1),
+      kBaseTabSize(1 << quotienting_tail_length),
       kBinSize(bin_size),
       kBinNum((size + bin_size) / bin_size),
-      kTinyPtrOffset((64 + 7 - quotiented_tail_length) >> 3),
+      kTinyPtrOffset((64 + 7 - quotienting_tail_length) >> 3),
       kValueOffset(kTinyPtrOffset + 1),
-      kQuotKeyByteLength((64 + 7 - quotiented_tail_length) >> 3),
+      kQuotKeyByteLength((64 + 7 - quotienting_tail_length) >> 3),
       kEntryByteLength(kQuotKeyByteLength + 1 + 8),
       kBinByteLength(bin_size * kEntryByteLength) {
     byte_array = new uint8_t[kBinNum * kBinSize * kEntryByteLength];
@@ -75,9 +75,9 @@ ByteArrayChainedHT::ByteArrayChainedHT(uint64_t size,
     // std::cerr << "ByteArrayChainedHT initialized" << std::endl;
     // std::cerr << "kHashSeed1: " << kHashSeed1 << std::endl;
     // std::cerr << "kHashSeed2: " << kHashSeed2 << std::endl;
-    // std::cerr << "kQuotientedTailLength: " << int(kQuotientedTailLength)
+    // std::cerr << "kquotientingTailLength: " << int(kquotientingTailLength)
     //           << std::endl;
-    // std::cerr << "kQuotientedTailMask: " << int(kQuotientedTailMask)
+    // std::cerr << "kquotientingTailMask: " << int(kquotientingTailMask)
     //           << std::endl;
     // std::cerr << "kBaseTabSize: " << int(kBaseTabSize) << std::endl;
     // std::cerr << "kBinSize: " << int(kBinSize) << std::endl;
@@ -101,7 +101,7 @@ uint64_t ByteArrayChainedHT::hash_1(uint64_t key) {
 
 uint64_t ByteArrayChainedHT::hash_1_base_id(uint64_t key) {
     return (XXH64(&key, sizeof(uint64_t), kHashSeed1) ^ key) &
-           kQuotientedTailMask;
+           kQuotientingTailMask;
 }
 
 uint64_t ByteArrayChainedHT::hash_1_bin(uint64_t key) {
@@ -192,7 +192,7 @@ bool ByteArrayChainedHT::Insert(uint64_t key, uint64_t value) {
     if (entry != nullptr) {
         *pre_tiny_ptr = *entry;
         // assuming little endian
-        *reinterpret_cast<uint64_t*>(entry) = key >> kQuotientedTailLength;
+        *reinterpret_cast<uint64_t*>(entry) = key >> kQuotientingTailLength;
         entry[kTinyPtrOffset] = 0;
         *reinterpret_cast<uint64_t*>(entry + kValueOffset) = value;
         // entry[kTinyPtrOffset] = 0;
@@ -207,13 +207,13 @@ bool ByteArrayChainedHT::Query(uint64_t key, uint64_t* value_ptr) {
     uint8_t* pre_tiny_ptr = &base_tab_ptr(base_id);
 
     // quotienting
-    key >>= kQuotientedTailLength;
+    key >>= kQuotientingTailLength;
 
     while (*pre_tiny_ptr != 0) {
         uint8_t* entry = ptab_query_entry_address(
             reinterpret_cast<uint64_t>(pre_tiny_ptr), *pre_tiny_ptr);
-        if (((*reinterpret_cast<uint64_t*>(entry) << kQuotientedTailLength) >>
-             kQuotientedTailLength) == key) {
+        if (((*reinterpret_cast<uint64_t*>(entry) << kQuotientingTailLength) >>
+             kQuotientingTailLength) == key) {
             *value_ptr = *reinterpret_cast<uint64_t*>(entry + kValueOffset);
             return true;
         }
@@ -228,13 +228,13 @@ bool ByteArrayChainedHT::Update(uint64_t key, uint64_t value) {
     uint8_t* pre_tiny_ptr = &base_tab_ptr(base_id);
 
     // quotienting
-    key >>= kQuotientedTailLength;
+    key >>= kQuotientingTailLength;
 
     while (*pre_tiny_ptr != 0) {
         uint8_t* entry = ptab_query_entry_address(
             reinterpret_cast<uint64_t>(pre_tiny_ptr), *pre_tiny_ptr);
-        if (((*reinterpret_cast<uint64_t*>(entry) << kQuotientedTailLength) >>
-             kQuotientedTailLength) == key) {
+        if (((*reinterpret_cast<uint64_t*>(entry) << kQuotientingTailLength) >>
+             kQuotientingTailLength) == key) {
             *reinterpret_cast<uint64_t*>(entry + kValueOffset) = value;
             return true;
         }
@@ -250,7 +250,7 @@ void ByteArrayChainedHT::Free(uint64_t key) {
     uint8_t* cur_tiny_ptr = nullptr;
 
     // quotienting
-    key >>= kQuotientedTailLength;
+    key >>= kQuotientingTailLength;
 
     uint8_t* cur_entry = nullptr;
     uint8_t* aiming_entry = nullptr;
@@ -259,8 +259,8 @@ void ByteArrayChainedHT::Free(uint64_t key) {
         cur_entry = ptab_query_entry_address(
             reinterpret_cast<uint64_t>(pre_tiny_ptr), *pre_tiny_ptr);
         if (((*reinterpret_cast<uint64_t*>(cur_entry)
-              << kQuotientedTailLength) >>
-             kQuotientedTailLength) == key) {
+              << kQuotientingTailLength) >>
+             kQuotientingTailLength) == key) {
             aiming_entry = cur_entry;
         }
         cur_tiny_ptr = cur_entry + kTinyPtrOffset;
@@ -274,8 +274,8 @@ void ByteArrayChainedHT::Free(uint64_t key) {
         cur_entry = ptab_query_entry_address(
             reinterpret_cast<uint64_t>(cur_tiny_ptr), *cur_tiny_ptr);
         if (((*reinterpret_cast<uint64_t*>(cur_entry)
-              << kQuotientedTailLength) >>
-             kQuotientedTailLength) == key) {
+              << kQuotientingTailLength) >>
+             kQuotientingTailLength) == key) {
             aiming_entry = cur_entry;
         }
         cur_tiny_ptr = cur_entry + kTinyPtrOffset;
