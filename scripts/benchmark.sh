@@ -76,24 +76,6 @@ hit_percent=0
 quotient_tail_length=16
 bin_size=127
 
-for case_id in 6; do
-    # for object_id in 4; do
-    for object_id in 0 3 4; do
-        entry_id=0
-        # for table_size in 100000 ; do
-        for table_size in 10000000; do
-        # for table_size in 10000 100000 1000000 10000000; do
-            opt_num=100000000
-            for quotient_tail_length in 20 24 28; do
-                Run
-                let "entry_id++"
-            done
-        done
-    done
-done
-
-exit
-
 for case_id in 12 13; do
     for object_id in 0; do
         entry_id=0

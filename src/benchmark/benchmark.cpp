@@ -379,7 +379,7 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
 
                 auto tmp = rgen64();
                 for (int i = 0; i < opt_num; ++i) {
-                    auto tmp = rgen64();
+                    tmp = rgen64();
                 }
 
                 output_stream
@@ -387,6 +387,7 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
                     << int(1000.0 * (std::clock() - start) / CLOCKS_PER_SEC)
                     << std::endl;
             };
+            break;
         default:
             abort();
     }
