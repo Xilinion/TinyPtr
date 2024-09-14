@@ -27,6 +27,8 @@ class BenchmarkCLIPara {
     uint64_t opt_num;
     double load_factor;
     double hit_percent;
+    int quotienting_tail_length;
+    int bin_size;
     std::string path;
 };
 }  // namespace tinyptr

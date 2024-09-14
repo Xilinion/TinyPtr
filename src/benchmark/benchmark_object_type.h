@@ -8,11 +8,12 @@ struct BenchmarkObjectType {
     enum {
         INVALID = -1,
         DEREFTAB64 = 0,
-        CHAINEDHT64,
-        INTARRAY64,
-        STDUNORDEREDMAP64,
-        COUNT
-    };
+        CHAINEDHT64 = 1,
+        INTARRAY64 = 2,
+        STDUNORDEREDMAP64 = 3,
+        BYTEARRAYCHAINEDHT = 4,
+        COUNT = 5
+    };;
 
     BenchmarkObjectType(const BenchmarkObjectType& b) = default;
     BenchmarkObjectType(BenchmarkObjectType& b) = default;

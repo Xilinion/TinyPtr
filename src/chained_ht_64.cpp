@@ -1,6 +1,6 @@
+#include "chained_ht_64.h"
 #include <cstdlib>
 #include <cstring>
-#include "chained_ht_64.h"
 
 namespace tinyptr {
 ChainedHT64::ListIndicator::ListIndicator() {
@@ -78,7 +78,7 @@ ChainedHT64::ChainedHT64(int n) {
     quot_head_hash =
         std::function<uint32_t(uint64_t)>([=](uint64_t key) -> uint32_t {
             key = key >> kQuotientingTailSize << kQuotientingTailSize;
-            return XXHash64::hash(&key, sizeof(uint64_t), hash_seed) &
+            return SlowXXHash64::hash(&key, sizeof(uint64_t), hash_seed) &
                    ((1 << kQuotientingTailSize) - 1);
         });
 }
@@ -105,11 +105,13 @@ bool ChainedHT64::ContainsKey(uint64_t key) {
     if (iter_ptr) {
         ListIndicator list_ind(deref_tab->QueryFirst(iter_key, iter_ptr));
 
-        if (key == iter_key)
-            if (list_ind.get_base_bit())
+        if (key == iter_key) {
+            if (list_ind.get_base_bit()) {
                 return 1;
-            else
+            } else {
                 return 0;
+            }
+        }
 
         iter_key = decode_key(list_ind.get_quot_key(), bin_num);
         iter_ptr = list_ind.get_ptr();
@@ -214,12 +216,14 @@ void ChainedHT64::Update(uint64_t key, uint64_t value) {
     if (iter_ptr) {
         ListIndicator list_ind(deref_tab->QueryFirst(iter_key, iter_ptr));
 
-        if (key == iter_key)
+        if (key == iter_key) {
             if (list_ind.get_base_bit()) {
                 deref_tab->UpdateSecond(iter_key, iter_ptr, value);
                 return;
-            } else
+            } else {
                 goto failNinsert;
+            }
+        }
 
         iter_key = decode_key(list_ind.get_quot_key(), bin_num);
         iter_ptr = list_ind.get_ptr();
@@ -249,11 +253,13 @@ uint64_t ChainedHT64::Query(uint64_t key) {
     if (iter_ptr) {
         ListIndicator list_ind(deref_tab->QueryFirst(iter_key, iter_ptr));
 
-        if (key == iter_key)
-            if (list_ind.get_base_bit())
+        if (key == iter_key) {
+            if (list_ind.get_base_bit()) {
                 return deref_tab->QuerySecond(iter_key, iter_ptr);
-            else
+            } else {
                 goto failNinsert;
+            }
+        }
 
         iter_key = decode_key(list_ind.get_quot_key(), bin_num);
         iter_ptr = list_ind.get_ptr();

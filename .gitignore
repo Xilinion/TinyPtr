@@ -40,3 +40,7 @@ results/
 # IDE
 .idea
 cmake-build-debug
+.vscode
+
+# Perf
+perf.data*

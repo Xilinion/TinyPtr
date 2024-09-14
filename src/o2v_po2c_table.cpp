@@ -99,7 +99,7 @@ O2VPo2CTable::O2VPo2CTable(int n) {
     for (int i = 0; i < 2; ++i)
         HashBin[i] =
             std::function<uint64_t(uint64_t)>([=](uint64_t key) -> uint64_t {
-                return XXHash64::hash(&key, sizeof(uint64_t), hash_seed[i]) %
+                return SlowXXHash64::hash(&key, sizeof(uint64_t), hash_seed[i]) %
                        bin_num;
             });
 }
