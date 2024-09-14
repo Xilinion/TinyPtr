@@ -12,7 +12,7 @@ using namespace std;
 uint64_t my_int_rand() {
     int tmp = (rand() & ((1 << 7) - 1));
     // int tmp = (rand() | (rand() >> 10 << 15));
-    return XXHash64::hash(&tmp, sizeof(int32_t), 0);
+    return SlowXXHash64::hash(&tmp, sizeof(int32_t), 0);
 }
 
 TEST(DereferenceTable64_TESTSUITE, RandomAll) {

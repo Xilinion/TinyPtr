@@ -363,7 +363,7 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
 
                 auto tmp = rgen64();
                 for (int i = 0; i < opt_num; ++i) {
-                    XXHash64::hash(&tmp, sizeof(uint64_t), 233);
+                    SlowXXHash64::hash(&tmp, sizeof(uint64_t), 233);
                 }
 
                 output_stream

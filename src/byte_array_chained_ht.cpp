@@ -79,24 +79,25 @@ ByteArrayChainedHT::ByteArrayChainedHT(uint64_t size,
 }
 
 uint64_t ByteArrayChainedHT::hash_1(uint64_t key) {
-    return XXHash64::hash(&key, sizeof(uint64_t), kHashSeed1);
+    // return SlowXXHash64::hash(&key, sizeof(uint64_t), kHashSeed1);
+    return XXH64(&key, sizeof(uint64_t), kHashSeed1);
 }
 
 uint64_t ByteArrayChainedHT::hash_1_base_id(uint64_t key) {
-    return (XXHash64::hash(&key, sizeof(uint64_t), kHashSeed1) ^ key) &
+    return (XXH64(&key, sizeof(uint64_t), kHashSeed1) ^ key) &
            kQuotientedTailMask;
 }
 
 uint64_t ByteArrayChainedHT::hash_1_bin(uint64_t key) {
-    return (XXHash64::hash(&key, sizeof(uint64_t), kHashSeed1)) % kBinNum;
+    return (XXH64(&key, sizeof(uint64_t), kHashSeed1)) % kBinNum;
 }
 
 uint64_t ByteArrayChainedHT::hash_2(uint64_t key) {
-    return XXHash64::hash(&key, sizeof(uint64_t), kHashSeed2);
+    return XXH64(&key, sizeof(uint64_t), kHashSeed2);
 }
 
 uint64_t ByteArrayChainedHT::hash_2_bin(uint64_t key) {
-    return (XXHash64::hash(&key, sizeof(uint64_t), kHashSeed2)) % kBinNum;
+    return (XXH64(&key, sizeof(uint64_t), kHashSeed2)) % kBinNum;
 }
 
 uint8_t& ByteArrayChainedHT::bin_cnt(uint64_t bin_id) {

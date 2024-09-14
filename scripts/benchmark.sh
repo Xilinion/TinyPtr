@@ -31,7 +31,8 @@ echo "$exp_dir"
 
 function compile() {
     cd ..
-    cmake -B build -DCMAKE_BUILD_TYPE=Debug | tail -n 90
+    rm -rf ./build
+    cmake -B build -DCMAKE_BUILD_TYPE=Debug -Wno-dev | tail -n 90
     # cmake --build build -j8 | tail -n 90
     cmake --build build --config Debug -j8 | tail -n 90
     # cmake --build build --config Release -j8 | tail -n 90
@@ -65,6 +66,8 @@ function FlameGraph() {
 }
 
 compile
+
+# exit
 
 table_size=1
 opt_num=0

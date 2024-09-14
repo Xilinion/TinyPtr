@@ -21,12 +21,12 @@
 
     Note: my code is NOT endian-aware !
 **/
-class XXHash64
+class SlowXXHash64
 {
 public:
   /// create new XXHash (64 bit)
   /** @param seed your seed value, even zero is a valid seed **/
-  explicit XXHash64(uint64_t seed)
+  explicit SlowXXHash64(uint64_t seed)
   {
     state[0] = seed + Prime1 + Prime2;
     state[1] = seed + Prime2;
@@ -157,7 +157,7 @@ public:
       @return 64 bit XXHash **/
   static uint64_t hash(const void* input, uint64_t length, uint64_t seed)
   {
-    XXHash64 hasher(seed);
+    SlowXXHash64 hasher(seed);
     hasher.add(input, length);
       return hasher.hash();
   }

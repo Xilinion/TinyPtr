@@ -13,12 +13,12 @@ using namespace std;
 
 uint64_t my_int_rand() {
     int tmp = (rand() | (rand() >> 10 << 15));
-    return XXHash64::hash(&tmp, sizeof(int32_t), 0);
+    return SlowXXHash64::hash(&tmp, sizeof(int32_t), 0);
 }
 
 uint64_t my_sparse_key_rand() {
     int tmp = (rand() & ((1 << 8) - 1));
-    return XXHash64::hash(&tmp, sizeof(int32_t), 0);
+    return SlowXXHash64::hash(&tmp, sizeof(int32_t), 0);
 }
 
 uint64_t my_key_rand() {
@@ -30,7 +30,7 @@ uint64_t my_key_rand() {
 
 uint64_t my_value_rand() {
     int tmp = (rand() | (rand() >> 10 << 15));
-    return XXHash64::hash(&tmp, sizeof(int32_t), 1);
+    return SlowXXHash64::hash(&tmp, sizeof(int32_t), 1);
 }
 
 TEST(ChainedHT64_TESTSUITE, StdMapComplianceWithinBin) {

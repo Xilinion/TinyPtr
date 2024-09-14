@@ -12,12 +12,12 @@ using namespace std;
 
 uint64_t my_int_rand() {
     int tmp = (rand() | (rand() >> 10 << 15));
-    return XXHash64::hash(&tmp, sizeof(int32_t), 0);
+    return SlowXXHash64::hash(&tmp, sizeof(int32_t), 0);
 }
 
 uint64_t my_sparse_key_rand() {
     int tmp = (rand() & ((1 << 8) - 1));
-    return XXHash64::hash(&tmp, sizeof(int32_t), 0);
+    return SlowXXHash64::hash(&tmp, sizeof(int32_t), 0);
 }
 
 uint64_t my_key_rand() {
@@ -29,27 +29,27 @@ uint64_t my_key_rand() {
 
 uint64_t my_value_rand() {
     int tmp = (rand() | (rand() >> 10 << 15));
-    return XXHash64::hash(&tmp, sizeof(int32_t), 1);
+    return SlowXXHash64::hash(&tmp, sizeof(int32_t), 1);
 }
 
 TEST(ByteArrayChainedHT_TESTSUITE, StdMapCompliance) {
     srand(233);
 
     int n = 1e6, m = 1e6;
+    // int n = 1e8, m = 1e8;
 
     std::unordered_map<uint64_t, uint64_t> lala;
+    // tinyptr::ByteArrayChainedHT chained_ht(m, 24, 127);
     tinyptr::ByteArrayChainedHT chained_ht(m, 16, 127);
 
     while (n--) {
         uint64_t key = my_sparse_key_rand(), new_val = my_value_rand(), val = 0;
 
-        if (chained_ht.Query(key, &val))
-        {
+        if (chained_ht.Query(key, &val)) {
             ASSERT_EQ(val, lala[key]);
         }
 
-        if (chained_ht.Update(key, new_val))
-        {
+        if (chained_ht.Update(key, new_val)) {
             lala[key] = new_val;
         }
 
