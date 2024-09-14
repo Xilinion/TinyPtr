@@ -29,6 +29,10 @@ fi
 # Begin script in case all parameters are correct
 echo "$exp_dir"
 
+function Init() {
+    sudo sysctl kernel.perf_event_paranoid=-1
+}
+
 function Compile() {
     cd ..
     rm -rf ./build
@@ -73,6 +77,7 @@ function FlameGraph() {
     ../build/flamegraph.pl "$res_path/out.folded" >"$res_path/${object_id}_${case_id}_${entry_id}_kernel.svg"
 }
 
+Init
 Compile
 
 # exit
