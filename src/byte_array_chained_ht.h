@@ -57,9 +57,6 @@ class ByteArrayChainedHT {
     uint8_t* byte_array;
     uint8_t* base_tab;
     uint8_t* bin_cnt_head;
-
-    // uint64_t* key_tab;
-    // uint8_t** pre_entry_tab;
-    // uint8_t** pre_ptr_tab;
 };
+
 }  // namespace tinyptr
