@@ -36,7 +36,7 @@ function Init() {
 function Compile() {
     cd ..
     rm -rf ./build
-    cmake --build build -j8 | tail -n 90
+    cmake -B build -DCMAKE_BUILD_TYPE=Release -Wno-dev | tail -n 90
     cmake --build build --config Release -j8 | tail -n 90
     cd scripts
 
@@ -46,7 +46,7 @@ function Compile() {
 function DebugCompile() {
     cd ..
     rm -rf ./build
-    cmake -B build -DCMAKE_BUILD_TYPE=Debug -Wno-dev | tail -n 90
+    cmake -B build -DCMAKE_BUILD_TYPE=Debug | tail -n 90
     cmake --build build --config Debug -j8 | tail -n 90
     cd scripts
 
