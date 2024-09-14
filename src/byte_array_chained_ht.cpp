@@ -9,12 +9,25 @@
 #include <regex>
 
 namespace tinyptr {
+
+uint8_t ByteArrayChainedHT::AutoQuotoinedTailLength(uint64_t size) {
+    uint8_t res = 16;
+    size >>= 16;
+    while (size) {
+        size >>= 1;
+        res++;
+    }
+    return res;
+}
+
 ByteArrayChainedHT::ByteArrayChainedHT(uint64_t size,
                                        uint8_t quotiented_tail_length,
                                        uint16_t bin_size)
     : kHashSeed1(rand() & ((1 << 16) - 1)),
       kHashSeed2(65536 + rand()),
-      kQuotientedTailLength(quotiented_tail_length),
+      kQuotientedTailLength(quotiented_tail_length
+                                ? quotiented_tail_length
+                                : AutoQuotoinedTailLength(size)),
       kQuotientedTailMask((1ll << quotiented_tail_length) - 1),
       kBaseTabSize(1 << quotiented_tail_length),
       kBinSize(bin_size),
@@ -77,6 +90,9 @@ ByteArrayChainedHT::ByteArrayChainedHT(uint64_t size,
     // std::cerr << std::endl;
     // fflush(stderr);
 }
+
+ByteArrayChainedHT::ByteArrayChainedHT(uint64_t size, uint16_t bin_size)
+    : ByteArrayChainedHT(size, 0, bin_size) {}
 
 uint64_t ByteArrayChainedHT::hash_1(uint64_t key) {
     // return SlowXXHash64::hash(&key, sizeof(uint64_t), kHashSeed1);

@@ -21,9 +21,13 @@ class ByteArrayChainedHT {
     const uint8_t kEntryByteLength;
     const uint16_t kBinByteLength;
 
+   private:
+    uint8_t AutoQuotoinedTailLength(uint64_t size);
+
    public:
     ByteArrayChainedHT(uint64_t size, uint8_t quotiented_tail_length,
                        uint16_t bin_size);
+    ByteArrayChainedHT(uint64_t size, uint16_t bin_size);
 
    private:
     uint64_t hash_1(uint64_t key);

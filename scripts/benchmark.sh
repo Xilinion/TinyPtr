@@ -73,7 +73,7 @@ table_size=1
 opt_num=0
 load_factor=0
 hit_percent=0
-quotient_tail_length=16
+quotient_tail_length=0
 bin_size=127
 
 for case_id in 12 13; do
@@ -128,7 +128,7 @@ for case_id in $(seq 1 7); do
     done
 done
 
-quotient_tail_length=16
+quotient_tail_length=0
 bin_size=127
 
 for case_id in $(seq 1 7); do
