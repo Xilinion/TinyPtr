@@ -44,10 +44,10 @@ set_target_properties(xxHash_lib PROPERTIES
 
 add_library(tinyptr_lib ${SOURCES})
 target_include_directories(tinyptr_lib PRIVATE ${SOURCE_DIR})
-target_link_libraries(tinyptr_lib PRIVATE xxHash_lib)
+target_link_libraries(tinyptr_lib PUBLIC xxHash_lib)
 
 add_executable(${PROJECT_NAME} src/main.cpp)
-target_link_libraries(${PROJECT_NAME} PRIVATE tinyptr_lib xxHash_lib)
+target_link_libraries(${PROJECT_NAME} PRIVATE tinyptr_lib)
 
 add_dependencies(tinyptr_lib xxHash)
 add_dependencies(${PROJECT_NAME} xxHash)
@@ -78,7 +78,6 @@ if(BUILD_TESTING)
             ${TEST_EXE}
             PUBLIC
             tinyptr_lib
-            xxHash_lib
             GTest::gtest_main
             GTest::gmock
         )
