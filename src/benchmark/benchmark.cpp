@@ -218,11 +218,24 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
                         << dynamic_cast<BenchmarkByteArrayChained*>(obj)
                                ->AvgChainLength()
                         << std::endl;
+
+                    uint32_t max_chain_length;
+
                     output_stream
                         << "Max Chain Length: "
-                        << dynamic_cast<BenchmarkByteArrayChained*>(obj)
-                               ->MaxChainLength()
+                        << (max_chain_length =
+                                dynamic_cast<BenchmarkByteArrayChained*>(obj)
+                                    ->MaxChainLength())
                         << std::endl;
+
+                    auto hist = dynamic_cast<BenchmarkByteArrayChained*>(obj)
+                                    ->ChainLengthHistogram();
+                    output_stream << "Chain Length Histogram: " << std::endl;
+                    output_stream << "\tLength\t\tCount" << std::endl;
+                    for (uint32_t i = 0; i <= max_chain_length; ++i) {
+                        output_stream << "\t" << i << "\t\t" << hist[i]
+                                      << std::endl;
+                    }
                 }
             };
             break;

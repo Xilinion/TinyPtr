@@ -13,7 +13,8 @@ class BenchmarkByteArrayChained : public BenchmarkObject64 {
     static const BenchmarkObjectType TYPE;
 
    public:
-    BenchmarkByteArrayChained(int n, uint8_t quotienting_tail_length, uint16_t bin_size);
+    BenchmarkByteArrayChained(int n, uint8_t quotienting_tail_length,
+                              uint16_t bin_size);
 
     ~BenchmarkByteArrayChained() = default;
 
@@ -21,9 +22,10 @@ class BenchmarkByteArrayChained : public BenchmarkObject64 {
     uint64_t Query(uint64_t key, uint8_t ptr);
     void Update(uint64_t key, uint8_t ptr, uint64_t value);
     void Erase(uint64_t key, uint8_t ptr);
-    
+
     double AvgChainLength();
     uint32_t MaxChainLength();
+    uint64_t* ChainLengthHistogram();
 
    private:
     ByteArrayChainedHT* tab;

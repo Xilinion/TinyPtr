@@ -281,4 +281,23 @@ uint32_t ByteArrayChainedHT::MaxChainLength() {
     return max;
 }
 
+uint64_t* ByteArrayChainedHT::ChainLengthHistogram() {
+    uint64_t* res = new uint64_t[kBaseTabSize];
+    memset(res, 0, kBaseTabSize * sizeof(uint64_t));
+
+    for (int base_id = 0; base_id < kBaseTabSize; base_id++) {
+        uint8_t* pre_tiny_ptr = &base_tab_ptr(base_id);
+        uint32_t cnt = 0;
+        while (*pre_tiny_ptr != 0) {
+            cnt++;
+            uint8_t* entry = ptab_query_entry_address(
+                reinterpret_cast<uint64_t>(pre_tiny_ptr), *pre_tiny_ptr);
+            pre_tiny_ptr = entry + kTinyPtrOffset;
+        }
+        res[cnt]++;
+    }
+
+    return res;
+}
+
 }  // namespace tinyptr

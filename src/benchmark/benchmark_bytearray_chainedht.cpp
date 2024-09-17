@@ -41,4 +41,8 @@ uint32_t BenchmarkByteArrayChained::MaxChainLength() {
     return tab->MaxChainLength();
 }
 
+uint64_t* BenchmarkByteArrayChained::ChainLengthHistogram() {
+    return tab->ChainLengthHistogram();
+}
+
 }  // namespace tinyptr
