@@ -26,17 +26,17 @@ ByteArrayChainedHT::ByteArrayChainedHT(uint64_t size,
     : kHashSeed1(rand() & ((1 << 16) - 1)),
       kHashSeed2(65536 + rand()),
       kQuotientingTailLength(quotienting_tail_length
-                                ? quotienting_tail_length
-                                : AutoQuotTailLength(size)),
-      kQuotientingTailMask((1ll << quotienting_tail_length) - 1),
-      kBaseTabSize(1 << quotienting_tail_length),
+                                 ? quotienting_tail_length
+                                 : AutoQuotTailLength(size)),
+      kQuotientingTailMask((1ll << kQuotientingTailLength) - 1),
+      kBaseTabSize(1 << kQuotientingTailLength),
       kBinSize(bin_size),
-      kBinNum((size + bin_size) / bin_size),
-      kTinyPtrOffset((64 + 7 - quotienting_tail_length) >> 3),
+      kBinNum((size + kBinSize) / kBinSize),
+      kTinyPtrOffset((64 + 7 - kQuotientingTailLength) >> 3),
       kValueOffset(kTinyPtrOffset + 1),
-      kQuotKeyByteLength((64 + 7 - quotienting_tail_length) >> 3),
+      kQuotKeyByteLength(kTinyPtrOffset),
       kEntryByteLength(kQuotKeyByteLength + 1 + 8),
-      kBinByteLength(bin_size * kEntryByteLength) {
+      kBinByteLength(kBinSize * kEntryByteLength) {
     byte_array = new uint8_t[kBinNum * kBinSize * kEntryByteLength];
     memset(byte_array, 0, kBinNum * kBinSize * kEntryByteLength);
 
