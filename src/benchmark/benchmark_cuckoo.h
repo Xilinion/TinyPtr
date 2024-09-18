@@ -4,20 +4,22 @@
 #include <cmath>
 #include <cstdint>
 #include <iostream>
+#include <thread>
 #include "benchmark_object_64.h"
 #include "benchmark_object_type.h"
-#include "clht.h"
+#include "libcuckoo/cuckoohash_map.hh"
+#include "pthread.h"
 
 namespace tinyptr {
 
-class BenchmarkCLHT : public BenchmarkObject64 {
+class BenchmarkCuckoo : public BenchmarkObject64 {
    public:
     static const BenchmarkObjectType TYPE;
 
    public:
-    BenchmarkCLHT(int n);
+    BenchmarkCuckoo(int n);
 
-    ~BenchmarkCLHT();
+    ~BenchmarkCuckoo() = default;
 
     uint8_t Insert(uint64_t key, uint64_t value);
     uint64_t Query(uint64_t key, uint8_t ptr);
@@ -25,7 +27,7 @@ class BenchmarkCLHT : public BenchmarkObject64 {
     void Erase(uint64_t key, uint8_t ptr);
 
    private:
-    clht_t* tab;
+    libcuckoo::cuckoohash_map<uint64_t, uint64_t> tab;
 };
 
 }  // namespace tinyptr

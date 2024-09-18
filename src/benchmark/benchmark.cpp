@@ -14,6 +14,7 @@
 #include "benchmark_chainedht64.h"
 #include "benchmark_clht.h"
 #include "benchmark_cli_para.h"
+#include "benchmark_cuckoo.h"
 #include "benchmark_dereftab64.h"
 #include "benchmark_intarray64.h"
 #include "benchmark_object_64.h"
@@ -179,6 +180,9 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
             break;
         case BenchmarkObjectType::CLHT:
             obj = new BenchmarkCLHT(table_size);
+            break;
+        case BenchmarkObjectType::CUCKOO:
+            obj = new BenchmarkCuckoo(table_size);
             break;
         default:
             abort();

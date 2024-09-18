@@ -80,7 +80,7 @@ function FlameGraph() {
 Init
 Compile
 
-exit
+# exit
 
 table_size=1
 opt_num=0
@@ -88,6 +88,21 @@ load_factor=0
 hit_percent=0
 quotient_tail_length=0
 bin_size=127
+
+for case_id in 1; do
+    # for object_id in 4; do
+    for object_id in 5; do
+        entry_id=0
+        # for table_size in 100000 ; do
+        for table_size in 10000 100000 1000000 10000000; do
+            opt_num=$table_size
+            Run
+            let "entry_id++"
+        done
+    done
+done
+
+exit
 
 for case_id in 12 13; do
     for object_id in 0; do
