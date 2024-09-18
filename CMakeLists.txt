@@ -28,6 +28,8 @@ target_include_directories(tinyptr_lib PRIVATE ${SOURCE_DIR})
 add_executable(${PROJECT_NAME} src/main.cpp)
 target_link_libraries(${PROJECT_NAME} PRIVATE tinyptr_lib)
 
+
+# Add external dependencies
 include(xxHash)
 build_xxHash()
 add_dependencies(tinyptr_lib xxHash)
@@ -35,10 +37,16 @@ target_link_libraries(tinyptr_lib PUBLIC xxHash_lib)
 
 include(CLHT)
 build_CLHT()
-add_dependencies(tinyptr_lib CLHT_lib)
+add_dependencies(tinyptr_lib CLHT)
 target_link_libraries(tinyptr_lib PUBLIC CLHT_lib)
 
+include(cuckoo)
+build_cuckoo()
+add_dependencies(tinyptr_lib cuckoo)
+target_link_libraries(tinyptr_lib PUBLIC cuckoo_lib pthread)
 
+
+# Add test support
 include(FetchContent)
 
 # Options
