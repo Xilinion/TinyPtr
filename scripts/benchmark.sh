@@ -80,7 +80,7 @@ function FlameGraph() {
 Init
 Compile
 
-# exit
+exit
 
 table_size=1
 opt_num=0

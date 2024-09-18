@@ -12,8 +12,9 @@ struct BenchmarkObjectType {
         INTARRAY64 = 2,
         STDUNORDEREDMAP64 = 3,
         BYTEARRAYCHAINEDHT = 4,
-        COUNT = 5
-    };;
+        CLHT = 5,
+        COUNT = 6
+    };
 
     BenchmarkObjectType(const BenchmarkObjectType& b) = default;
     BenchmarkObjectType(BenchmarkObjectType& b) = default;

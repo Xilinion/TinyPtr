@@ -26,17 +26,17 @@ ByteArrayChainedHT::ByteArrayChainedHT(uint64_t size,
     : kHashSeed1(rand() & ((1 << 16) - 1)),
       kHashSeed2(65536 + rand()),
       kQuotientingTailLength(quotienting_tail_length
-                                ? quotienting_tail_length
-                                : AutoQuotTailLength(size)),
-      kQuotientingTailMask((1ll << quotienting_tail_length) - 1),
-      kBaseTabSize(1 << quotienting_tail_length),
+                                 ? quotienting_tail_length
+                                 : AutoQuotTailLength(size)),
+      kQuotientingTailMask((1ll << kQuotientingTailLength) - 1),
+      kBaseTabSize(1 << kQuotientingTailLength),
       kBinSize(bin_size),
-      kBinNum((size + bin_size) / bin_size),
-      kTinyPtrOffset((64 + 7 - quotienting_tail_length) >> 3),
+      kBinNum((size + kBinSize) / kBinSize),
+      kTinyPtrOffset((64 + 7 - kQuotientingTailLength) >> 3),
       kValueOffset(kTinyPtrOffset + 1),
-      kQuotKeyByteLength((64 + 7 - quotienting_tail_length) >> 3),
+      kQuotKeyByteLength(kTinyPtrOffset),
       kEntryByteLength(kQuotKeyByteLength + 1 + 8),
-      kBinByteLength(bin_size * kEntryByteLength) {
+      kBinByteLength(kBinSize * kEntryByteLength) {
     byte_array = new uint8_t[kBinNum * kBinSize * kEntryByteLength];
     memset(byte_array, 0, kBinNum * kBinSize * kEntryByteLength);
 
@@ -279,6 +279,25 @@ uint32_t ByteArrayChainedHT::MaxChainLength() {
     }
 
     return max;
+}
+
+uint64_t* ByteArrayChainedHT::ChainLengthHistogram() {
+    uint64_t* res = new uint64_t[kBaseTabSize];
+    memset(res, 0, kBaseTabSize * sizeof(uint64_t));
+
+    for (int base_id = 0; base_id < kBaseTabSize; base_id++) {
+        uint8_t* pre_tiny_ptr = &base_tab_ptr(base_id);
+        uint32_t cnt = 0;
+        while (*pre_tiny_ptr != 0) {
+            cnt++;
+            uint8_t* entry = ptab_query_entry_address(
+                reinterpret_cast<uint64_t>(pre_tiny_ptr), *pre_tiny_ptr);
+            pre_tiny_ptr = entry + kTinyPtrOffset;
+        }
+        res[cnt]++;
+    }
+
+    return res;
 }
 
 }  // namespace tinyptr

@@ -52,6 +52,7 @@ class ByteArrayChainedHT {
    public:
     double AvgChainLength();
     uint32_t MaxChainLength();
+    uint64_t* ChainLengthHistogram();
 
    private:
     uint8_t* byte_array;
