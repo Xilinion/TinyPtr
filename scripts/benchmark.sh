@@ -81,7 +81,7 @@ function FlameGraph() {
 }
 
 Init
-DebugCompile
+Compile
 
 # exit
 
@@ -92,23 +92,6 @@ hit_percent=0
 quotient_tail_length=0
 bin_size=127
 
-for case_id in $(seq 0 7); do
-    if [ "$case_id" -eq 5 ]; then
-        continue
-    fi
-    for object_id in 6; do
-        # for object_id in 5; do
-        entry_id=0
-        # for table_size in 100000 ; do
-        for table_size in 10000000; do
-            opt_num=$table_size
-            FlameGraph
-            let "entry_id++"
-        done
-    done
-done
-
-exit
 
 for case_id in 12 13; do
     for object_id in 0; do
