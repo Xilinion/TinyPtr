@@ -13,7 +13,8 @@ struct BenchmarkObjectType {
         STDUNORDEREDMAP64 = 3,
         BYTEARRAYCHAINEDHT = 4,
         CLHT = 5,
-        COUNT = 6
+        CUCKOO = 6,
+        COUNT = 7
     };
 
     BenchmarkObjectType(const BenchmarkObjectType& b) = default;
