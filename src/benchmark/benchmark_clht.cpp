@@ -1,4 +1,5 @@
 #include "benchmark_clht.h"
+#include <fstream>
 #include "unistd.h"
 
 namespace tinyptr {
@@ -8,6 +9,10 @@ const BenchmarkObjectType BenchmarkCLHT::TYPE = BenchmarkObjectType::CLHT;
 BenchmarkCLHT::BenchmarkCLHT(int n) : BenchmarkObject64(TYPE) {
     tab = clht_create(n / ENTRIES_PER_BUCKET);
     clht_gc_thread_init(tab, gettid());
+}
+
+BenchmarkCLHT::~BenchmarkCLHT() {
+    clht_gc_destroy(tab);
 }
 
 uint8_t BenchmarkCLHT::Insert(uint64_t key, uint64_t value) {

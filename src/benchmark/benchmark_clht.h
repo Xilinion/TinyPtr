@@ -1,7 +1,9 @@
 #pragma once
 
+#include <emmintrin.h>
 #include <cmath>
 #include <cstdint>
+#include <iostream>
 #include "benchmark_object_64.h"
 #include "benchmark_object_type.h"
 #include "clht.h"
@@ -15,7 +17,7 @@ class BenchmarkCLHT : public BenchmarkObject64 {
    public:
     BenchmarkCLHT(int n);
 
-    ~BenchmarkCLHT() = default;
+    ~BenchmarkCLHT();
 
     uint8_t Insert(uint64_t key, uint64_t value);
     uint64_t Query(uint64_t key, uint8_t ptr);
@@ -23,6 +25,7 @@ class BenchmarkCLHT : public BenchmarkObject64 {
     void Erase(uint64_t key, uint8_t ptr);
 
    private:
+    FILE* dev_null;
     clht_t* tab;
 };
 

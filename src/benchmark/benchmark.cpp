@@ -12,6 +12,7 @@
 #include "../dereference_table_64.h"
 #include "benchmark_bytearray_chainedht.h"
 #include "benchmark_chainedht64.h"
+#include "benchmark_clht.h"
 #include "benchmark_cli_para.h"
 #include "benchmark_dereftab64.h"
 #include "benchmark_intarray64.h"
@@ -175,6 +176,9 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
         case BenchmarkObjectType::BYTEARRAYCHAINEDHT:
             obj = new BenchmarkByteArrayChained(
                 table_size, para.quotienting_tail_length, para.bin_size);
+            break;
+        case BenchmarkObjectType::CLHT:
+            obj = new BenchmarkCLHT(table_size);
             break;
         default:
             abort();
