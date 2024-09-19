@@ -12,6 +12,7 @@ function(build_iceberg)
         BUILD_IN_SOURCE 1
         BUILD_COMMAND
         COMMAND make CC=gcc CPP=g++ all
+        COMMAND ${CMAKE_COMMAND} -E env sh -c "cp <SOURCE_DIR>/include/* <SOURCE_DIR>/"
         COMMAND ${CMAKE_COMMAND} -E env sh -c "cp <BINARY_DIR>/obj/*.o <BINARY_DIR>/"
         COMMAND ${CMAKE_COMMAND} -E env sh -c "ar -rs libiceberg.a <BINARY_DIR>/obj/*.o"
         INSTALL_COMMAND ""
