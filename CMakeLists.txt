@@ -45,6 +45,11 @@ build_cuckoo()
 add_dependencies(tinyptr_lib cuckoo)
 target_link_libraries(tinyptr_lib PUBLIC cuckoo_lib pthread)
 
+include(iceberg)
+build_iceberg()
+add_dependencies(tinyptr_lib iceberg)
+target_link_libraries(tinyptr_lib PUBLIC iceberg_lib ssl crypto)
+
 
 # Add test support
 include(FetchContent)
