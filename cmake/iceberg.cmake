@@ -1,6 +1,5 @@
 function(build_iceberg)
 
-
     include(ExternalProject)
 
     # Add ExternalProject for iceberg
@@ -11,7 +10,7 @@ function(build_iceberg)
         PREFIX ${CMAKE_BINARY_DIR}/iceberg
         BUILD_IN_SOURCE 1
         BUILD_COMMAND
-        COMMAND make CC=gcc CPP=g++ all
+        COMMAND ${CMAKE_MAKE_PROGRAM} CC=gcc CPP=g++ all
         COMMAND ${CMAKE_COMMAND} -E env sh -c "cp <SOURCE_DIR>/include/* <SOURCE_DIR>/"
         COMMAND ${CMAKE_COMMAND} -E env sh -c "cp <BINARY_DIR>/obj/*.o <BINARY_DIR>/"
         COMMAND ${CMAKE_COMMAND} -E env sh -c "ar -rs libiceberg.a <BINARY_DIR>/obj/*.o"
@@ -21,7 +20,6 @@ function(build_iceberg)
 
     ExternalProject_Get_Property(iceberg SOURCE_DIR BINARY_DIR)
 
-
     add_library(iceberg_lib STATIC IMPORTED)
     add_dependencies(iceberg_lib iceberg)
 
@@ -29,5 +27,8 @@ function(build_iceberg)
         IMPORTED_LOCATION ${BINARY_DIR}/libiceberg.a
         INTERFACE_INCLUDE_DIRECTORIES ${SOURCE_DIR}
     )
+
+    target_compile_definitions(iceberg_lib INTERFACE ENABLE_RESIZE ENABLE_BLOCK_LOCKING)
+    target_compile_options(iceberg_lib INTERFACE -march=native)
 
 endfunction()
