@@ -31,6 +31,9 @@ echo "$exp_dir"
 
 function Init() {
     sudo sysctl kernel.perf_event_paranoid=-1
+    sudo sysctl kernel.kptr_restrict=0
+    sudo chmod 777 ../scripts/FlameGraph/stackcollapse-perf.pl
+    sudo chmod 777 ../scripts/FlameGraph/flamegraph.pl
 }
 
 function Compile() {
@@ -72,9 +75,9 @@ function FlameGraph() {
 
     perf script >"$res_path/out.perf"
 
-    ../build/stackcollapse-perf.pl "$res_path/out.perf" >"$res_path/out.folded"
+    ../scripts/FlameGraph/stackcollapse-perf.pl "$res_path/out.perf" >"$res_path/out.folded"
 
-    ../build/flamegraph.pl "$res_path/out.folded" >"$res_path/${object_id}_${case_id}_${entry_id}_kernel.svg"
+    ../scripts/FlameGraph/flamegraph.pl "$res_path/out.folded" >"$res_path/${object_id}_${case_id}_${entry_id}_kernel.svg"
 }
 
 Init
@@ -89,20 +92,6 @@ hit_percent=0
 quotient_tail_length=0
 bin_size=127
 
-for case_id in 1; do
-    # for object_id in 4; do
-    for object_id in 5; do
-        entry_id=0
-        # for table_size in 100000 ; do
-        for table_size in 10000 100000 1000000 10000000; do
-            opt_num=$table_size
-            Run
-            let "entry_id++"
-        done
-    done
-done
-
-exit
 
 for case_id in 12 13; do
     for object_id in 0; do

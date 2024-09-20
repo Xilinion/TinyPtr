@@ -24,6 +24,7 @@ list(REMOVE_ITEM SOURCES ${DEPRECATED_TEST_SRC})
 
 add_library(tinyptr_lib ${SOURCES})
 target_include_directories(tinyptr_lib PRIVATE ${SOURCE_DIR})
+target_compile_options(tinyptr_lib INTERFACE -march=native)
 
 add_executable(${PROJECT_NAME} src/main.cpp)
 target_link_libraries(${PROJECT_NAME} PRIVATE tinyptr_lib)
@@ -44,6 +45,11 @@ include(cuckoo)
 build_cuckoo()
 add_dependencies(tinyptr_lib cuckoo)
 target_link_libraries(tinyptr_lib PUBLIC cuckoo_lib pthread)
+
+include(iceberg)
+build_iceberg()
+add_dependencies(tinyptr_lib iceberg)
+target_link_libraries(tinyptr_lib PUBLIC iceberg_lib ssl crypto pthread)
 
 
 # Add test support
