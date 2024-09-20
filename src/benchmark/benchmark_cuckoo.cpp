@@ -11,7 +11,9 @@ uint8_t BenchmarkCuckoo::Insert(uint64_t key, uint64_t value) {
 }
 
 uint64_t BenchmarkCuckoo::Query(uint64_t key, uint8_t ptr) {
-    return tab.find(key);
+    uint64_t value;
+    tab.find(key, value);
+    return value;
 }
 
 void BenchmarkCuckoo::Update(uint64_t key, uint8_t ptr, uint64_t value) {
