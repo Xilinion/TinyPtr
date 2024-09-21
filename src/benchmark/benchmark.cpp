@@ -23,7 +23,29 @@
 
 namespace tinyptr {
 
-uint8_t Benchmark::gen_rand_nonzero_8() {
+Benchmark::RandVec::RandVec(uint64_t size)
+    : ptr_vec_head(0),
+      ptr_vec((size << 2)),
+      key_vec_head{0, 0},
+      key_vec(
+          {std::vector<uint64_t>(size << 2), std::vector<uint64_t>(size << 2)}),
+      val_vec((size << 2)),
+      rgen64(rng::random_device_seed{}()),
+      rgen128(rng::random_device_seed{}()),
+      rand_vec_head(0),
+      rand_vec(size << 2) {
+
+    size <<= 2;
+    for (uint64_t i = 0; i < size; ++i) {
+        ptr_vec[i] = gen_rand_nonzero_8();
+        key_vec[0][i] = gen_key_hittable();
+        key_vec[1][i] = gen_key_miss();
+        val_vec[i] = gen_value();
+        rand_vec[i] = gen_value();
+    }
+}
+
+uint8_t Benchmark::RandVec::gen_rand_nonzero_8() {
     uint8_t msk = ~(uint8_t(0));
     uint64_t res = rgen64();
     while (0 == (res & msk))
@@ -31,24 +53,60 @@ uint8_t Benchmark::gen_rand_nonzero_8() {
     return (res & msk);
 }
 
-uint64_t Benchmark::gen_rand_odd() {
+uint8_t Benchmark::gen_rand_nonzero_8() {
+    return rand_vec->ptr_vec[rand_vec->ptr_vec_head++];
+}
+
+uint64_t Benchmark::RandVec::gen_rand_odd() {
+    // odd
+    return rgen64() | 1;
+}
+
+uint64_t Benchmark::RandVec::gen_key_hittable() {
     // odd
     return rgen64() | 1;
 }
 
 uint64_t Benchmark::gen_key_hittable() {
     // odd
-    return rgen64() | 1;
+    return rand_vec->key_vec[0][rand_vec->key_vec_head[0]++];
 }
 
-uint64_t Benchmark::gen_key_miss() {
+uint64_t Benchmark::RandVec::gen_key_miss() {
     // even
     uint64_t tmp = rgen64();
     return tmp - (tmp & 1);
 }
 
-uint64_t Benchmark::gen_value() {
+uint64_t Benchmark::gen_key_miss() {
+    // even
+    return rand_vec->key_vec[1][rand_vec->key_vec_head[1]++];
+}
+
+uint64_t Benchmark::rgen64() {
+    return rand_vec->rand_vec[rand_vec->rand_vec_head++];
+}
+
+uint64_t Benchmark::RandVec::gen_value() {
     return rgen64();
+}
+
+uint64_t Benchmark::gen_value() {
+    return rand_vec->val_vec[rand_vec->val_vec_head++];
+}
+
+void Benchmark::gen_rand_vector(uint64_t size) {
+    rand_vec = new RandVec(size);
+}
+
+void Benchmark::gen_erase_order(uint64_t size) {
+    int key_ind_range = table_size;
+
+    rand_vec->erase_order.resize(key_ind_range);
+    for (int i = 0; i < key_ind_range; ++i)
+        rand_vec->erase_order[i] = i;
+    std::random_shuffle(rand_vec->erase_order.begin(),
+                        rand_vec->erase_order.end());
 }
 
 int Benchmark::insert_cnt_to_overflow() {
@@ -60,9 +118,7 @@ int Benchmark::insert_cnt_to_overflow() {
 
 void Benchmark::obj_fill(int ins_cnt) {
     while (ins_cnt--) {
-        uint64_t key = gen_key_hittable();
-        key_vec.push_back(key);
-        ptr_vec.push_back(obj->Insert(key, gen_value()));
+        obj->Insert(gen_key_hittable(), gen_value());
     }
 }
 
@@ -78,16 +134,16 @@ void Benchmark::batch_query(int query_cnt, double hit_rate) {
 
     // we assume the all the elements in the vector are inserted
     // and nothing happens after that
-    int key_ind_range = key_vec.size();
+    int key_ind_range = table_size;
 
     while (query_cnt--) {
         uint64_t key;
         uint8_t ptr;
 
-        if (hit_bar >= (gen_rand_odd() & (~(uint32_t(0))))) {
+        if (hit_bar >= (gen_key_hittable() & (~(uint32_t(0))))) {
             int key_ind = rgen64() % key_ind_range;
-            key = key_vec[key_ind];
-            ptr = ptr_vec[key_ind];
+            key = rand_vec->key_vec[0][key_ind];
+            ptr = rand_vec->ptr_vec[key_ind];
         } else {
             key = gen_key_miss();
             ptr = gen_rand_nonzero_8();
@@ -101,27 +157,21 @@ void Benchmark::batch_update(int update_cnt) {
 
     // we assume the all the elements in the vector are inserted
     // and nothing happens after that
-    int key_ind_range = key_vec.size();
+    int key_ind_range = table_size;
 
     while (update_cnt--) {
         int key_ind = rgen64() % key_ind_range;
-        uint64_t key = key_vec[key_ind];
-        uint8_t ptr = ptr_vec[key_ind];
+        uint64_t key = rand_vec->key_vec[0][key_ind];
+        uint8_t ptr = rand_vec->ptr_vec[key_ind];
         obj->Update(key, ptr, gen_value());
     }
 }
 
 void Benchmark::erase_all() {
-    int key_ind_range = key_vec.size();
-    std::vector<int> erase_order(key_ind_range);
-    for (int i = 0; i < key_ind_range; ++i)
-        erase_order[i] = i;
-    std::random_shuffle(erase_order.begin(), erase_order.end());
-
     // we assume the all the elements in the vector are inserted
     // and nothing happens after that
-    for (auto iter : erase_order) {
-        obj->Erase(key_vec[iter], ptr_vec[iter]);
+    for (auto iter : rand_vec->erase_order) {
+        obj->Erase(rand_vec->key_vec[0][iter], rand_vec->ptr_vec[iter]);
     }
 }
 
@@ -134,17 +184,16 @@ void Benchmark::alternating_insert_erase(int opt_cnt) {
 
 void Benchmark::all_operation_rand(int opt_cnt) {
     while (opt_cnt--) {
-        int key_ind_range = key_vec.size();
-        int key_ind = key_ind_range ? rgen64() % key_ind_range : 0;
-        uint64_t key = key_ind_range ? key_vec[key_ind] : 0;
-        uint8_t ptr = key_ind_range ? ptr_vec[key_ind] : 0;
+        int key_ind_range = table_size;
+        int key_ind = rgen64() % key_ind_range;
+        uint64_t key = rand_vec->key_vec[0][key_ind];
+        uint8_t ptr = rand_vec->ptr_vec[key_ind];
 
         uint8_t opt_rand = gen_rand_nonzero_8();
         if (opt_rand <= 0b1111) {
             obj->Erase(key, ptr);
         } else if (opt_rand <= 0b111111) {
-            key_vec.push_back(key);
-            ptr_vec.push_back(obj->Insert(key, gen_value()));
+            obj->Insert(key, gen_value());
         } else if (opt_rand <= 0b1111111) {
             obj->Update(key, ptr, gen_value());
         } else {
@@ -155,8 +204,6 @@ void Benchmark::all_operation_rand(int opt_cnt) {
 
 Benchmark::Benchmark(BenchmarkCLIPara& para)
     : output_stream(para.GetOuputFileName()),
-      rgen64(rng::random_device_seed{}()),
-      rgen128(rng::random_device_seed{}()),
       table_size(para.table_size),
       opt_num(para.opt_num),
       load_factor(para.load_factor),
@@ -176,8 +223,9 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
             obj = new BenchmarkStdUnorderedMap64(table_size);
             break;
         case BenchmarkObjectType::BYTEARRAYCHAINEDHT:
-            obj = new BenchmarkByteArrayChained(
-                table_size, para.quotienting_tail_length, para.bin_size);
+            obj = new BenchmarkByteArrayChained(table_size * 1.031,
+                                                para.quotienting_tail_length,
+                                                para.bin_size);
             break;
         case BenchmarkObjectType::CLHT:
             obj = new BenchmarkCLHT(table_size);
@@ -192,9 +240,16 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
             abort();
     }
 
+    gen_rand_vector(std::max(table_size, opt_num));
+
     switch (para.case_id) {
         case BenchmarkCaseType::INSERT_ONLY_LOAD_FACTOR_SUPPORT:
             run = [this, para]() {
+                if (para.object_id == BenchmarkObjectType::BYTEARRAYCHAINEDHT) {
+                    obj = new BenchmarkByteArrayChained(
+                        table_size, para.quotienting_tail_length,
+                        para.bin_size);
+                }
                 std::clock_t start = std::clock();
 
                 int load_cnt = insert_cnt_to_overflow();
@@ -308,6 +363,7 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
         case BenchmarkCaseType::ERASE_ONLY:
             run = [this]() {
                 obj_fill(table_size);
+                gen_erase_order(table_size);
 
                 std::clock_t start = std::clock();
 
