@@ -7,7 +7,7 @@ namespace tinyptr {
 const BenchmarkObjectType BenchmarkCLHT::TYPE = BenchmarkObjectType::CLHT;
 
 BenchmarkCLHT::BenchmarkCLHT(int n) : BenchmarkObject64(TYPE) {
-    tab = clht_create(n / ENTRIES_PER_BUCKET);
+    tab = clht_create(n >> 1);
     clht_gc_thread_init(tab, gettid());
 }
 
