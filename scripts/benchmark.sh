@@ -38,7 +38,7 @@ function Init() {
 
 function Compile() {
     cd ..
-    rm -rf ./build
+    # rm -rf ./build
     cmake -B build -DCMAKE_BUILD_TYPE=Release -Wno-dev | tail -n 90
     cmake --build build --config Release -j8 | tail -n 90
     cd scripts
@@ -48,7 +48,7 @@ function Compile() {
 
 function DebugCompile() {
     cd ..
-    rm -rf ./build
+    # rm -rf ./build
     cmake -B build -DCMAKE_BUILD_TYPE=Debug | tail -n 90
     cmake --build build --config Debug -j8 | tail -n 90
     cd scripts
@@ -80,8 +80,22 @@ function FlameGraph() {
     ../scripts/FlameGraph/flamegraph.pl "$res_path/out.folded" >"$res_path/${object_id}_${case_id}_${entry_id}_kernel.svg"
 }
 
+function FlameGraphEntry() {
+    #####native execution
+    echo "== benchmark with perf: -o $object_id -c $case_id -e $entry_id -t $table_size -p  $opt_num -l $load_factor -h $hit_percent -b $bin_size -q $quotient_tail_length -f "$res_path" =="
+
+    perf record -F 499 --call-graph dwarf -e $flamegraph_entry -a -g -- ../build/tinyptr -o $object_id -c $case_id -e $entry_id -t $table_size -p $opt_num -l $load_factor -h $hit_percent -b $bin_size -q $quotient_tail_length -f "$res_path"
+
+    perf script -F comm,pid,tid,cpu,time,event,ip,sym,dso >"$res_path/out.perf"
+
+    ../scripts/FlameGraph/stackcollapse-perf.pl "$res_path/out.perf" >"$res_path/out.folded"
+
+    ../scripts/FlameGraph/flamegraph.pl "$res_path/out.folded" >"$res_path/${object_id}_${case_id}_${entry_id}_${flamegraph_entry}.svg"
+}
+
 Init
-Compile
+# Compile
+DebugCompile
 
 # exit
 
@@ -92,6 +106,25 @@ hit_percent=0
 quotient_tail_length=0
 bin_size=127
 
+for case_id in $(seq 6 7); do
+    if [ $case_id -eq 5 ]; then
+        continue
+    fi
+    for object_id in 4 7; do
+        entry_id=0
+        for table_size in 10000000; do
+            opt_num=$table_size
+
+            for flamegraph_entry in cache-misses branch-misses LLC-loads-misses page-faults L1-dcache-load-misses L1-icache-load-misses; do
+                FlameGraphEntry
+            done
+
+            let "entry_id++"
+        done
+    done
+done
+
+# exit
 
 for case_id in 12 13; do
     for object_id in 0; do

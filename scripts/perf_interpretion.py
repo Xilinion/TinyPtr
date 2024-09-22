@@ -30,10 +30,10 @@ metrics = [
 
 # Map test case IDs to their names
 test_case_names = {
-    1: "INSERT_ONLY",
-    2: "UPDATE_ONLY",
-    3: "ERASE_ONLY",
-    4: "ALTERNATING_INSERT_ERASE",
+    # 1: "INSERT_ONLY",
+    # 2: "UPDATE_ONLY",
+    # 3: "ERASE_ONLY",
+    # 4: "ALTERNATING_INSERT_ERASE",
     6: "QUERY_HIT_ONLY",
     7: "QUERY_MISS_ONLY",
 }
@@ -56,26 +56,7 @@ def parse_perf_file(file_path):
     
     return perf_data, perf_percent
     
-
-    # with open(file_path, 'r') as file:
-    #     content = file.readlines()
-    # with open(file_path, 'r') as file:
-    #     content = file.readlines()
     
-    # perf_data = {}
-    # for line in content:
-    #     match = re.match(r"^\s*([\d,\.]+)\s+([\w\-]+(?:\s[\w\-]+)*)\s+#\s+(.+)$", line)
-    #     if match:
-    #         value, metric, comment = match.groups()
-    #         perf_data[metric.strip()] = (value.replace(',', ''), comment.strip())
-    #     else:
-    #         match = re.match(r"^\s*([\d,\.]+)\s+([\w\-]+(?:\s[\w\-]+)*)$", line)
-    #         if match:
-    #             value, metric = match.groups()
-    #             perf_data[metric.strip()] = (value.replace(',', ''), "")
-    
-    # return perf_data
-
 # Function to get the test case ID from the file name
 def get_test_case_id(file_name):
     match = re.search(r"case_(\d+)_", file_name)
@@ -105,15 +86,16 @@ results = {}
 for perf_file in perf_files:
     if not get_if_perf(perf_file):
         continue
-    if get_object_id(perf_file) != 4:
+    # if get_object_id(perf_file) != 4:
+    if get_object_id(perf_file) != 7:
         continue
     if get_entry_id(perf_file) != 0:
         continue
     test_case_id = get_test_case_id(perf_file)
     if test_case_id in test_case_names:
-        print(f"Processing {perf_file}")
+        # print(f"Processing {perf_file}")
         results[test_case_id] = parse_perf_file(perf_file)
-        print(results[test_case_id])
+        # print(results[test_case_id])
 
 # Save the comparison results to a text file
 with open('performance_comparison.txt', 'w') as file:
