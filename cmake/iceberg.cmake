@@ -13,7 +13,7 @@ function(build_iceberg)
         COMMAND ${CMAKE_MAKE_PROGRAM} CC=gcc CPP=g++ all
         COMMAND ${CMAKE_COMMAND} -E env sh -c "cp <SOURCE_DIR>/include/* <SOURCE_DIR>/"
         COMMAND ${CMAKE_COMMAND} -E env sh -c "cp <BINARY_DIR>/obj/*.o <BINARY_DIR>/"
-        COMMAND ${CMAKE_COMMAND} -E env sh -c "ar -rs libiceberg.a <BINARY_DIR>/obj/*.o"
+        COMMAND ${CMAKE_COMMAND} -E env sh -c "gcc-ar -rs libiceberg.a <BINARY_DIR>/obj/*.o"
         INSTALL_COMMAND ""
         CONFIGURE_COMMAND ""
     )
