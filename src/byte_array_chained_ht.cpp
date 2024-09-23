@@ -300,4 +300,21 @@ uint64_t* ByteArrayChainedHT::ChainLengthHistogram() {
     return res;
 }
 
+void ByteArrayChainedHT::FillChainLength(uint8_t chain_length) {
+    for (int base_id = 0; base_id < kBaseTabSize; base_id++) {
+        uint8_t* pre_tiny_ptr = &base_tab_ptr(base_id);
+
+        uint8_t tmp = chain_length;
+        while (tmp--) {
+            uint8_t* entry = ptab_insert_entry_address(
+                reinterpret_cast<uint64_t>(pre_tiny_ptr));
+            if (entry != nullptr) {
+                *pre_tiny_ptr = *entry;
+                entry[kTinyPtrOffset] = 0;
+                pre_tiny_ptr = entry + kTinyPtrOffset;
+            }
+        }
+    }
+}
+
 }  // namespace tinyptr

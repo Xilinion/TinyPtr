@@ -609,7 +609,7 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
                     << " ns/op" << std::endl;
             };
             break;
-        case BenchmarkCaseType::XXHASH64THROUGHPUT:
+        case BenchmarkCaseType::XXHASH64_THROUGHPUT:
             obj = new BenchmarkIntArray64(1);
             run = [this]() {
                 std::clock_t start = std::clock();
@@ -640,7 +640,7 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
                     << " ns/op" << std::endl;
             };
             break;
-        case BenchmarkCaseType::PRNGTHROUGHPUT:
+        case BenchmarkCaseType::PRNG_THROUGHPUT:
             obj = new BenchmarkIntArray64(1);
             run = [this]() {
                 std::clock_t start = std::clock();
@@ -668,6 +668,58 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
                     << int(double(duration) / double(opt_num) / CLOCKS_PER_SEC *
                            (1ll * 1000 * 1000 * 1000))
                     << " ns/op" << std::endl;
+            };
+            break;
+        case BenchmarkCaseType::LATENCY_VARYING_CHAINLENGTH:
+            run = [this, para]() {
+                uint8_t quot_length = 16;
+                uint64_t case_table_size = table_size >> 16;
+                while (case_table_size) {
+                    case_table_size >>= 1;
+                    quot_length++;
+                }
+                case_table_size = 1 << quot_length;
+
+                for (uint8_t chain_length = 0; chain_length < 16;
+                     chain_length = chain_length ? chain_length <<= 1 : 1,
+                             quot_length--) {
+                    obj = new BenchmarkByteArrayChained(
+                        case_table_size * 1.031, quot_length, para.bin_size);
+                    dynamic_cast<BenchmarkByteArrayChained*>(obj)
+                        ->FillChainLength(chain_length);
+
+                    gen_rand_vector(case_table_size);
+
+                    std::clock_t start = std::clock();
+
+                    batch_query(opt_num, 0);
+
+                    auto end = std::clock();
+                    auto duration = end - start;
+
+                    output_stream << "Table Size: " << case_table_size
+                                  << std::endl;
+                    output_stream << "Chain Length: " << int(chain_length)
+                                  << std::endl;
+
+                    output_stream
+                        << "CPU Time: "
+                        << int(1000.0 * (std::clock() - start) / CLOCKS_PER_SEC)
+                        << std::endl;
+
+                    output_stream << "Throughput: "
+                                  << int(double(opt_num) / double(duration) *
+                                         CLOCKS_PER_SEC)
+                                  << " ops/s" << std::endl;
+
+                    output_stream
+                        << "Latency: "
+                        << int(double(duration) / double(opt_num) /
+                               CLOCKS_PER_SEC * (1ll * 1000 * 1000 * 1000))
+                        << " ns/op" << std::endl;
+
+                    output_stream << std::endl;
+                }
             };
             break;
         default:

@@ -45,4 +45,8 @@ uint64_t* BenchmarkByteArrayChained::ChainLengthHistogram() {
     return tab->ChainLengthHistogram();
 }
 
+void BenchmarkByteArrayChained::FillChainLength(uint8_t chain_length) {
+    tab->FillChainLength(chain_length);
+}
+
 }  // namespace tinyptr

@@ -26,6 +26,7 @@ class BenchmarkByteArrayChained : public BenchmarkObject64 {
     double AvgChainLength();
     uint32_t MaxChainLength();
     uint64_t* ChainLengthHistogram();
+    void FillChainLength(uint8_t chain_length);
 
    private:
     ByteArrayChainedHT* tab;

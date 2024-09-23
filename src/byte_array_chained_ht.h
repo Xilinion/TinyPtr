@@ -49,10 +49,12 @@ class ByteArrayChainedHT {
     bool Update(uint64_t key, uint64_t value);
     void Free(uint64_t key);
 
+    // Experimental Utility Functions
    public:
     double AvgChainLength();
     uint32_t MaxChainLength();
     uint64_t* ChainLengthHistogram();
+    void FillChainLength(uint8_t chain_lenght);
 
    private:
     uint8_t* byte_array;
