@@ -22,7 +22,8 @@ struct BenchmarkCaseType {
         PRNG_THROUGHPUT = 13,
         LATENCY_VARYING_CHAINLENGTH = 14,
         QUERY_NO_MEM = 15,
-        COUNT = 16
+        INSERT_DELETE_LOAD_FACTOR_SUPPORT = 16,
+        COUNT = 17
     };
 
     BenchmarkCaseType() = default;

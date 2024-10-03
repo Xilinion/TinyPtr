@@ -5,9 +5,11 @@
 #include <cstdint>
 #include <cstdlib>
 #include <ctime>
+#include <iostream>
 #include <iterator>
 #include <ostream>
 #include <random>
+#include <set>
 #include "../chained_ht_64.h"
 #include "../dereference_table_64.h"
 #include "benchmark_bytearray_chainedht.h"
@@ -84,6 +86,13 @@ uint64_t Benchmark::gen_key_miss() {
 }
 
 uint64_t Benchmark::rgen64() {
+    if (rand_vec->rand_vec_head >= rand_vec->rand_vec.size()) {
+        rand_vec->rand_vec_head = 0;
+        int tmp = rand_vec->rand_vec.size();
+        for (int i = 0; i < tmp; ++i) {
+            rand_vec->rand_vec[i] = rand_vec->gen_value();
+        }
+    }
     return rand_vec->rand_vec[rand_vec->rand_vec_head++];
 }
 
@@ -114,6 +123,71 @@ int Benchmark::insert_cnt_to_overflow() {
         if (!((uint8_t)(~obj->Insert(gen_key_hittable(), gen_value()))))
             return res;
     }
+}
+
+int Benchmark::insert_delete_opt_to_overflow(uint64_t size, uint16_t bin_size,
+                                             double opt_ratio,
+                                             double load_factor) {
+    size = (size + bin_size - 1) / bin_size * bin_size;
+    int mx_cnt = int(floor(size * load_factor));
+
+    std::set<uint64_t> inserted_keys;
+
+    for (int i = 0; i < mx_cnt; ++i) {
+        uint64_t key = gen_key_hittable();
+        obj->Insert(key, gen_value());
+        inserted_keys.insert(key);
+    }
+
+    int operation_count = 0;
+    while (true) {
+
+        std::cout << "operation_count: " << operation_count << std::endl;
+
+        if (rgen64() % 2) {
+            int num_inserts = rgen64() % int(size * opt_ratio) + 1;
+            for (int i = 0; i < num_inserts; ++i) {
+                if (inserted_keys.size() >= mx_cnt) {
+                    break;
+                }
+                uint64_t key;
+                do {
+                    key = rgen64();
+                } while (inserted_keys.find(key) != inserted_keys.end());
+
+                // printf("Inserting key: %llu\n", key);
+
+                if (!((uint8_t)(~obj->Insert(key, rgen64())))) {
+                    return operation_count;
+                }
+                inserted_keys.insert(key);
+                operation_count++;
+            }
+        } else {
+
+            int num_deletes = rgen64() % int(size * opt_ratio) + 1;
+            for (int i = 0; i < num_deletes && !inserted_keys.empty(); ++i) {
+                if (inserted_keys.empty()) {
+                    continue;
+                }
+                uint64_t random_value = rgen64();
+
+                auto it = inserted_keys.lower_bound(random_value);
+                if (it == inserted_keys.end()) {
+                    it = inserted_keys.begin();
+                }
+                uint64_t key = *it;
+
+                inserted_keys.erase(it);
+
+                // continue;
+                obj->Erase(key,
+                           rgen64());  // Assuming Erase takes two arguments
+                operation_count++;
+            }
+        }
+    }
+    return operation_count;
 }
 
 void Benchmark::obj_fill(int ins_cnt) {
@@ -772,7 +846,8 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
                     dynamic_cast<BenchmarkByteArrayChained*>(obj)
                         ->FillChainLength(chain_length);
 
-                    dynamic_cast<BenchmarkByteArrayChained*>(obj)->set_chain_length(chain_length);
+                    dynamic_cast<BenchmarkByteArrayChained*>(obj)
+                        ->set_chain_length(chain_length);
 
                     gen_rand_vector(case_table_size);
 
@@ -785,7 +860,8 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
                     auto duration = end - start;
 
                     output_stream << "Query No Mem" << std::endl;
-                    output_stream << "Table Size: " << case_table_size << std::endl;
+                    output_stream << "Table Size: " << case_table_size
+                                  << std::endl;
                     output_stream << "Chain Length: " << int(chain_length)
                                   << std::endl;
 
@@ -806,6 +882,70 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
                         << " ns/op" << std::endl;
 
                     output_stream << std::endl;
+                }
+            };
+            break;
+        case BenchmarkCaseType::INSERT_DELETE_LOAD_FACTOR_SUPPORT:
+            run = [this, para]() {
+                if (para.object_id == BenchmarkObjectType::BYTEARRAYCHAINEDHT) {
+                    obj = new BenchmarkByteArrayChained(
+                        table_size, para.quotienting_tail_length,
+                        para.bin_size);
+                }
+                std::clock_t start = std::clock();
+
+                double load_factor = 0.9755;
+
+                int opt_cnt = insert_delete_opt_to_overflow(
+                    table_size, para.bin_size, 0.02, load_factor);
+
+                auto end = std::clock();
+                auto duration = end - start;
+
+                output_stream << "Table Size: " << table_size << std::endl;
+                output_stream << "Load Factor: " << load_factor << std::endl;
+                output_stream << "Operation Ratio: " << 0.02 << std::endl;
+                output_stream << "Operation Capacity: " << opt_cnt << std::endl;
+                output_stream
+                    << "CPU Time: "
+                    << int(1000.0 * (std::clock() - start) / CLOCKS_PER_SEC)
+                    << " ms" << std::endl;
+
+                output_stream
+                    << "Throughput: "
+                    << int(double(opt_cnt) / double(duration) * CLOCKS_PER_SEC)
+                    << " ops/s" << std::endl;
+
+                output_stream
+                    << "Latency: "
+                    << int(double(duration) / double(opt_cnt) / CLOCKS_PER_SEC *
+                           (1ll * 1000 * 1000 * 1000))
+                    << " ns/op" << std::endl;
+
+                if (para.object_id == BenchmarkObjectType::BYTEARRAYCHAINEDHT) {
+                    output_stream
+                        << "Avg Chain Length: "
+                        << dynamic_cast<BenchmarkByteArrayChained*>(obj)
+                               ->AvgChainLength()
+                        << std::endl;
+
+                    uint32_t max_chain_length;
+
+                    output_stream
+                        << "Max Chain Length: "
+                        << (max_chain_length =
+                                dynamic_cast<BenchmarkByteArrayChained*>(obj)
+                                    ->MaxChainLength())
+                        << std::endl;
+
+                    auto hist = dynamic_cast<BenchmarkByteArrayChained*>(obj)
+                                    ->ChainLengthHistogram();
+                    output_stream << "Chain Length Histogram: " << std::endl;
+                    output_stream << "\tLength\t\tCount" << std::endl;
+                    for (uint32_t i = 0; i <= max_chain_length; ++i) {
+                        output_stream << "\t" << i << "\t\t" << hist[i]
+                                      << std::endl;
+                    }
                 }
             };
             break;
