@@ -27,6 +27,8 @@ class BenchmarkByteArrayChained : public BenchmarkObject64 {
     uint32_t MaxChainLength();
     uint64_t* ChainLengthHistogram();
     void FillChainLength(uint8_t chain_length);
+    void set_chain_length(uint64_t chain_length);
+    bool QueryNoMem(uint64_t key, uint64_t* value_ptr);
 
    private:
     ByteArrayChainedHT* tab;

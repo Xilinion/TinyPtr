@@ -37,13 +37,14 @@ ByteArrayChainedHT::ByteArrayChainedHT(uint64_t size,
       kQuotKeyByteLength(kTinyPtrOffset),
       kEntryByteLength(kQuotKeyByteLength + 1 + 8),
       kBinByteLength(kBinSize * kEntryByteLength) {
-    byte_array = new uint8_t[kBinNum * kBinSize * kEntryByteLength];
+    posix_memalign(reinterpret_cast<void**>(&byte_array), 64, kBinNum * kBinSize * kEntryByteLength);
     memset(byte_array, 0, kBinNum * kBinSize * kEntryByteLength);
 
-    base_tab = new uint8_t[kBaseTabSize];
+    posix_memalign(reinterpret_cast<void**>(&base_tab), 64, kBaseTabSize);
     memset(base_tab, 0, kBaseTabSize);
 
-    bin_cnt_head = new uint8_t[kBinNum << 1];
+    posix_memalign(reinterpret_cast<void**>(&bin_cnt_head), 64, kBinNum << 1);
+
     for (uint64_t i = 0, ptr_offset = kTinyPtrOffset; i < kBinNum; i++) {
         for (uint8_t j = 0; j < kBinSize - 1; j++) {
             byte_array[ptr_offset] = j + 2;
@@ -56,6 +57,8 @@ ByteArrayChainedHT::ByteArrayChainedHT(uint64_t size,
         bin_cnt_head[i << 1] = 0;
         bin_cnt_head[(i << 1) | 1] = 1;
     }
+
+    play_entry = new uint8_t[kEntryByteLength];
 }
 
 ByteArrayChainedHT::ByteArrayChainedHT(uint64_t size, uint16_t bin_size)
@@ -72,6 +75,7 @@ uint64_t ByteArrayChainedHT::hash_1_base_id(uint64_t key) {
 
 uint64_t ByteArrayChainedHT::hash_1_bin(uint64_t key) {
     return (XXH64(&key, sizeof(uint64_t), kHashSeed1)) % kBinNum;
+    // return 0;
 }
 
 uint64_t ByteArrayChainedHT::hash_2(uint64_t key) {
@@ -80,6 +84,7 @@ uint64_t ByteArrayChainedHT::hash_2(uint64_t key) {
 
 uint64_t ByteArrayChainedHT::hash_2_bin(uint64_t key) {
     return (XXH64(&key, sizeof(uint64_t), kHashSeed2)) % kBinNum;
+    // return 0;
 }
 
 uint8_t& ByteArrayChainedHT::bin_cnt(uint64_t bin_id) {
@@ -158,17 +163,43 @@ bool ByteArrayChainedHT::Query(uint64_t key, uint64_t* value_ptr) {
     uint64_t base_id = hash_1_base_id(key);
     uint8_t* pre_tiny_ptr = &base_tab_ptr(base_id);
 
-    // quotienting
+    // quotienting and shifting back
     key >>= kQuotientingTailLength;
+    key <<= kQuotientingTailLength;
 
     while (*pre_tiny_ptr != 0) {
         uint8_t* entry = ptab_query_entry_address(
             reinterpret_cast<uint64_t>(pre_tiny_ptr), *pre_tiny_ptr);
-        if (((*reinterpret_cast<uint64_t*>(entry) << kQuotientingTailLength) >>
-             kQuotientingTailLength) == key) {
+        if ((*reinterpret_cast<uint64_t*>(entry) << kQuotientingTailLength) == key) {
             *value_ptr = *reinterpret_cast<uint64_t*>(entry + kValueOffset);
             return true;
         }
+        pre_tiny_ptr = entry + kTinyPtrOffset;
+    }
+
+    return false;
+}
+
+void ByteArrayChainedHT::set_chain_length(uint64_t chain_length) {
+    this->chain_length = chain_length;
+}
+
+bool ByteArrayChainedHT::QueryNoMem(uint64_t key, uint64_t* value_ptr) {
+    uint64_t base_id = hash_1_base_id(key);
+    uint8_t* pre_tiny_ptr = &base_tab_ptr(base_id);
+
+    // quotienting and shifting back
+    key >>= kQuotientingTailLength;
+    key <<= kQuotientingTailLength;
+
+    while (*pre_tiny_ptr != 0) {
+        uint8_t* entry = ptab_query_entry_address(
+            reinterpret_cast<uint64_t>(pre_tiny_ptr), *pre_tiny_ptr);
+        // entry=play_entry;
+        // if ((*reinterpret_cast<uint64_t*>(entry) << kQuotientingTailLength) == key) {
+        //     *value_ptr = *reinterpret_cast<uint64_t*>(entry + kValueOffset);
+        //     return true;
+        // }
         pre_tiny_ptr = entry + kTinyPtrOffset;
     }
 

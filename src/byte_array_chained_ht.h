@@ -60,6 +60,14 @@ class ByteArrayChainedHT {
     uint8_t* byte_array;
     uint8_t* base_tab;
     uint8_t* bin_cnt_head;
+
+   private:
+    uint8_t* play_entry;
+    uint64_t chain_length;
+
+   public:
+    bool QueryNoMem(uint64_t key, uint64_t* value_ptr);
+    void set_chain_length(uint64_t chain_length);
 };
 
 }  // namespace tinyptr

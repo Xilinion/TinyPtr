@@ -60,6 +60,7 @@ class Benchmark {
     int insert_cnt_to_overflow();
     void obj_fill(int ins_cnt);
     void batch_query(int query_cnt, double hit_rate);
+    void batch_query_no_mem(int query_cnt, double hit_rate);
     void batch_update(int update_cnt);
     void erase_all();
     void alternating_insert_erase(int opt_cnt);

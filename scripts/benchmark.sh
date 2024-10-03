@@ -99,6 +99,7 @@ DebugCompile
 
 # exit
 
+
 table_size=1
 opt_num=0
 load_factor=0
@@ -106,10 +107,11 @@ hit_percent=0
 quotient_tail_length=0
 bin_size=127
 
-for case_id in 14; do
-    for object_id in 4; do
+
+for case_id in 6; do
+    for object_id in 2; do
         entry_id=0
-        for table_size in 10000000; do
+        for table_size in 1000000 10000000; do
             opt_num=$table_size
             Run
             let "entry_id++"
@@ -117,7 +119,39 @@ for case_id in 14; do
     done
 done
 
-# exit
+exit
+
+for case_id in 15; do
+    for object_id in 4; do
+        entry_id=0
+        for table_size in 1000000 10000000; do
+            opt_num=$table_size
+            Run
+            let "entry_id++"
+        done
+    done
+done
+
+exit
+
+for case_id in $(seq 6 7); do
+    if [ $case_id -eq 5 ]; then
+        continue
+    fi
+    for object_id in 4 7; do
+        entry_id=0
+        for table_size in 1000000 10000000; do
+            opt_num=$table_size
+
+            Run
+
+            let "entry_id++"
+        done
+    done
+done
+
+exit
+
 
 for case_id in $(seq 6 7); do
     if [ $case_id -eq 5 ]; then

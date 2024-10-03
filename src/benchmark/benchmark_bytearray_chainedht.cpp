@@ -49,4 +49,12 @@ void BenchmarkByteArrayChained::FillChainLength(uint8_t chain_length) {
     tab->FillChainLength(chain_length);
 }
 
+void BenchmarkByteArrayChained::set_chain_length(uint64_t chain_length) {
+    tab->set_chain_length(chain_length);
+}
+
+bool BenchmarkByteArrayChained::QueryNoMem(uint64_t key, uint64_t* value_ptr) {
+    return tab->QueryNoMem(key, value_ptr);
+}
+
 }  // namespace tinyptr

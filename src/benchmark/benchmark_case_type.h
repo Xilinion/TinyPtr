@@ -21,7 +21,8 @@ struct BenchmarkCaseType {
         XXHASH64_THROUGHPUT = 12,
         PRNG_THROUGHPUT = 13,
         LATENCY_VARYING_CHAINLENGTH = 14,
-        COUNT = 15
+        QUERY_NO_MEM = 15,
+        COUNT = 16
     };
 
     BenchmarkCaseType() = default;

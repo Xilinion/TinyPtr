@@ -27,9 +27,9 @@ Benchmark::RandVec::RandVec(uint64_t size)
     : ptr_vec_head(0),
       ptr_vec((size << 2)),
       key_vec_head{0, 0},
-      key_vec(
-          {std::vector<uint64_t>(size << 2), std::vector<uint64_t>(size << 2)}),
-      val_vec((size << 2)),
+      key_vec{std::vector<uint64_t>(size << 2),
+              std::vector<uint64_t>(size << 2)},
+      val_vec(size << 2),
       rgen64(rng::random_device_seed{}()),
       rgen128(rng::random_device_seed{}()),
       rand_vec_head(0),
@@ -150,6 +150,38 @@ void Benchmark::batch_query(int query_cnt, double hit_rate) {
         }
 
         obj->Query(key, ptr);
+    }
+}
+
+void Benchmark::batch_query_no_mem(int query_cnt, double hit_rate) {
+    uint32_t hit_bar;
+    if (hit_rate > 1 - kEps) {
+        hit_bar = ~(uint32_t(0));
+    } else if (hit_rate < kEps) {
+        hit_bar = 0;
+    } else {
+        hit_bar = uint32_t(floor(hit_rate * (~(uint32_t(0)))));
+    }
+
+    // we assume the all the elements in the vector are inserted
+    // and nothing happens after that
+    int key_ind_range = table_size;
+
+    while (query_cnt--) {
+        uint64_t key;
+        uint8_t ptr;
+
+        if (hit_bar >= (gen_key_hittable() & (~(uint32_t(0))))) {
+            int key_ind = rgen64() % key_ind_range;
+            key = rand_vec->key_vec[0][key_ind];
+            ptr = rand_vec->ptr_vec[key_ind];
+        } else {
+            key = gen_key_miss();
+            ptr = gen_rand_nonzero_8();
+        }
+
+        uint64_t value;
+        dynamic_cast<BenchmarkByteArrayChained*>(obj)->QueryNoMem(key, &value);
     }
 }
 
@@ -699,6 +731,61 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
 
                     output_stream << "Table Size: " << case_table_size
                                   << std::endl;
+                    output_stream << "Chain Length: " << int(chain_length)
+                                  << std::endl;
+
+                    output_stream
+                        << "CPU Time: "
+                        << int(1000.0 * (std::clock() - start) / CLOCKS_PER_SEC)
+                        << std::endl;
+
+                    output_stream << "Throughput: "
+                                  << int(double(opt_num) / double(duration) *
+                                         CLOCKS_PER_SEC)
+                                  << " ops/s" << std::endl;
+
+                    output_stream
+                        << "Latency: "
+                        << int(double(duration) / double(opt_num) /
+                               CLOCKS_PER_SEC * (1ll * 1000 * 1000 * 1000))
+                        << " ns/op" << std::endl;
+
+                    output_stream << std::endl;
+                }
+            };
+            break;
+        case BenchmarkCaseType::QUERY_NO_MEM:
+            run = [this, para]() {
+                uint8_t quot_length = 16;
+                uint64_t case_table_size = table_size >> 16;
+                while (case_table_size) {
+                    case_table_size >>= 1;
+                    quot_length++;
+                }
+                case_table_size = 1 << quot_length;
+
+                for (uint8_t chain_length = 0; chain_length < 16;
+                     chain_length = chain_length ? chain_length <<= 1 : 1,
+                             quot_length--) {
+                    obj = new BenchmarkByteArrayChained(
+                        case_table_size * 1.031, quot_length, para.bin_size);
+                    dynamic_cast<BenchmarkByteArrayChained*>(obj)
+                        ->FillChainLength(chain_length);
+
+                    dynamic_cast<BenchmarkByteArrayChained*>(obj)->set_chain_length(chain_length);
+
+                    gen_rand_vector(case_table_size);
+
+                    std::clock_t start = std::clock();
+
+                    batch_query_no_mem(opt_num, 1);
+                    // batch_query_no_mem(opt_num, 0);
+
+                    auto end = std::clock();
+                    auto duration = end - start;
+
+                    output_stream << "Query No Mem" << std::endl;
+                    output_stream << "Table Size: " << case_table_size << std::endl;
                     output_stream << "Chain Length: " << int(chain_length)
                                   << std::endl;
 
