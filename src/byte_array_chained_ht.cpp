@@ -69,6 +69,7 @@ uint64_t ByteArrayChainedHT::hash_1(uint64_t key) {
 }
 
 uint64_t ByteArrayChainedHT::hash_1_base_id(uint64_t key) {
+    key >>= kQuotientingTailLength;
     return (XXH64(&key, sizeof(uint64_t), kHashSeed1) ^ key) &
            kQuotientingTailMask;
 }
@@ -83,6 +84,7 @@ uint64_t ByteArrayChainedHT::hash_2(uint64_t key) {
 }
 
 uint64_t ByteArrayChainedHT::hash_2_bin(uint64_t key) {
+    key >>= kQuotientingTailLength;
     return (XXH64(&key, sizeof(uint64_t), kHashSeed2)) % kBinNum;
     // return 0;
 }
