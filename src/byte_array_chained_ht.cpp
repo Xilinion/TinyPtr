@@ -37,7 +37,8 @@ ByteArrayChainedHT::ByteArrayChainedHT(uint64_t size,
       kQuotKeyByteLength(kTinyPtrOffset),
       kEntryByteLength(kQuotKeyByteLength + 1 + 8),
       kBinByteLength(kBinSize * kEntryByteLength) {
-    posix_memalign(reinterpret_cast<void**>(&byte_array), 64, kBinNum * kBinSize * kEntryByteLength);
+    posix_memalign(reinterpret_cast<void**>(&byte_array), 64,
+                   kBinNum * kBinSize * kEntryByteLength);
     memset(byte_array, 0, kBinNum * kBinSize * kEntryByteLength);
 
     posix_memalign(reinterpret_cast<void**>(&base_tab), 64, kBaseTabSize);
@@ -69,8 +70,8 @@ uint64_t ByteArrayChainedHT::hash_1(uint64_t key) {
 }
 
 uint64_t ByteArrayChainedHT::hash_1_base_id(uint64_t key) {
-    key >>= kQuotientingTailLength;
-    return (XXH64(&key, sizeof(uint64_t), kHashSeed1) ^ key) &
+    uint64_t tmp = key >> kQuotientingTailLength;
+    return (XXH64(&tmp, sizeof(uint64_t), kHashSeed1) ^ key) &
            kQuotientingTailMask;
 }
 
@@ -84,7 +85,6 @@ uint64_t ByteArrayChainedHT::hash_2(uint64_t key) {
 }
 
 uint64_t ByteArrayChainedHT::hash_2_bin(uint64_t key) {
-    key >>= kQuotientingTailLength;
     return (XXH64(&key, sizeof(uint64_t), kHashSeed2)) % kBinNum;
     // return 0;
 }
@@ -172,7 +172,8 @@ bool ByteArrayChainedHT::Query(uint64_t key, uint64_t* value_ptr) {
     while (*pre_tiny_ptr != 0) {
         uint8_t* entry = ptab_query_entry_address(
             reinterpret_cast<uint64_t>(pre_tiny_ptr), *pre_tiny_ptr);
-        if ((*reinterpret_cast<uint64_t*>(entry) << kQuotientingTailLength) == key) {
+        if ((*reinterpret_cast<uint64_t*>(entry) << kQuotientingTailLength) ==
+            key) {
             *value_ptr = *reinterpret_cast<uint64_t*>(entry + kValueOffset);
             return true;
         }
