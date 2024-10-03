@@ -1,4 +1,5 @@
 #include "byte_array_chained_ht.h"
+#include <inttypes.h>
 #include <sys/types.h>
 #include <cstdint>
 #include <cstdio>
@@ -31,7 +32,7 @@ ByteArrayChainedHT::ByteArrayChainedHT(uint64_t size,
       kQuotientingTailMask((1ll << kQuotientingTailLength) - 1),
       kBaseTabSize(1 << kQuotientingTailLength),
       kBinSize(bin_size),
-      kBinNum((size + kBinSize) / kBinSize),
+      kBinNum((size + kBinSize - 1) / kBinSize),
       kTinyPtrOffset((64 + 7 - kQuotientingTailLength) >> 3),
       kValueOffset(kTinyPtrOffset + 1),
       kQuotKeyByteLength(kTinyPtrOffset),
@@ -279,7 +280,7 @@ void ByteArrayChainedHT::Free(uint64_t key) {
     bin_cnt(bin_id)--;
     uint8_t& head = bin_head(bin_id);
     cur_entry[kTinyPtrOffset] = head;
-    head = (((*pre_tiny_ptr) << 1) >> 1);
+    head = ((uint8_t)((*pre_tiny_ptr) << 1) >> 1);
     *pre_tiny_ptr = 0;
 }
 
@@ -316,8 +317,9 @@ uint32_t ByteArrayChainedHT::MaxChainLength() {
 }
 
 uint64_t* ByteArrayChainedHT::ChainLengthHistogram() {
-    uint64_t* res = new uint64_t[kBaseTabSize];
-    memset(res, 0, kBaseTabSize * sizeof(uint64_t));
+    uint64_t max_chain_length = std::max(static_cast<uint64_t>(kBaseTabSize), uint64_t(1000));
+    uint64_t* res = new uint64_t[max_chain_length];
+    memset(res, 0, max_chain_length * sizeof(uint64_t));
 
     for (int base_id = 0; base_id < kBaseTabSize; base_id++) {
         uint8_t* pre_tiny_ptr = &base_tab_ptr(base_id);
