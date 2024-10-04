@@ -896,16 +896,19 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
 
                 double load_factor = 0.9755;
 
+                double op_ratio = 0.2;
+
                 int opt_cnt = insert_delete_opt_to_overflow(
-                    table_size, para.bin_size, 0.02, load_factor);
+                        table_size, para.bin_size, op_ratio, load_factor);
 
                 auto end = std::clock();
                 auto duration = end - start;
 
                 output_stream << "Table Size: " << table_size << std::endl;
                 output_stream << "Load Factor: " << load_factor << std::endl;
-                output_stream << "Operation Ratio: " << 0.02 << std::endl;
+                output_stream << "Operation Ratio: " << op_ratio << std::endl;
                 output_stream << "Operation Capacity: " << opt_cnt << std::endl;
+                output_stream << "Op/Size Ratio: " << opt_cnt/table_size << std::endl; 
                 output_stream
                     << "CPU Time: "
                     << int(1000.0 * (std::clock() - start) / CLOCKS_PER_SEC)
