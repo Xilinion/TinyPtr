@@ -21,7 +21,7 @@ class ByteArrayChainedHT {
     const uint8_t kEntryByteLength;
     const uint16_t kBinByteLength;
 
-   private:
+   protected:
     uint8_t AutoQuotTailLength(uint64_t size);
 
    public:
@@ -29,7 +29,7 @@ class ByteArrayChainedHT {
                        uint16_t bin_size);
     ByteArrayChainedHT(uint64_t size, uint16_t bin_size);
 
-   private:
+   protected:
     uint64_t hash_1(uint64_t key);
     uint64_t hash_1_bin(uint64_t key);
     uint64_t hash_1_base_id(uint64_t key);
@@ -56,12 +56,12 @@ class ByteArrayChainedHT {
     uint64_t* ChainLengthHistogram();
     void FillChainLength(uint8_t chain_lenght);
 
-   private:
+   protected:
     uint8_t* byte_array;
     uint8_t* base_tab;
     uint8_t* bin_cnt_head;
 
-   private:
+   protected:
     uint8_t* play_entry;
     uint64_t chain_length;
 
