@@ -48,7 +48,7 @@ function Compile() {
 
 function DebugCompile() {
     cd ..
-    # rm -rf ./build
+    rm -rf ./build
     cmake -B build -DCMAKE_BUILD_TYPE=Debug | tail -n 90
     cmake --build build --config Debug -j8 | tail -n 90
     cd scripts
@@ -58,19 +58,25 @@ function DebugCompile() {
 
 function Run() {
     #####native execution
-    echo "== benchmark with perf: -o $object_id -c $case_id -e $entry_id -t $table_size -p  $opt_num -l $load_factor -h $hit_percent -b $bin_size -q $quotient_tail_length -f "$res_path" =="
-
-    perf stat -a -e task-clock,context-switches,cpu-migrations,page-faults,cycles,stalled-cycles-frontend,stalled-cycles-backend,instructions,branches,branch-misses,L1-dcache-loads,L1-dcache-load-misses,L1-dcache-prefetches,L1-icache-loads,L1-icache-load-misses,branch-load-misses,branch-loads,LLC-loads,LLC-load-misses,dTLB-loads,dTLB-load-misses,cache-misses,cache-references -o "$res_path/object_${object_id}_case_${case_id}_entry_${entry_id}_perf.txt" -- ../build/tinyptr -o $object_id -c $case_id -e $entry_id -t $table_size -p $opt_num -l $load_factor -h $hit_percent -b $bin_size -q $quotient_tail_length -f "$res_path"
 
     ../build/tinyptr -o $object_id -c $case_id -e $entry_id -t $table_size -p $opt_num -l $load_factor -h $hit_percent -b $bin_size -q $quotient_tail_length -f "$res_path"
+    
+    echo "== benchmark with perf: -o $object_id -c $case_id -e $entry_id -t $table_size -p  $opt_num -l $load_factor -h $hit_percent -b $bin_size -q $quotient_tail_length -f "$res_path" =="
 
     echo "== file path: "$res_path/object_${object_id}_case_${case_id}_entry_${entry_id}_.txt""
 }
 
-function FlameGraph() {
+function RunPerf() {
     #####native execution
+    perf stat -a -e task-clock,context-switches,cpu-migrations,page-faults,cycles,stalled-cycles-frontend,stalled-cycles-backend,instructions,branches,branch-misses,L1-dcache-loads,L1-dcache-load-misses,L1-dcache-prefetches,L1-icache-loads,L1-icache-load-misses,branch-load-misses,branch-loads,LLC-loads,LLC-load-misses,dTLB-loads,dTLB-load-misses,cache-misses,cache-references -o "$res_path/object_${object_id}_case_${case_id}_entry_${entry_id}_perf.txt" -- ../build/tinyptr -o $object_id -c $case_id -e $entry_id -t $table_size -p $opt_num -l $load_factor -h $hit_percent -b $bin_size -q $quotient_tail_length -f "$res_path"
+
     echo "== benchmark with perf: -o $object_id -c $case_id -e $entry_id -t $table_size -p  $opt_num -l $load_factor -h $hit_percent -b $bin_size -q $quotient_tail_length -f "$res_path" =="
 
+    echo "== file path: "$res_path/object_${object_id}_case_${case_id}_entry_${entry_id}_perf.txt""
+}
+
+function FlameGraph() {
+    #####native execution
     perf record -F 499 -a -g -- ../build/tinyptr -o $object_id -c $case_id -e $entry_id -t $table_size -p $opt_num -l $load_factor -h $hit_percent -b $bin_size -q $quotient_tail_length -f "$res_path"
 
     perf script >"$res_path/out.perf"
@@ -78,6 +84,10 @@ function FlameGraph() {
     ../scripts/FlameGraph/stackcollapse-perf.pl "$res_path/out.perf" >"$res_path/out.folded"
 
     ../scripts/FlameGraph/flamegraph.pl "$res_path/out.folded" >"$res_path/${object_id}_${case_id}_${entry_id}_kernel.svg"
+
+    echo "== benchmark with perf: -o $object_id -c $case_id -e $entry_id -t $table_size -p  $opt_num -l $load_factor -h $hit_percent -b $bin_size -q $quotient_tail_length -f "$res_path" =="
+
+    echo "== file path: "$res_path/${object_id}_${case_id}_${entry_id}_kernel.svg""
 }
 
 function FlameGraphEntry() {
@@ -94,11 +104,8 @@ function FlameGraphEntry() {
 }
 
 Init
-# Compile
-DebugCompile
-
-# exit
-
+Compile
+# DebugCompile
 
 table_size=1
 opt_num=0
@@ -106,52 +113,6 @@ load_factor=0
 hit_percent=0
 quotient_tail_length=0
 bin_size=127
-
-
-for case_id in 6; do
-    for object_id in 2; do
-        entry_id=0
-        for table_size in 1000000 10000000; do
-            opt_num=$table_size
-            Run
-            let "entry_id++"
-        done
-    done
-done
-
-exit
-
-for case_id in 15; do
-    for object_id in 4; do
-        entry_id=0
-        for table_size in 1000000 10000000; do
-            opt_num=$table_size
-            Run
-            let "entry_id++"
-        done
-    done
-done
-
-exit
-
-for case_id in $(seq 6 7); do
-    if [ $case_id -eq 5 ]; then
-        continue
-    fi
-    for object_id in 4 7; do
-        entry_id=0
-        for table_size in 1000000 10000000; do
-            opt_num=$table_size
-
-            Run
-
-            let "entry_id++"
-        done
-    done
-done
-
-exit
-
 
 for case_id in $(seq 6 7); do
     if [ $case_id -eq 5 ]; then
