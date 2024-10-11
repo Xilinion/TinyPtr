@@ -15,7 +15,8 @@ struct BenchmarkObjectType {
         CLHT = 5,
         CUCKOO = 6,
         ICEBERG = 7,
-        COUNT = 8
+        FPTPCHAINEDHT = 8,
+        COUNT = 9
     };
 
     BenchmarkObjectType(const BenchmarkObjectType& b) = default;
