@@ -18,6 +18,7 @@
 #include "benchmark_cli_para.h"
 #include "benchmark_cuckoo.h"
 #include "benchmark_dereftab64.h"
+#include "benchmark_fp_tp_chainedht.h"
 #include "benchmark_iceberg.h"
 #include "benchmark_intarray64.h"
 #include "benchmark_object_64.h"
@@ -333,6 +334,9 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
                                                 para.quotienting_tail_length,
                                                 para.bin_size);
             break;
+        case BenchmarkObjectType::FPTPCHAINEDHT:
+            obj = new BenchmarkFPTPChained(table_size * 1.031, para.bin_size);
+            break;
         case BenchmarkObjectType::CLHT:
             obj = new BenchmarkCLHT(table_size);
             break;
@@ -355,6 +359,9 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
                     obj = new BenchmarkByteArrayChained(
                         table_size, para.quotienting_tail_length,
                         para.bin_size);
+                } else if (para.object_id ==
+                           BenchmarkObjectType::FPTPCHAINEDHT) {
+                    obj = new BenchmarkFPTPChained(table_size, para.bin_size);
                 }
                 std::clock_t start = std::clock();
 
@@ -891,15 +898,18 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
                     obj = new BenchmarkByteArrayChained(
                         table_size, para.quotienting_tail_length,
                         para.bin_size);
+                } else if (para.object_id ==
+                           BenchmarkObjectType::FPTPCHAINEDHT) {
+                    obj = new BenchmarkFPTPChained(table_size, para.bin_size);
                 }
                 std::clock_t start = std::clock();
 
-                double load_factor = 0.9755;
+                double load_factor = 0.9355;
 
-                double op_ratio = 0.2;
+                double op_ratio = 0.000002;
 
                 int opt_cnt = insert_delete_opt_to_overflow(
-                        table_size, para.bin_size, op_ratio, load_factor);
+                    table_size, para.bin_size, op_ratio, load_factor);
 
                 auto end = std::clock();
                 auto duration = end - start;
@@ -908,7 +918,8 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
                 output_stream << "Load Factor: " << load_factor << std::endl;
                 output_stream << "Operation Ratio: " << op_ratio << std::endl;
                 output_stream << "Operation Capacity: " << opt_cnt << std::endl;
-                output_stream << "Op/Size Ratio: " << opt_cnt/table_size << std::endl; 
+                output_stream << "Op/Size Ratio: " << opt_cnt / table_size
+                              << std::endl;
                 output_stream
                     << "CPU Time: "
                     << int(1000.0 * (std::clock() - start) / CLOCKS_PER_SEC)
