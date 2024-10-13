@@ -335,7 +335,7 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
                                                 para.bin_size);
             break;
         case BenchmarkObjectType::BINAWARECHAINEDHT:
-            obj = new BenchmarkFPTPChained(table_size * 1.031, para.bin_size);
+            obj = new BenchmarkBinAwareChained(table_size * 1.031, para.bin_size);
             break;
         case BenchmarkObjectType::CLHT:
             obj = new BenchmarkCLHT(table_size);
@@ -361,7 +361,7 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
                         para.bin_size);
                 } else if (para.object_id ==
                            BenchmarkObjectType::BINAWARECHAINEDHT) {
-                    obj = new BenchmarkFPTPChained(table_size, para.bin_size);
+                    obj = new BenchmarkBinAwareChained(table_size, para.bin_size);
                 }
                 std::clock_t start = std::clock();
 
@@ -900,7 +900,7 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
                         para.bin_size);
                 } else if (para.object_id ==
                            BenchmarkObjectType::BINAWARECHAINEDHT) {
-                    obj = new BenchmarkFPTPChained(table_size, para.bin_size);
+                    obj = new BenchmarkBinAwareChained(table_size, para.bin_size);
                 }
                 std::clock_t start = std::clock();
 
