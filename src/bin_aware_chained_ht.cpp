@@ -1,18 +1,22 @@
 #include "bin_aware_chained_ht.h"
+#include <cassert>
 #include <cstdint>
 #include <cstring>
+#include <iostream>
 
 namespace tinyptr {
 
 BinAwareChainedHT::BinAwareChainedHT(uint64_t size, uint16_t bin_size,
-                             uint8_t double_slot_num)
-    : ByteArrayChainedHT(size, bin_size), kDoubleSlotSize(double_slot_num) {
+                                     uint8_t double_slot_num)
+    : ByteArrayChainedHT(size, 0, bin_size), kDoubleSlotSize(double_slot_num) {
     head_double_slot = new uint8_t[kBinNum];
     memset(head_double_slot, 0, kBinNum);
 
+    assert(((kDoubleSlotSize & 1) == 0));
+
     for (uint64_t i = 0, ptr_offset = kTinyPtrOffset; i < kBinNum;
          ptr_offset = kTinyPtrOffset + (++i) * kBinByteLength) {
-        for (uint8_t j = 0; j < kDoubleSlotSize; j += 2) {
+        for (uint8_t j = 0; j < kDoubleSlotSize - 2; j += 2) {
             byte_array[ptr_offset] = j + 3;
             ptr_offset += kEntryByteLength;
             // the second entry in the double slot points to nullptr
@@ -21,12 +25,14 @@ BinAwareChainedHT::BinAwareChainedHT(uint64_t size, uint16_t bin_size,
             byte_array[ptr_offset] = 0;
             ptr_offset += kEntryByteLength;
         }
-        // the last entry in the bin points to null
-        byte_array[ptr_offset] = 0;
-        ptr_offset += kEntryByteLength;
-        byte_array[ptr_offset] = 0;
+        if (kDoubleSlotSize) {
+            // the last entry in the bin points to null
+            byte_array[ptr_offset] = 0;
+            ptr_offset += kEntryByteLength;
+            byte_array[ptr_offset] = 0;
+            head_double_slot[i] = 1;
+        }
 
-        head_double_slot[i] = 0;
         bin_cnt_head[(i << 1) | 1] = kDoubleSlotSize + 1;
     }
 }
@@ -36,7 +42,7 @@ uint8_t& BinAwareChainedHT::bin_head_double_slot(uint64_t bin_id) {
 }
 
 uint8_t* BinAwareChainedHT::ptab_insert_entry_address(uint64_t key,
-                                                  uint8_t pre_tiny_ptr) {
+                                                      uint8_t pre_tiny_ptr) {
     uint64_t bin1 = hash_1_bin(key);
     uint64_t bin2 = hash_2_bin(key);
     uint8_t flag =
@@ -64,7 +70,7 @@ void BinAwareChainedHT::bin_prefetch(uintptr_t key, uint8_t ptr) {
     uint8_t* bin_front =
         byte_array + (flag ? hash_2_bin(key) : hash_1_bin(key)) * kBinSize *
                          kEntryByteLength;
-    uint8_t* bin_back = bin_front + kBinSize * kEntryByteLength;
+    uint8_t* bin_back = bin_front + kBinByteLength;
     for (uint8_t *p = bin_front, i = 0; i < 4; p += 64, i++) {
         _mm_prefetch(p, _MM_HINT_T0);
     }
@@ -82,8 +88,8 @@ bool BinAwareChainedHT::Insert(uint64_t key, uint64_t value) {
 
     if (0 == *base_tiny_ptr) {
 
-        uint64_t bin1 = hash_1_bin(key);
-        uint64_t bin2 = hash_2_bin(key);
+        uint64_t bin1 = hash_1_bin(base_intptr);
+        uint64_t bin2 = hash_2_bin(base_intptr);
         uint8_t flag = bin_cnt(bin1) > bin_cnt(bin2);
         uint64_t bin_id = flag ? bin2 : bin1;
 
@@ -91,6 +97,7 @@ bool BinAwareChainedHT::Insert(uint64_t key, uint64_t value) {
         if (cnt == kBinSize) {
             return false;
         }
+        cnt++;
 
         uint8_t& head = bin_head(bin_id);
         if (head == 0) {
@@ -100,22 +107,20 @@ bool BinAwareChainedHT::Insert(uint64_t key, uint64_t value) {
             aiming_entry =
                 byte_array +
                 (bin_id * kBinSize + head_double_slot - 1) * kEntryByteLength;
-            // saving the tinyptr to itself at the beginning
+
             *pre_tiny_ptr = head_double_slot | (flag << 7);
             head_double_slot = aiming_entry[kTinyPtrOffset];
         } else {
             aiming_entry =
                 byte_array + (bin_id * kBinSize + head - 1) * kEntryByteLength;
-            // saving the tinyptr to itself at the beginning
+
             *pre_tiny_ptr = head | (flag << 7);
             head = aiming_entry[kTinyPtrOffset];
         }
 
-        cnt++;
-
     } else {
-        uint64_t bin1 = hash_1_bin(key);
-        uint64_t bin2 = hash_2_bin(key);
+        uint64_t bin1 = hash_1_bin(base_intptr);
+        uint64_t bin2 = hash_2_bin(base_intptr);
         uint8_t flag = (*base_tiny_ptr) >> 7;
         uint64_t bin_id = flag ? bin2 : bin1;
 
@@ -123,8 +128,9 @@ bool BinAwareChainedHT::Insert(uint64_t key, uint64_t value) {
         if (cnt == kBinSize) {
             return false;
         }
+        cnt++;
 
-        uint8_t* bin_begin = byte_array + bin_id * kBinSize * kEntryByteLength;
+        uint8_t* bin_begin = byte_array + bin_id * kBinByteLength;
 
         uint8_t odd_last = 0;
         uint8_t* pre_pre_tiny_ptr = nullptr;
@@ -140,6 +146,9 @@ bool BinAwareChainedHT::Insert(uint64_t key, uint64_t value) {
         uint8_t& head = bin_head(bin_id);
 
         if (odd_last && bin_head_double_slot(bin_id)) {
+
+            // std::cout << "bin_head_double_slot(bin_id): " << int(bin_head_double_slot(bin_id)) << std::endl;
+
             uint8_t& head_double_slot = bin_head_double_slot(bin_id);
 
             // extract original single slot to free list
@@ -153,6 +162,11 @@ bool BinAwareChainedHT::Insert(uint64_t key, uint64_t value) {
             uint8_t* double_slot_begin =
                 byte_array +
                 (bin_id * kBinSize + head_double_slot - 1) * kEntryByteLength;
+            aiming_entry = double_slot_begin + kEntryByteLength;
+
+            // set head_double_slot
+            aiming_entry[kTinyPtrOffset] = head_double_slot;
+            head_double_slot = double_slot_begin[kTinyPtrOffset];
 
             // assuming little endian
             // copy previous single slot to double slot
@@ -167,9 +181,8 @@ bool BinAwareChainedHT::Insert(uint64_t key, uint64_t value) {
 
             // set first entry of double slot
             pre_tiny_ptr = double_slot_begin + kTinyPtrOffset;
-            *pre_tiny_ptr = (head_double_slot + 1) | kInDoubleSlotMask;
-
-            aiming_entry = double_slot_begin + kEntryByteLength;
+            *pre_tiny_ptr =
+                (aiming_entry[kTinyPtrOffset] + 1) | kInDoubleSlotMask;
 
             // special setting of end because of kInDoubleSlotMask
             // assuming little endian
@@ -181,25 +194,24 @@ bool BinAwareChainedHT::Insert(uint64_t key, uint64_t value) {
             return true;
 
         } else if (head == 0) {
+            // std::cout << "head == 0" << "   " << int(cnt) << std::endl;
             uint8_t& head_double_slot = bin_head_double_slot(bin_id);
             head = head_double_slot + 1;
 
             aiming_entry =
                 byte_array +
                 (bin_id * kBinSize + head_double_slot - 1) * kEntryByteLength;
-            // saving the tinyptr to itself at the beginning
+
             *pre_tiny_ptr =
                 head_double_slot | ((*pre_tiny_ptr) & kInDoubleSlotMask);
             head_double_slot = aiming_entry[kTinyPtrOffset];
         } else {
             aiming_entry =
                 byte_array + (bin_id * kBinSize + head - 1) * kEntryByteLength;
-            // saving the tinyptr to itself at the beginning
+
             *pre_tiny_ptr = head | ((*pre_tiny_ptr) & kInDoubleSlotMask);
             head = aiming_entry[kTinyPtrOffset];
         }
-
-        cnt++;
     }
 
     // assuming little endian
@@ -225,10 +237,10 @@ bool BinAwareChainedHT::Query(uint64_t key, uint64_t* value_ptr) {
     key >>= kQuotientingTailLength;
     key <<= kQuotientingTailLength;
 
-    uint8_t* bin_begin =
-        byte_array + (((*base_tiny_ptr) & kSecondHashMask) ? hash_2_bin(key)
-                                                           : hash_1_bin(key)) *
-                         kBinSize * kEntryByteLength;
+    uint8_t* bin_begin = byte_array + (((*base_tiny_ptr) & kSecondHashMask)
+                                           ? hash_2_bin(base_intptr)
+                                           : hash_1_bin(base_intptr)) *
+                                          kBinByteLength;
 
     while ((kInBinTinyPtrMask & (*pre_tiny_ptr)) != 0) {
         uint8_t* entry =
@@ -316,6 +328,88 @@ void BinAwareChainedHT::Free(uint64_t key) {
     cur_entry[kTinyPtrOffset] = head;
     head = ((uint8_t)((*pre_tiny_ptr) << 1) >> 1);
     *pre_tiny_ptr = 0;
+}
+
+double BinAwareChainedHT::AvgChainLength() {
+    double sum = 0;
+    for (int base_id = 0; base_id < kBaseTabSize; base_id++) {
+        uint8_t* base_tiny_ptr = &base_tab_ptr(base_id);
+        uint8_t* pre_tiny_ptr = base_tiny_ptr;
+        uintptr_t base_intptr = reinterpret_cast<uintptr_t>(pre_tiny_ptr);
+
+        uint8_t* bin_begin = byte_array + (((*base_tiny_ptr) & kSecondHashMask)
+                                               ? hash_2_bin(base_intptr)
+                                               : hash_1_bin(base_intptr)) *
+                                              kBinByteLength;
+
+        while ((kInBinTinyPtrMask & (*pre_tiny_ptr)) != 0) {
+            uint8_t* entry =
+                bin_begin +
+                kEntryByteLength * (((*pre_tiny_ptr) & kInBinTinyPtrMask) - 1);
+            pre_tiny_ptr = entry + kTinyPtrOffset;
+            sum++;
+        }
+    }
+
+    return sum / kBaseTabSize;
+}
+
+uint32_t BinAwareChainedHT::MaxChainLength() {
+    uint32_t max = 0;
+    for (int base_id = 0; base_id < kBaseTabSize; base_id++) {
+        uint32_t cnt = 0;
+
+        uint8_t* base_tiny_ptr = &base_tab_ptr(base_id);
+        uint8_t* pre_tiny_ptr = base_tiny_ptr;
+        uintptr_t base_intptr = reinterpret_cast<uintptr_t>(pre_tiny_ptr);
+
+        uint8_t* bin_begin = byte_array + (((*base_tiny_ptr) & kSecondHashMask)
+                                               ? hash_2_bin(base_intptr)
+                                               : hash_1_bin(base_intptr)) *
+                                              kBinByteLength;
+
+        while ((kInBinTinyPtrMask & (*pre_tiny_ptr)) != 0) {
+            uint8_t* entry =
+                bin_begin +
+                kEntryByteLength * (((*pre_tiny_ptr) & kInBinTinyPtrMask) - 1);
+            pre_tiny_ptr = entry + kTinyPtrOffset;
+            cnt++;
+        }
+        max = cnt > max ? cnt : max;
+    }
+
+    return max;
+}
+
+uint64_t* BinAwareChainedHT::ChainLengthHistogram() {
+    uint64_t max_chain_length =
+        std::max(static_cast<uint64_t>(kBaseTabSize), uint64_t(1000));
+    uint64_t* res = new uint64_t[max_chain_length];
+    memset(res, 0, max_chain_length * sizeof(uint64_t));
+
+    for (int base_id = 0; base_id < kBaseTabSize; base_id++) {
+        uint32_t cnt = 0;
+
+        uint8_t* base_tiny_ptr = &base_tab_ptr(base_id);
+        uint8_t* pre_tiny_ptr = base_tiny_ptr;
+        uintptr_t base_intptr = reinterpret_cast<uintptr_t>(pre_tiny_ptr);
+
+        uint8_t* bin_begin = byte_array + (((*base_tiny_ptr) & kSecondHashMask)
+                                               ? hash_2_bin(base_intptr)
+                                               : hash_1_bin(base_intptr)) *
+                                              kBinByteLength;
+
+        while ((kInBinTinyPtrMask & (*pre_tiny_ptr)) != 0) {
+            uint8_t* entry =
+                bin_begin +
+                kEntryByteLength * (((*pre_tiny_ptr) & kInBinTinyPtrMask) - 1);
+            pre_tiny_ptr = entry + kTinyPtrOffset;
+            cnt++;
+        }
+        res[cnt]++;
+    }
+
+    return res;
 }
 
 }  // namespace tinyptr
