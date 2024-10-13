@@ -16,6 +16,8 @@ class BinAwareChainedHT : public ByteArrayChainedHT {
     BinAwareChainedHT(uint64_t size, uint16_t bin_size,
                   uint8_t double_slot_num = 32);
 
+    ~BinAwareChainedHT() = default;
+
    private:
     uint8_t* ptab_insert_entry_address(uint64_t key, uint8_t pre_tiny_ptr);
     void bin_prefetch(uintptr_t key, uint8_t ptr);
