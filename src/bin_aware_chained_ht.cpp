@@ -1,10 +1,10 @@
-#include "fp_tp_chained_ht.h"
+#include "bin_aware_chained_ht.h"
 #include <cstdint>
 #include <cstring>
 
 namespace tinyptr {
 
-FPTPChainedHT::FPTPChainedHT(uint64_t size, uint16_t bin_size,
+BinAwareChainedHT::BinAwareChainedHT(uint64_t size, uint16_t bin_size,
                              uint8_t double_slot_num)
     : ByteArrayChainedHT(size, bin_size), kDoubleSlotSize(double_slot_num) {
     head_double_slot = new uint8_t[kBinNum];
@@ -31,11 +31,11 @@ FPTPChainedHT::FPTPChainedHT(uint64_t size, uint16_t bin_size,
     }
 }
 
-uint8_t& FPTPChainedHT::bin_head_double_slot(uint64_t bin_id) {
+uint8_t& BinAwareChainedHT::bin_head_double_slot(uint64_t bin_id) {
     return head_double_slot[bin_id];
 }
 
-uint8_t* FPTPChainedHT::ptab_insert_entry_address(uint64_t key,
+uint8_t* BinAwareChainedHT::ptab_insert_entry_address(uint64_t key,
                                                   uint8_t pre_tiny_ptr) {
     uint64_t bin1 = hash_1_bin(key);
     uint64_t bin2 = hash_2_bin(key);
@@ -58,7 +58,7 @@ uint8_t* FPTPChainedHT::ptab_insert_entry_address(uint64_t key,
     }
 }
 
-void FPTPChainedHT::bin_prefetch(uintptr_t key, uint8_t ptr) {
+void BinAwareChainedHT::bin_prefetch(uintptr_t key, uint8_t ptr) {
     uint8_t flag = (ptr >= (1 << 7));
     ptr = ptr & ((1 << 7) - 1);
     uint8_t* bin_front =
@@ -70,7 +70,7 @@ void FPTPChainedHT::bin_prefetch(uintptr_t key, uint8_t ptr) {
     }
 }
 
-bool FPTPChainedHT::Insert(uint64_t key, uint64_t value) {
+bool BinAwareChainedHT::Insert(uint64_t key, uint64_t value) {
 
     uint64_t base_id = hash_1_base_id(key);
     // leave the redundant variable for readibility
@@ -210,7 +210,7 @@ bool FPTPChainedHT::Insert(uint64_t key, uint64_t value) {
     return true;
 }
 
-bool FPTPChainedHT::Query(uint64_t key, uint64_t* value_ptr) {
+bool BinAwareChainedHT::Query(uint64_t key, uint64_t* value_ptr) {
     uint64_t base_id = hash_1_base_id(key);
     // leave the redundant variable for readibility
     uint8_t* base_tiny_ptr = &base_tab_ptr(base_id);
@@ -245,7 +245,7 @@ bool FPTPChainedHT::Query(uint64_t key, uint64_t* value_ptr) {
     return false;
 }
 
-bool FPTPChainedHT::Update(uint64_t key, uint64_t value) {
+bool BinAwareChainedHT::Update(uint64_t key, uint64_t value) {
     uint64_t base_id = hash_1_base_id(key);
     uint8_t* pre_tiny_ptr = &base_tab_ptr(base_id);
     uintptr_t base_intptr = reinterpret_cast<uintptr_t>(pre_tiny_ptr);
@@ -266,7 +266,7 @@ bool FPTPChainedHT::Update(uint64_t key, uint64_t value) {
     return false;
 }
 
-void FPTPChainedHT::Free(uint64_t key) {
+void BinAwareChainedHT::Free(uint64_t key) {
     uint64_t base_id = hash_1_base_id(key);
     uint8_t* pre_tiny_ptr = &base_tab_ptr(base_id);
     uint8_t* cur_tiny_ptr = nullptr;

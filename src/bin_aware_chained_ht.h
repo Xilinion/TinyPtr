@@ -5,7 +5,7 @@
 
 namespace tinyptr {
 
-class FPTPChainedHT : public ByteArrayChainedHT {
+class BinAwareChainedHT : public ByteArrayChainedHT {
    public:
     const uint8_t kDoubleSlotSize;
     const uint8_t kInBinTinyPtrMask = 0x7f;
@@ -13,7 +13,7 @@ class FPTPChainedHT : public ByteArrayChainedHT {
     const uint8_t kSecondHashMask = 0x80;
 
    public:
-    FPTPChainedHT(uint64_t size, uint16_t bin_size,
+    BinAwareChainedHT(uint64_t size, uint16_t bin_size,
                   uint8_t double_slot_num = 32);
 
    private:

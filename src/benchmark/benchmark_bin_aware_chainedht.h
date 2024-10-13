@@ -2,7 +2,7 @@
 
 #include <cmath>
 #include <cstdint>
-#include "../fp_tp_chained_ht.h"
+#include "../bin_aware_chained_ht.h"
 #include "benchmark_object_64.h"
 #include "benchmark_object_type.h"
 
@@ -31,7 +31,7 @@ class BenchmarkFPTPChained : public BenchmarkObject64 {
     bool QueryNoMem(uint64_t key, uint64_t* value_ptr);
 
    private:
-    FPTPChainedHT* tab;
+    BinAwareChainedHT* tab;
 };
 
 }  // namespace tinyptr

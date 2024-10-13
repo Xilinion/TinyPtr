@@ -15,7 +15,7 @@ struct BenchmarkObjectType {
         CLHT = 5,
         CUCKOO = 6,
         ICEBERG = 7,
-        FPTPCHAINEDHT = 8,
+        BINAWARECHAINEDHT = 8,
         COUNT = 9
     };
 

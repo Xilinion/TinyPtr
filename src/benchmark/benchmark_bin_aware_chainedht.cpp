@@ -1,14 +1,14 @@
-#include "benchmark_fp_tp_chainedht.h"
+#include "benchmark_bin_aware_chainedht.h"
 
 namespace tinyptr {
 
 const BenchmarkObjectType BenchmarkFPTPChained::TYPE =
-    BenchmarkObjectType::FPTPCHAINEDHT;
+    BenchmarkObjectType::BINAWARECHAINEDHT;
 
 BenchmarkFPTPChained::BenchmarkFPTPChained(int n, uint16_t bin_size,
                                            uint8_t double_slot_num)
     : BenchmarkObject64(TYPE) {
-    tab = new FPTPChainedHT(n, bin_size, double_slot_num);
+    tab = new BinAwareChainedHT(n, bin_size, double_slot_num);
 }
 
 uint8_t BenchmarkFPTPChained::Insert(uint64_t key, uint64_t value) {

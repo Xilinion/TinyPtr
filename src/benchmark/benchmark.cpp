@@ -18,7 +18,7 @@
 #include "benchmark_cli_para.h"
 #include "benchmark_cuckoo.h"
 #include "benchmark_dereftab64.h"
-#include "benchmark_fp_tp_chainedht.h"
+#include "benchmark_bin_aware_chainedht.h"
 #include "benchmark_iceberg.h"
 #include "benchmark_intarray64.h"
 #include "benchmark_object_64.h"
@@ -334,7 +334,7 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
                                                 para.quotienting_tail_length,
                                                 para.bin_size);
             break;
-        case BenchmarkObjectType::FPTPCHAINEDHT:
+        case BenchmarkObjectType::BINAWARECHAINEDHT:
             obj = new BenchmarkFPTPChained(table_size * 1.031, para.bin_size);
             break;
         case BenchmarkObjectType::CLHT:
@@ -360,7 +360,7 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
                         table_size, para.quotienting_tail_length,
                         para.bin_size);
                 } else if (para.object_id ==
-                           BenchmarkObjectType::FPTPCHAINEDHT) {
+                           BenchmarkObjectType::BINAWARECHAINEDHT) {
                     obj = new BenchmarkFPTPChained(table_size, para.bin_size);
                 }
                 std::clock_t start = std::clock();
@@ -899,7 +899,7 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
                         table_size, para.quotienting_tail_length,
                         para.bin_size);
                 } else if (para.object_id ==
-                           BenchmarkObjectType::FPTPCHAINEDHT) {
+                           BenchmarkObjectType::BINAWARECHAINEDHT) {
                     obj = new BenchmarkFPTPChained(table_size, para.bin_size);
                 }
                 std::clock_t start = std::clock();
