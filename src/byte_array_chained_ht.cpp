@@ -317,7 +317,8 @@ uint32_t ByteArrayChainedHT::MaxChainLength() {
 }
 
 uint64_t* ByteArrayChainedHT::ChainLengthHistogram() {
-    uint64_t max_chain_length = std::max(static_cast<uint64_t>(kBaseTabSize), uint64_t(1000));
+    uint64_t max_chain_length =
+        std::max(static_cast<uint64_t>(kBaseTabSize), uint64_t(1000));
     uint64_t* res = new uint64_t[max_chain_length];
     memset(res, 0, max_chain_length * sizeof(uint64_t));
 
