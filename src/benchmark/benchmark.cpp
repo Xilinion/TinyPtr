@@ -12,16 +12,17 @@
 #include <set>
 #include "../chained_ht_64.h"
 #include "../dereference_table_64.h"
+#include "benchmark_bin_aware_chainedht.h"
 #include "benchmark_bytearray_chainedht.h"
 #include "benchmark_chainedht64.h"
 #include "benchmark_clht.h"
 #include "benchmark_cli_para.h"
 #include "benchmark_cuckoo.h"
 #include "benchmark_dereftab64.h"
-#include "benchmark_bin_aware_chainedht.h"
 #include "benchmark_iceberg.h"
 #include "benchmark_intarray64.h"
 #include "benchmark_object_64.h"
+#include "benchmark_same_bin_chainedht.h"
 #include "benchmark_std_unordered_map_64.h"
 
 namespace tinyptr {
@@ -335,7 +336,12 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
                                                 para.bin_size);
             break;
         case BenchmarkObjectType::BINAWARECHAINEDHT:
-            obj = new BenchmarkBinAwareChained(table_size * 1.031, para.bin_size);
+            obj =
+                new BenchmarkBinAwareChained(table_size * 1.031, para.bin_size);
+            break;
+        case BenchmarkObjectType::SAMEBINCHAINEDHT:
+            obj =
+                new BenchmarkSameBinChained(table_size * 1.031, para.bin_size);
             break;
         case BenchmarkObjectType::CLHT:
             obj = new BenchmarkCLHT(table_size);
@@ -361,7 +367,12 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
                         para.bin_size);
                 } else if (para.object_id ==
                            BenchmarkObjectType::BINAWARECHAINEDHT) {
-                    obj = new BenchmarkBinAwareChained(table_size, para.bin_size);
+                    obj =
+                        new BenchmarkBinAwareChained(table_size, para.bin_size);
+                } else if (para.object_id ==
+                           BenchmarkObjectType::SAMEBINCHAINEDHT) {
+                    obj =
+                        new BenchmarkSameBinChained(table_size, para.bin_size);
                 }
                 std::clock_t start = std::clock();
 
@@ -392,21 +403,21 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
                            CLOCKS_PER_SEC * (1ll * 1000 * 1000 * 1000))
                     << " ns/op" << std::endl;
 
-                if (para.object_id == BenchmarkObjectType::BYTEARRAYCHAINEDHT || para.object_id == BenchmarkObjectType::BINAWARECHAINEDHT) {
-                    output_stream
-                        << "Avg Chain Length: "
-                        << dynamic_cast<BenchmarkChained*>(obj)
-                               ->AvgChainLength()
-                        << std::endl;
+                if (para.object_id == BenchmarkObjectType::BYTEARRAYCHAINEDHT ||
+                    para.object_id == BenchmarkObjectType::BINAWARECHAINEDHT ||
+                    para.object_id == BenchmarkObjectType::SAMEBINCHAINEDHT) {
+                    output_stream << "Avg Chain Length: "
+                                  << dynamic_cast<BenchmarkChained*>(obj)
+                                         ->AvgChainLength()
+                                  << std::endl;
 
                     uint32_t max_chain_length;
 
-                    output_stream
-                        << "Max Chain Length: "
-                        << (max_chain_length =
-                                dynamic_cast<BenchmarkChained*>(obj)
-                                    ->MaxChainLength())
-                        << std::endl;
+                    output_stream << "Max Chain Length: "
+                                  << (max_chain_length =
+                                          dynamic_cast<BenchmarkChained*>(obj)
+                                              ->MaxChainLength())
+                                  << std::endl;
 
                     auto hist = dynamic_cast<BenchmarkChained*>(obj)
                                     ->ChainLengthHistogram();
@@ -900,7 +911,12 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
                         para.bin_size);
                 } else if (para.object_id ==
                            BenchmarkObjectType::BINAWARECHAINEDHT) {
-                    obj = new BenchmarkBinAwareChained(table_size, para.bin_size);
+                    obj =
+                        new BenchmarkBinAwareChained(table_size, para.bin_size);
+                } else if (para.object_id ==
+                           BenchmarkObjectType::SAMEBINCHAINEDHT) {
+                    obj =
+                        new BenchmarkSameBinChained(table_size, para.bin_size);
                 }
                 std::clock_t start = std::clock();
 
@@ -936,23 +952,23 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
                            (1ll * 1000 * 1000 * 1000))
                     << " ns/op" << std::endl;
 
-                if (para.object_id == BenchmarkObjectType::BYTEARRAYCHAINEDHT) {
-                    output_stream
-                        << "Avg Chain Length: "
-                        << dynamic_cast<BenchmarkByteArrayChained*>(obj)
-                               ->AvgChainLength()
-                        << std::endl;
+                if (para.object_id == BenchmarkObjectType::BYTEARRAYCHAINEDHT ||
+                    para.object_id == BenchmarkObjectType::SAMEBINCHAINEDHT ||
+                    para.object_id == BenchmarkObjectType::BINAWARECHAINEDHT) {
+                    output_stream << "Avg Chain Length: "
+                                  << dynamic_cast<BenchmarkChained*>(obj)
+                                         ->AvgChainLength()
+                                  << std::endl;
 
                     uint32_t max_chain_length;
 
-                    output_stream
-                        << "Max Chain Length: "
-                        << (max_chain_length =
-                                dynamic_cast<BenchmarkByteArrayChained*>(obj)
-                                    ->MaxChainLength())
-                        << std::endl;
+                    output_stream << "Max Chain Length: "
+                                  << (max_chain_length =
+                                          dynamic_cast<BenchmarkChained*>(obj)
+                                              ->MaxChainLength())
+                                  << std::endl;
 
-                    auto hist = dynamic_cast<BenchmarkByteArrayChained*>(obj)
+                    auto hist = dynamic_cast<BenchmarkChained*>(obj)
                                     ->ChainLengthHistogram();
                     output_stream << "Chain Length Histogram: " << std::endl;
                     output_stream << "\tLength\t\tCount" << std::endl;

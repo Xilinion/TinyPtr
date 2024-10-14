@@ -1,4 +1,6 @@
 #include "same_bin_chained_ht.h"
+#include <cassert>
+#include <cstdint>
 #include <cstring>
 
 namespace tinyptr {
@@ -7,7 +9,7 @@ SameBinChainedHT::SameBinChainedHT(uint64_t size, uint16_t bin_size)
     : ByteArrayChainedHT(size, bin_size) {}
 
 uint8_t* SameBinChainedHT::ptab_insert_entry_address(uint64_t key,
-                                                      uint8_t pre_tiny_ptr) {
+                                                     uint8_t pre_tiny_ptr) {
     uint64_t bin1 = hash_1_bin(key);
     uint64_t bin2 = hash_2_bin(key);
     uint8_t flag =
@@ -29,8 +31,7 @@ uint8_t* SameBinChainedHT::ptab_insert_entry_address(uint64_t key,
     }
 }
 
-uint8_t* SameBinChainedHT::ptab_query_entry_address(uint64_t key,
-                                                      uint8_t ptr) {
+uint8_t* SameBinChainedHT::ptab_query_entry_address(uint64_t key, uint8_t ptr) {
     uint8_t flag = (ptr >= (1 << 7));
     ptr = ptr & ((1 << 7) - 1);
     if (flag) {
@@ -55,8 +56,8 @@ bool SameBinChainedHT::Insert(uint64_t key, uint64_t value) {
         pre_tiny_ptr = entry + kTinyPtrOffset;
     }
 
-    uint8_t* entry =
-        ptab_insert_entry_address(reinterpret_cast<uint64_t>(base_intptr), *base_tiny_ptr);
+    uint8_t* entry = ptab_insert_entry_address(
+        reinterpret_cast<uint64_t>(base_intptr), *base_tiny_ptr);
 
     if (entry != nullptr) {
         *pre_tiny_ptr = *entry;
@@ -92,7 +93,6 @@ bool SameBinChainedHT::Query(uint64_t key, uint64_t* value_ptr) {
 
     return false;
 }
-
 
 bool SameBinChainedHT::Update(uint64_t key, uint64_t value) {
     uint64_t base_id = hash_1_base_id(key);
@@ -213,7 +213,10 @@ uint64_t* SameBinChainedHT::ChainLengthHistogram() {
         uint8_t* pre_tiny_ptr = &base_tab_ptr(base_id);
         uintptr_t base_intptr = reinterpret_cast<uintptr_t>(pre_tiny_ptr);
         uint32_t cnt = 0;
+
+        uint8_t flag = (*pre_tiny_ptr) >> 7;
         while (*pre_tiny_ptr != 0) {
+            assert(flag == (*pre_tiny_ptr >> 7));
             cnt++;
             uint8_t* entry = ptab_query_entry_address(
                 reinterpret_cast<uint64_t>(base_intptr), *pre_tiny_ptr);
