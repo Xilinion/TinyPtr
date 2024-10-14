@@ -3,12 +3,12 @@
 #include <cmath>
 #include <cstdint>
 #include "../byte_array_chained_ht.h"
-#include "benchmark_object_64.h"
+#include "benchmark_chained.h"
 #include "benchmark_object_type.h"
 
 namespace tinyptr {
 
-class BenchmarkByteArrayChained : public BenchmarkObject64 {
+class BenchmarkByteArrayChained : public BenchmarkChained {
    public:
     static const BenchmarkObjectType TYPE;
 

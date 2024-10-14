@@ -7,7 +7,7 @@ const BenchmarkObjectType BenchmarkByteArrayChained::TYPE =
 
 BenchmarkByteArrayChained::BenchmarkByteArrayChained(
     int n, uint8_t quotienting_tail_length, uint16_t bin_size)
-    : BenchmarkObject64(TYPE) {
+    : BenchmarkChained(TYPE) {
     tab = new ByteArrayChainedHT(n, quotienting_tail_length, bin_size);
 }
 

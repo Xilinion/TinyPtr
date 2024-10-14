@@ -3,20 +3,21 @@
 #include <cmath>
 #include <cstdint>
 #include "../bin_aware_chained_ht.h"
+#include "benchmark_bytearray_chainedht.h"
 #include "benchmark_object_64.h"
 #include "benchmark_object_type.h"
 
 namespace tinyptr {
 
-class BenchmarkFPTPChained : public BenchmarkObject64 {
+class BenchmarkBinAwareChained : public BenchmarkChained {
    public:
     static const BenchmarkObjectType TYPE;
 
    public:
-    BenchmarkFPTPChained(int n, uint16_t bin_size,
-                         uint8_t double_slot_num = 32);
+    BenchmarkBinAwareChained(int n, uint16_t bin_size,
+                         uint8_t double_slot_num = 126);
 
-    ~BenchmarkFPTPChained() = default;
+    ~BenchmarkBinAwareChained() = default;
 
     uint8_t Insert(uint64_t key, uint64_t value);
     uint64_t Query(uint64_t key, uint8_t ptr);

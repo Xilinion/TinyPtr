@@ -392,10 +392,10 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
                            CLOCKS_PER_SEC * (1ll * 1000 * 1000 * 1000))
                     << " ns/op" << std::endl;
 
-                if (para.object_id == BenchmarkObjectType::BYTEARRAYCHAINEDHT) {
+                if (para.object_id == BenchmarkObjectType::BYTEARRAYCHAINEDHT || para.object_id == BenchmarkObjectType::BINAWARECHAINEDHT) {
                     output_stream
                         << "Avg Chain Length: "
-                        << dynamic_cast<BenchmarkByteArrayChained*>(obj)
+                        << dynamic_cast<BenchmarkChained*>(obj)
                                ->AvgChainLength()
                         << std::endl;
 
@@ -404,11 +404,11 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
                     output_stream
                         << "Max Chain Length: "
                         << (max_chain_length =
-                                dynamic_cast<BenchmarkByteArrayChained*>(obj)
+                                dynamic_cast<BenchmarkChained*>(obj)
                                     ->MaxChainLength())
                         << std::endl;
 
-                    auto hist = dynamic_cast<BenchmarkByteArrayChained*>(obj)
+                    auto hist = dynamic_cast<BenchmarkChained*>(obj)
                                     ->ChainLengthHistogram();
                     output_stream << "Chain Length Histogram: " << std::endl;
                     output_stream << "\tLength\t\tCount" << std::endl;
