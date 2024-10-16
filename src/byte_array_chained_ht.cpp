@@ -38,14 +38,15 @@ ByteArrayChainedHT::ByteArrayChainedHT(uint64_t size,
       kQuotKeyByteLength(kTinyPtrOffset),
       kEntryByteLength(kQuotKeyByteLength + 1 + 8),
       kBinByteLength(kBinSize * kEntryByteLength) {
-    posix_memalign(reinterpret_cast<void**>(&byte_array), 64,
-                   kBinNum * kBinSize * kEntryByteLength);
+    (void)posix_memalign(reinterpret_cast<void**>(&byte_array), 64,
+                         kBinNum * kBinSize * kEntryByteLength);
     memset(byte_array, 0, kBinNum * kBinSize * kEntryByteLength);
 
-    posix_memalign(reinterpret_cast<void**>(&base_tab), 64, kBaseTabSize);
+    (void)posix_memalign(reinterpret_cast<void**>(&base_tab), 64, kBaseTabSize);
     memset(base_tab, 0, kBaseTabSize);
 
-    posix_memalign(reinterpret_cast<void**>(&bin_cnt_head), 64, kBinNum << 1);
+    (void)posix_memalign(reinterpret_cast<void**>(&bin_cnt_head), 64,
+                         kBinNum << 1);
 
     for (uint64_t i = 0, ptr_offset = kTinyPtrOffset; i < kBinNum; i++) {
         for (uint8_t j = 0; j < kBinSize - 1; j++) {
