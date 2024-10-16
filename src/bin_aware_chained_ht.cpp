@@ -412,4 +412,40 @@ uint64_t* BinAwareChainedHT::ChainLengthHistogram() {
     return res;
 }
 
+uint64_t* BinAwareChainedHT::DoubleSlotStatistics() {
+    uint64_t* res = new uint64_t[kBinNum + 1000];
+    memset(res, 0, (kBinNum + 1000) * sizeof(uint64_t));
+
+    for (int base_id = 0; base_id < kBaseTabSize; base_id++) {
+        uint32_t cnt = 0;
+
+        uint8_t* base_tiny_ptr = &base_tab_ptr(base_id);
+        uint8_t* pre_tiny_ptr = base_tiny_ptr;
+        uintptr_t base_intptr = reinterpret_cast<uintptr_t>(pre_tiny_ptr);
+
+        uint64_t bin_id =
+            (((*base_tiny_ptr) & kSecondHashMask) ? hash_2_bin(base_intptr)
+                                                  : hash_1_bin(base_intptr));
+        uint8_t* bin_begin = byte_array + bin_id * kBinByteLength;
+
+        while ((kInBinTinyPtrMask & (*pre_tiny_ptr)) != 0) {
+            uint8_t* entry =
+                bin_begin +
+                kEntryByteLength * (((*pre_tiny_ptr) & kInBinTinyPtrMask) - 1);
+            pre_tiny_ptr = entry + kTinyPtrOffset;
+            if (entry[kTinyPtrOffset] & kInDoubleSlotMask) {
+                res[bin_id + 1000]++;
+            }
+        }
+    }
+
+    for (int i = 0; i < kBinNum; i++) {
+        res[res[i + 1000] / 2 + 2] ++;
+        res[0] += res[i + 1000];
+        res[1] = std::max(res[1], res[i + 1000] / 2);
+    }
+
+    return res;
+}
+
 }  // namespace tinyptr

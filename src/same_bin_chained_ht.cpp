@@ -2,6 +2,7 @@
 #include <cassert>
 #include <cstdint>
 #include <cstring>
+#include <iostream>
 
 namespace tinyptr {
 

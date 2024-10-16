@@ -15,7 +15,7 @@ class BenchmarkBinAwareChained : public BenchmarkChained {
 
    public:
     BenchmarkBinAwareChained(int n, uint16_t bin_size,
-                         uint8_t double_slot_num = 126);
+                         uint8_t double_slot_num = 80);
 
     ~BenchmarkBinAwareChained() = default;
 
@@ -27,9 +27,7 @@ class BenchmarkBinAwareChained : public BenchmarkChained {
     double AvgChainLength();
     uint32_t MaxChainLength();
     uint64_t* ChainLengthHistogram();
-    void FillChainLength(uint8_t chain_length);
-    void set_chain_length(uint64_t chain_length);
-    bool QueryNoMem(uint64_t key, uint64_t* value_ptr);
+    uint64_t* DoubleSlotStatistics();
 
    private:
     BinAwareChainedHT* tab;

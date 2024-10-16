@@ -427,6 +427,25 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
                         output_stream << "\t" << i << "\t\t" << hist[i]
                                       << std::endl;
                     }
+
+                    if (para.object_id ==
+                        BenchmarkObjectType::BINAWARECHAINEDHT) {
+                        auto hist = dynamic_cast<BenchmarkBinAwareChained*>(obj)
+                                        ->DoubleSlotStatistics();
+
+                        output_stream << "Total Double Slot: " << hist[0]
+                                      << std::endl;
+                        output_stream
+                            << "Max Double Slot Length: " << hist[1] * 2
+                            << std::endl;
+                        output_stream << "Double Slot Statistics: "
+                                      << std::endl;
+                        output_stream << "\tLength\t\tCount" << std::endl;
+                        for (uint32_t i = 0; i <= hist[1]; ++i) {
+                            output_stream << "\t" << i * 2 << "\t\t"
+                                          << hist[i + 2] << std::endl;
+                        }
+                    }
                 }
             };
             break;

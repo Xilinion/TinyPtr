@@ -33,6 +33,7 @@ class BinAwareChainedHT : public ByteArrayChainedHT {
     double AvgChainLength();
     uint32_t MaxChainLength();
     uint64_t* ChainLengthHistogram();
+    uint64_t* DoubleSlotStatistics();
 
    private:
     uint8_t* head_double_slot;

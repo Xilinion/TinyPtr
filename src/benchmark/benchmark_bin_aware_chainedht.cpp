@@ -44,16 +44,8 @@ uint64_t* BenchmarkBinAwareChained::ChainLengthHistogram() {
     return tab->ChainLengthHistogram();
 }
 
-void BenchmarkBinAwareChained::FillChainLength(uint8_t chain_length) {
-    tab->FillChainLength(chain_length);
-}
-
-void BenchmarkBinAwareChained::set_chain_length(uint64_t chain_length) {
-    tab->set_chain_length(chain_length);
-}
-
-bool BenchmarkBinAwareChained::QueryNoMem(uint64_t key, uint64_t* value_ptr) {
-    return tab->QueryNoMem(key, value_ptr);
+uint64_t* BenchmarkBinAwareChained::DoubleSlotStatistics() {
+    return tab->DoubleSlotStatistics();
 }
 
 }  // namespace tinyptr
