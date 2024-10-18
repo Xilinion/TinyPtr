@@ -4,6 +4,10 @@ project(tinyptr)
 
 set(CMAKE_CXX_STANDARD 17)
 
+if (COMPILE_FOR_VALGRIND)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mno-avx")
+endif()
+
 # Setting defualt build type to RelWithDebInfo
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "RelWithDebInfo")
