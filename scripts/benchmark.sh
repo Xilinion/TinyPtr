@@ -30,6 +30,7 @@ fi
 echo "$exp_dir"
 
 function Init() {
+    compile_option=1
     sudo sysctl kernel.perf_event_paranoid=-1
     sudo sysctl kernel.kptr_restrict=0
     sudo sysctl kernel.yama.ptrace_scope=0
@@ -57,21 +58,39 @@ function DebugCompile() {
     sudo setcap CAP_SYS_RAWIO+eip ../build/tinyptr
 }
 
+function ValgrindCompile() {
+    cd ..
+    rm -rf ./build
+    cmake -B build -DCMAKE_BUILD_TYPE=Debug -DCOMPILE_FOR_VALGRIND=ON -DCOMPILE_FOR_VALGRIND=ON | tail -n 90
+    cmake --build build --config Debug -j8 | tail -n 90
+    cd scripts
+
+    sudo setcap -r ../build/tinyptr
+}
+
+function CompileWithOption() {
+    if [ $compile_option -eq 1 ]; then
+        Compile
+    elif [ $compile_option -eq 2 ]; then
+        DebugCompile
+    elif [ $compile_option -eq 3 ]; then
+        ValgrindCompile
+    fi
+}
+
 function Run() {
     #####native execution
-    
+
     echo "== begin benchmarking: -o $object_id -c $case_id -e $entry_id -t $table_size -p  $opt_num -l $load_factor -h $hit_percent -b $bin_size -q $quotient_tail_length -f "$res_path" =="
 
     ../build/tinyptr -o $object_id -c $case_id -e $entry_id -t $table_size -p $opt_num -l $load_factor -h $hit_percent -b $bin_size -q $quotient_tail_length -f "$res_path"
-    
+
     echo "== end benchmarking: -o $object_id -c $case_id -e $entry_id -t $table_size -p  $opt_num -l $load_factor -h $hit_percent -b $bin_size -q $quotient_tail_length -f "$res_path" =="
 
     echo "== file path: "$res_path/object_${object_id}_case_${case_id}_entry_${entry_id}_.txt""
 }
 
 function RunPerf() {
-    #####native execution
-    
     # warm up
     ../build/tinyptr -o $object_id -c $case_id -e $entry_id -t $table_size -p $opt_num -l $load_factor -h $hit_percent -b $bin_size -q $quotient_tail_length -f "$res_path"
 
@@ -83,8 +102,6 @@ function RunPerf() {
 }
 
 function FlameGraph() {
-    #####native execution
-    
     # warm up
     ../build/tinyptr -o $object_id -c $case_id -e $entry_id -t $table_size -p $opt_num -l $load_factor -h $hit_percent -b $bin_size -q $quotient_tail_length -f "$res_path"
 
@@ -102,7 +119,9 @@ function FlameGraph() {
 }
 
 function FlameGraphEntry() {
-    #####native execution
+    # warm up
+    ../build/tinyptr -o $object_id -c $case_id -e $entry_id -t $table_size -p $opt_num -l $load_factor -h $hit_percent -b $bin_size -q $quotient_tail_length -f "$res_path"
+
     echo "== benchmark with flamegraph: -o $object_id -c $case_id -e $entry_id -t $table_size -p  $opt_num -l $load_factor -h $hit_percent -b $bin_size -q $quotient_tail_length -f "$res_path" =="
 
     perf record -F 499 --call-graph dwarf -e $flamegraph_entry -a -g -- ../build/tinyptr -o $object_id -c $case_id -e $entry_id -t $table_size -p $opt_num -l $load_factor -h $hit_percent -b $bin_size -q $quotient_tail_length -f "$res_path"
@@ -116,9 +135,29 @@ function FlameGraphEntry() {
     echo "== file path: "$res_path/${object_id}_${case_id}_${entry_id}_${flamegraph_entry}.svg""
 }
 
+function RunValgrind() {
+    # warm up
+    ../build/tinyptr -o $object_id -c $case_id -e $entry_id -t $table_size -p $opt_num -l $load_factor -h $hit_percent -b $bin_size -q $quotient_tail_length -f "$res_path"
+
+    echo "== benchmark with valgrind: -o $object_id -c $case_id -e $entry_id -t $table_size -p  $opt_num -l $load_factor -h $hit_percent -b $bin_size -q $quotient_tail_length -f "$res_path" =="
+
+    sudo valgrind --tool=cachegrind --cachegrind-out-file="$res_path/object_${object_id}_case_${case_id}_entry_${entry_id}_cachegrind.out.txt" ../build/tinyptr -o $object_id -c $case_id -e $entry_id -t $table_size -p $opt_num -l $load_factor -h $hit_percent -b $bin_size -q $quotient_tail_length -f "$res_path" > "$res_path/object_${object_id}_case_${case_id}_entry_${entry_id}_cachegrind_stdout.txt"
+
+    sudo cg_annotate --show=Dr,DLmr,Dw,DLmw "$res_path/object_${object_id}_case_${case_id}_entry_${entry_id}_cachegrind.out.txt" >"$res_path/object_${object_id}_case_${case_id}_entry_${entry_id}_cachegrind_annotate.txt" --auto=yes
+
+    echo "== file path: "$res_path/object_${object_id}_case_${case_id}_entry_${entry_id}_cachegrind_stdout.txt""
+    echo "== file path: "$res_path/object_${object_id}_case_${case_id}_entry_${entry_id}_cachegrind.out.txt""
+    echo "== file path: "$res_path/object_${object_id}_case_${case_id}_entry_${entry_id}_cachegrind_annotate.txt""
+}
+
 Init
-Compile
+
+# Compile
 # DebugCompile
+# ValgrindCompile
+
+compile_option=1
+CompileWithOption
 
 table_size=1
 opt_num=0
@@ -127,16 +166,17 @@ hit_percent=0
 quotient_tail_length=0
 bin_size=127
 
-for case_id in 0 6 7; do
+for case_id in 1; do
     if [ $case_id -eq 5 ]; then
         continue
     fi
-    for object_id in 8; do
+    for object_id in 4; do
         entry_id=0
-        for table_size in 10000000; do
-        # for table_size in 1000000 10000000; do
+        for table_size in 1000000; do
+            # for table_size in 1000000 10000000; do
             opt_num=$table_size
 
+            # RunValgrind
             Run
 
             let "entry_id++"
@@ -171,8 +211,6 @@ for case_id in 15; do
 done
 
 exit
-
-
 
 for case_id in $(seq 6 7); do
     if [ $case_id -eq 5 ]; then
