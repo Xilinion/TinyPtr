@@ -43,5 +43,6 @@ cmake-build-debug
 .vscode
 .cache
 
-# Perf
+# Profiling
 perf.data*
+cachegrind.out.*
