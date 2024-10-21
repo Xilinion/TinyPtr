@@ -81,11 +81,11 @@ function CompileWithOption() {
 function Run() {
     #####native execution
 
-    echo "== begin benchmarking: -o $object_id -c $case_id -e $entry_id -t $table_size -p  $opt_num -l $load_factor -h $hit_percent -b $bin_size -q $quotient_tail_length -f "$res_path" =="
+    echo "== begin benchmarking: -o $object_id -c $case_id -e $entry_id -t $table_size -p  $opt_num -l $load_factor -h $hit_percent -b $bin_size -q $quotient_tail_length -f "$res_path""
 
     ../build/tinyptr -o $object_id -c $case_id -e $entry_id -t $table_size -p $opt_num -l $load_factor -h $hit_percent -b $bin_size -q $quotient_tail_length -f "$res_path"
 
-    echo "== end benchmarking: -o $object_id -c $case_id -e $entry_id -t $table_size -p  $opt_num -l $load_factor -h $hit_percent -b $bin_size -q $quotient_tail_length -f "$res_path" =="
+    echo "== end benchmarking: -o $object_id -c $case_id -e $entry_id -t $table_size -p  $opt_num -l $load_factor -h $hit_percent -b $bin_size -q $quotient_tail_length -f "$res_path""
 
     echo "== file path: "$res_path/object_${object_id}_case_${case_id}_entry_${entry_id}_.txt""
 }
@@ -96,7 +96,7 @@ function RunPerf() {
 
     perf stat -a -e task-clock,context-switches,cpu-migrations,page-faults,cycles,stalled-cycles-frontend,stalled-cycles-backend,instructions,branches,branch-misses,L1-dcache-loads,L1-dcache-load-misses,L1-dcache-prefetches,L1-icache-loads,L1-icache-load-misses,branch-load-misses,branch-loads,LLC-loads,LLC-load-misses,dTLB-loads,dTLB-load-misses,cache-misses,cache-references -o "$res_path/object_${object_id}_case_${case_id}_entry_${entry_id}_perf.txt" -- ../build/tinyptr -o $object_id -c $case_id -e $entry_id -t $table_size -p $opt_num -l $load_factor -h $hit_percent -b $bin_size -q $quotient_tail_length -f "$res_path"
 
-    echo "== benchmark with perf: -o $object_id -c $case_id -e $entry_id -t $table_size -p  $opt_num -l $load_factor -h $hit_percent -b $bin_size -q $quotient_tail_length -f "$res_path" =="
+    echo "== benchmark with perf: -o $object_id -c $case_id -e $entry_id -t $table_size -p  $opt_num -l $load_factor -h $hit_percent -b $bin_size -q $quotient_tail_length -f "$res_path""
 
     echo "== file path: "$res_path/object_${object_id}_case_${case_id}_entry_${entry_id}_perf.txt""
 }
@@ -113,7 +113,7 @@ function FlameGraph() {
 
     ../scripts/FlameGraph/flamegraph.pl "$res_path/out.folded" >"$res_path/${object_id}_${case_id}_${entry_id}_kernel.svg"
 
-    echo "== benchmark with flamegraph: -o $object_id -c $case_id -e $entry_id -t $table_size -p  $opt_num -l $load_factor -h $hit_percent -b $bin_size -q $quotient_tail_length -f "$res_path" =="
+    echo "== benchmark with flamegraph: -o $object_id -c $case_id -e $entry_id -t $table_size -p  $opt_num -l $load_factor -h $hit_percent -b $bin_size -q $quotient_tail_length -f "$res_path""
 
     echo "== file path: "$res_path/${object_id}_${case_id}_${entry_id}_kernel.svg""
 }
@@ -122,7 +122,7 @@ function FlameGraphEntry() {
     # warm up
     ../build/tinyptr -o $object_id -c $case_id -e $entry_id -t $table_size -p $opt_num -l $load_factor -h $hit_percent -b $bin_size -q $quotient_tail_length -f "$res_path"
 
-    echo "== benchmark with flamegraph: -o $object_id -c $case_id -e $entry_id -t $table_size -p  $opt_num -l $load_factor -h $hit_percent -b $bin_size -q $quotient_tail_length -f "$res_path" =="
+    echo "== benchmark with flamegraph: -o $object_id -c $case_id -e $entry_id -t $table_size -p  $opt_num -l $load_factor -h $hit_percent -b $bin_size -q $quotient_tail_length -f "$res_path""
 
     perf record -F 499 --call-graph dwarf -e $flamegraph_entry -a -g -- ../build/tinyptr -o $object_id -c $case_id -e $entry_id -t $table_size -p $opt_num -l $load_factor -h $hit_percent -b $bin_size -q $quotient_tail_length -f "$res_path"
 
@@ -139,11 +139,11 @@ function RunValgrind() {
     # warm up
     ../build/tinyptr -o $object_id -c $case_id -e $entry_id -t $table_size -p $opt_num -l $load_factor -h $hit_percent -b $bin_size -q $quotient_tail_length -f "$res_path"
 
-    echo "== benchmark with valgrind: -o $object_id -c $case_id -e $entry_id -t $table_size -p  $opt_num -l $load_factor -h $hit_percent -b $bin_size -q $quotient_tail_length -f "$res_path" =="
+    echo "== benchmark with valgrind: -o $object_id -c $case_id -e $entry_id -t $table_size -p  $opt_num -l $load_factor -h $hit_percent -b $bin_size -q $quotient_tail_length -f "$res_path""
 
-    sudo valgrind --tool=cachegrind --cachegrind-out-file="$res_path/object_${object_id}_case_${case_id}_entry_${entry_id}_cachegrind.out.txt" ../build/tinyptr -o $object_id -c $case_id -e $entry_id -t $table_size -p $opt_num -l $load_factor -h $hit_percent -b $bin_size -q $quotient_tail_length -f "$res_path" > "$res_path/object_${object_id}_case_${case_id}_entry_${entry_id}_cachegrind_stdout.txt"
+    sudo valgrind --tool=cachegrind --cachegrind-out-file="$res_path/object_${object_id}_case_${case_id}_entry_${entry_id}_cachegrind.out.txt" ../build/tinyptr -o $object_id -c $case_id -e $entry_id -t $table_size -p $opt_num -l $load_factor -h $hit_percent -b $bin_size -q $quotient_tail_length -f "$res_path" >"$res_path/object_${object_id}_case_${case_id}_entry_${entry_id}_cachegrind_stdout.txt"
 
-    sudo cg_annotate --show=Dr,DLmr,Dw,DLmw "$res_path/object_${object_id}_case_${case_id}_entry_${entry_id}_cachegrind.out.txt" >"$res_path/object_${object_id}_case_${case_id}_entry_${entry_id}_cachegrind_annotate.txt" --auto=yes
+    sudo cg_annotate --show=Dr,DLmr,Dw,DLmw "$res_path/object_${object_id}_case_${case_id}_entry_${entry_id}_cachegrind.out.txt" --auto=yes >"$res_path/object_${object_id}_case_${case_id}_entry_${entry_id}_cachegrind_annotate.txt"
 
     echo "== file path: "$res_path/object_${object_id}_case_${case_id}_entry_${entry_id}_cachegrind_stdout.txt""
     echo "== file path: "$res_path/object_${object_id}_case_${case_id}_entry_${entry_id}_cachegrind.out.txt""
@@ -166,17 +166,18 @@ hit_percent=0
 quotient_tail_length=0
 bin_size=127
 
-for case_id in 1; do
+for case_id in 6; do
     if [ $case_id -eq 5 ]; then
         continue
     fi
     for object_id in 4; do
         entry_id=0
-        for table_size in 1000000; do
+        for table_size in 10000000; do
             # for table_size in 1000000 10000000; do
             opt_num=$table_size
 
             # RunValgrind
+            # RunPerf
             Run
 
             let "entry_id++"
