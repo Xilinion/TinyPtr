@@ -1,8 +1,12 @@
 #pragma once
 
+#include <emmintrin.h>
+#include <immintrin.h>
+#include <nmmintrin.h>
 #include <cstdint>
 #include <functional>
 #include "common.h"
+#include "utils/cache_line_size.h"
 
 namespace tinyptr {
 
@@ -20,6 +24,12 @@ class ByteArrayChainedHT {
     const uint8_t kQuotKeyByteLength;
     const uint8_t kEntryByteLength;
     const uint16_t kBinByteLength;
+    const uintptr_t kPtr16BAlignMask = ~0xF;
+    const uintptr_t kPtr16BBufferOffsetMask = 0xF;
+    const uint8_t kPtr16BBufferSecondLoadOffset = 16;
+    const uintptr_t kPtrCacheLineOffsetMask = utils::kCacheLineSize - 1;
+    const uintptr_t kPtrCacheLineAlignMask =
+        ~((uintptr_t)(utils::kCacheLineSize - 1));
 
    protected:
     uint8_t AutoQuotTailLength(uint64_t size);
@@ -43,6 +53,14 @@ class ByteArrayChainedHT {
     uint8_t* ptab_query_entry_address(uint64_t key, uint8_t ptr);
     uint8_t* ptab_insert_entry_address(uint64_t key);
 
+   protected:
+    void random_base_entry_prefetch();
+    uint8_t* non_temporal_load_single_entry(uint8_t* entry);
+    void evict_entry_cache_line(uint8_t* entry);
+
+   protected:
+    uint64_t limited_base_id(uint64_t key);
+
    public:
     bool Insert(uint64_t key, uint64_t value);
     bool Query(uint64_t key, uint64_t* value_ptr);
@@ -55,6 +73,7 @@ class ByteArrayChainedHT {
     uint32_t MaxChainLength();
     uint64_t* ChainLengthHistogram();
     void FillChainLength(uint8_t chain_lenght);
+    uint64_t QueryEntryCnt();
 
    protected:
     uint8_t* byte_array;
@@ -62,8 +81,15 @@ class ByteArrayChainedHT {
     uint8_t* bin_cnt_head;
 
    protected:
+    uint8_t non_temporal_load_entry_buffer[64];
+
+   protected:
+    uint64_t query_entry_cnt = 0;
     uint8_t* play_entry;
     uint64_t chain_length;
+
+    uint64_t limited_base_entry_num;
+    uint64_t limited_base_cnt = 0;
 
    public:
     bool QueryNoMem(uint64_t key, uint64_t* value_ptr);
