@@ -1,6 +1,11 @@
 function(build_iceberg)
-
     include(ExternalProject)
+
+    if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+        set(ICEBERG_DEBUG_DEFINES "D=1 NO_AVX=1")
+    else()
+        set(ICEBERG_DEBUG_DEFINES "")
+    endif()
 
     # Add ExternalProject for iceberg
     ExternalProject_Add(
@@ -10,7 +15,7 @@ function(build_iceberg)
         PREFIX ${CMAKE_BINARY_DIR}/iceberg
         BUILD_IN_SOURCE 1
         BUILD_COMMAND
-        COMMAND ${CMAKE_MAKE_PROGRAM} CC=gcc CPP=g++ all
+        COMMAND ${CMAKE_MAKE_PROGRAM} CC=gcc CPP=g++ ${ICEBERG_DEBUG_DEFINES} all
         COMMAND ${CMAKE_COMMAND} -E env sh -c "cp <SOURCE_DIR>/include/* <SOURCE_DIR>/"
         COMMAND ${CMAKE_COMMAND} -E env sh -c "cp <BINARY_DIR>/obj/*.o <BINARY_DIR>/"
         COMMAND ${CMAKE_COMMAND} -E env sh -c "gcc-ar -rs libiceberg.a <BINARY_DIR>/obj/*.o"
@@ -30,5 +35,4 @@ function(build_iceberg)
 
     target_compile_definitions(iceberg_lib INTERFACE ENABLE_RESIZE ENABLE_BLOCK_LOCKING)
     target_compile_options(iceberg_lib INTERFACE -march=native)
-
 endfunction()
