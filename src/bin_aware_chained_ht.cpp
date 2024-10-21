@@ -440,7 +440,7 @@ uint64_t* BinAwareChainedHT::DoubleSlotStatistics() {
     }
 
     for (int i = 0; i < kBinNum; i++) {
-        res[res[i + 1000] / 2 + 2] ++;
+        res[res[i + 1000] / 2 + 2]++;
         res[0] += res[i + 1000];
         res[1] = std::max(res[1], res[i + 1000] / 2);
     }

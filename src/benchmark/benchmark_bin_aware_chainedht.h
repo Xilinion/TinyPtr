@@ -15,7 +15,7 @@ class BenchmarkBinAwareChained : public BenchmarkChained {
 
    public:
     BenchmarkBinAwareChained(int n, uint16_t bin_size,
-                         uint8_t double_slot_num = 80);
+                         uint8_t double_slot_num = 126);
 
     ~BenchmarkBinAwareChained() = default;
 

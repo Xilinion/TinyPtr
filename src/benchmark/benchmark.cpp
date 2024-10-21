@@ -337,11 +337,11 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
             break;
         case BenchmarkObjectType::BINAWARECHAINEDHT:
             obj =
-                new BenchmarkBinAwareChained(table_size * 1.031, para.bin_size);
+                new BenchmarkBinAwareChained(table_size * 1.11, para.bin_size);
+                // new BenchmarkBinAwareChained(table_size * 1.06, para.bin_size);
             break;
         case BenchmarkObjectType::SAMEBINCHAINEDHT:
-            obj =
-                new BenchmarkSameBinChained(table_size * 1.031, para.bin_size);
+            obj = new BenchmarkSameBinChained(table_size * 1.06, para.bin_size);
             break;
         case BenchmarkObjectType::CLHT:
             obj = new BenchmarkCLHT(table_size);
@@ -559,7 +559,7 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
             };
             break;
         case BenchmarkCaseType::QUERY_HIT_ONLY:
-            run = [this]() {
+            run = [this, para]() {
                 obj_fill(table_size);
 
                 std::clock_t start = std::clock();
@@ -584,6 +584,14 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
                     << int(double(duration) / double(opt_num) / CLOCKS_PER_SEC *
                            (1ll * 1000 * 1000 * 1000))
                     << " ns/op" << std::endl;
+
+                if (para.object_id == BenchmarkObjectType::BYTEARRAYCHAINEDHT) {
+                    output_stream
+                        << "Query Entry Count: "
+                        << dynamic_cast<BenchmarkByteArrayChained*>(obj)
+                               ->QueryEntryCnt()
+                        << std::endl;
+                }
             };
             break;
         case BenchmarkCaseType::QUERY_MISS_ONLY:

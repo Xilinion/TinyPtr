@@ -29,6 +29,7 @@ class BenchmarkByteArrayChained : public BenchmarkChained {
     void FillChainLength(uint8_t chain_length);
     void set_chain_length(uint64_t chain_length);
     bool QueryNoMem(uint64_t key, uint64_t* value_ptr);
+    uint64_t QueryEntryCnt();
 
    private:
     ByteArrayChainedHT* tab;

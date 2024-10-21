@@ -57,4 +57,8 @@ bool BenchmarkByteArrayChained::QueryNoMem(uint64_t key, uint64_t* value_ptr) {
     return tab->QueryNoMem(key, value_ptr);
 }
 
+uint64_t BenchmarkByteArrayChained::QueryEntryCnt() {
+    return tab->QueryEntryCnt();
+}
+
 }  // namespace tinyptr
