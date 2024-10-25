@@ -24,6 +24,7 @@
 #include "benchmark_object_64.h"
 #include "benchmark_same_bin_chainedht.h"
 #include "benchmark_std_unordered_map_64.h"
+#include "benchmark_yarded_tp_ht.h"
 
 namespace tinyptr {
 
@@ -338,10 +339,13 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
         case BenchmarkObjectType::BINAWARECHAINEDHT:
             obj =
                 new BenchmarkBinAwareChained(table_size * 1.11, para.bin_size);
-                // new BenchmarkBinAwareChained(table_size * 1.06, para.bin_size);
+            // new BenchmarkBinAwareChained(table_size * 1.06, para.bin_size);
             break;
         case BenchmarkObjectType::SAMEBINCHAINEDHT:
             obj = new BenchmarkSameBinChained(table_size * 1.06, para.bin_size);
+            break;
+        case BenchmarkObjectType::YARDEDTTPHT:
+            obj = new BenchmarkYardedTPHT(table_size * 1.03, para.bin_size);
             break;
         case BenchmarkObjectType::CLHT:
             obj = new BenchmarkCLHT(table_size);

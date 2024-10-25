@@ -170,7 +170,7 @@ for case_id in 6; do
     if [ $case_id -eq 5 ]; then
         continue
     fi
-    for object_id in 4; do
+    for object_id in 10; do
         entry_id=0
         for table_size in 10000000; do
             # for table_size in 1000000 10000000; do
