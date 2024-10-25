@@ -68,20 +68,17 @@ ByteArrayChainedHT::ByteArrayChainedHT(uint64_t size,
 ByteArrayChainedHT::ByteArrayChainedHT(uint64_t size, uint16_t bin_size)
     : ByteArrayChainedHT(size, 0, bin_size) {}
 
-__attribute__((always_inline)) uint64_t
-ByteArrayChainedHT::hash_1(uint64_t key) {
+uint64_t ByteArrayChainedHT::hash_1(uint64_t key) {
     return XXH64(&key, sizeof(uint64_t), kHashSeed1);
 }
 
-__attribute__((always_inline)) uint64_t
-ByteArrayChainedHT::hash_1_base_id(uint64_t key) {
+uint64_t ByteArrayChainedHT::hash_1_base_id(uint64_t key) {
     uint64_t tmp = key >> kQuotientingTailLength;
     return (XXH64(&tmp, sizeof(uint64_t), kHashSeed1) ^ key) &
            kQuotientingTailMask;
 }
 
-__attribute__((always_inline)) uint64_t
-ByteArrayChainedHT::limited_base_id(uint64_t key) {
+uint64_t ByteArrayChainedHT::limited_base_id(uint64_t key) {
     if (limited_base_cnt < limited_base_entry_num) {
         return limited_base_cnt++;
     } else {
@@ -91,40 +88,33 @@ ByteArrayChainedHT::limited_base_id(uint64_t key) {
     }
 }
 
-__attribute__((always_inline)) uint64_t
-ByteArrayChainedHT::hash_1_bin(uint64_t key) {
+uint64_t ByteArrayChainedHT::hash_1_bin(uint64_t key) {
     return (XXH64(&key, sizeof(uint64_t), kHashSeed1)) % kBinNum;
     // return 0;
 }
 
-__attribute__((always_inline)) uint64_t
-ByteArrayChainedHT::hash_2(uint64_t key) {
+uint64_t ByteArrayChainedHT::hash_2(uint64_t key) {
     return XXH64(&key, sizeof(uint64_t), kHashSeed2);
 }
 
-__attribute__((always_inline)) uint64_t
-ByteArrayChainedHT::hash_2_bin(uint64_t key) {
+uint64_t ByteArrayChainedHT::hash_2_bin(uint64_t key) {
     return (XXH64(&key, sizeof(uint64_t), kHashSeed2)) % kBinNum;
     // return 0;
 }
 
-__attribute__((always_inline)) uint8_t& ByteArrayChainedHT::bin_cnt(
-    uint64_t bin_id) {
+uint8_t& ByteArrayChainedHT::bin_cnt(uint64_t bin_id) {
     return bin_cnt_head[bin_id << 1];
 }
 
-__attribute__((always_inline)) uint8_t& ByteArrayChainedHT::bin_head(
-    uint64_t bin_id) {
+uint8_t& ByteArrayChainedHT::bin_head(uint64_t bin_id) {
     return bin_cnt_head[(bin_id << 1) | 1];
 }
 
-__attribute__((always_inline)) uint8_t& ByteArrayChainedHT::base_tab_ptr(
-    uint64_t base_id) {
+uint8_t& ByteArrayChainedHT::base_tab_ptr(uint64_t base_id) {
     return base_tab[base_id];
 }
 
-__attribute__((always_inline)) void
-ByteArrayChainedHT::random_base_entry_prefetch() {
+void ByteArrayChainedHT::random_base_entry_prefetch() {
     static uint64_t prefetch_cnt = 0;
     for (int i = 0; i < 5; i++) {
         prefetch_cnt++;
@@ -133,8 +123,7 @@ ByteArrayChainedHT::random_base_entry_prefetch() {
     }
 }
 
-__attribute__((always_inline)) uint8_t*
-ByteArrayChainedHT::non_temporal_load_single_entry(uint8_t* entry) {
+uint8_t* ByteArrayChainedHT::non_temporal_load_single_entry(uint8_t* entry) {
     uintptr_t entry_intptr = (uintptr_t)entry;
 #if defined(__SSE2__)
     __m128i* entry_ptr = reinterpret_cast<__m128i*>(entry_intptr);
@@ -157,8 +146,7 @@ ByteArrayChainedHT::non_temporal_load_single_entry(uint8_t* entry) {
 #endif
 }
 
-__attribute__((always_inline)) void ByteArrayChainedHT::evict_entry_cache_line(
-    uint8_t* entry) {
+void ByteArrayChainedHT::evict_entry_cache_line(uint8_t* entry) {
 
     uintptr_t entry_intptr = (uintptr_t)entry;
     uintptr_t start_intptr = entry_intptr & kPtrCacheLineAlignMask;
@@ -171,8 +159,8 @@ __attribute__((always_inline)) void ByteArrayChainedHT::evict_entry_cache_line(
     _mm_clflushopt(reinterpret_cast<void*>(start_intptr));
 }
 
-__attribute__((always_inline)) uint8_t*
-ByteArrayChainedHT::ptab_query_entry_address(uint64_t key, uint8_t ptr) {
+uint8_t* ByteArrayChainedHT::ptab_query_entry_address(uint64_t key,
+                                                      uint8_t ptr) {
     uint8_t flag = (ptr >= (1 << 7));
     ptr = ptr & ((1 << 7) - 1);
     if (flag) {
@@ -184,8 +172,7 @@ ByteArrayChainedHT::ptab_query_entry_address(uint64_t key, uint8_t ptr) {
     }
 }
 
-__attribute__((always_inline)) uint8_t*
-ByteArrayChainedHT::ptab_insert_entry_address(uint64_t key) {
+uint8_t* ByteArrayChainedHT::ptab_insert_entry_address(uint64_t key) {
     uint64_t bin1 = hash_1_bin(key);
     uint64_t bin2 = hash_2_bin(key);
     uint8_t flag = bin_cnt(bin1) > bin_cnt(bin2);
@@ -206,8 +193,7 @@ ByteArrayChainedHT::ptab_insert_entry_address(uint64_t key) {
     }
 }
 
-__attribute__((always_inline)) bool ByteArrayChainedHT::Insert(uint64_t key,
-                                                               uint64_t value) {
+bool ByteArrayChainedHT::Insert(uint64_t key, uint64_t value) {
 
     uint64_t base_id = hash_1_base_id(key);
     uint8_t* pre_tiny_ptr = &base_tab_ptr(base_id);
@@ -233,8 +219,7 @@ __attribute__((always_inline)) bool ByteArrayChainedHT::Insert(uint64_t key,
     }
 }
 
-__attribute__((always_inline)) bool ByteArrayChainedHT::Query(
-    uint64_t key, uint64_t* value_ptr) {
+bool ByteArrayChainedHT::Query(uint64_t key, uint64_t* value_ptr) {
     uint64_t base_id = hash_1_base_id(key);
 
     uint8_t* pre_tiny_ptr = &base_tab_ptr(base_id);
@@ -243,7 +228,6 @@ __attribute__((always_inline)) bool ByteArrayChainedHT::Query(
     key >>= kQuotientingTailLength;
     key <<= kQuotientingTailLength;
 
-    /*
     while (*pre_tiny_ptr != 0) {
 
         query_entry_cnt++;
@@ -259,8 +243,8 @@ __attribute__((always_inline)) bool ByteArrayChainedHT::Query(
         // evict_entry_cache_line(entry);
         pre_tiny_ptr = entry + kTinyPtrOffset;
     }
-*/
 
+    /*
     uint8_t pre_tiny_ptr_value = *pre_tiny_ptr;
     while (pre_tiny_ptr_value != 0) {
         uint64_t pre_tiny_ptr_int = reinterpret_cast<uint64_t>(pre_tiny_ptr);
@@ -277,6 +261,7 @@ __attribute__((always_inline)) bool ByteArrayChainedHT::Query(
         pre_tiny_ptr = entry + kTinyPtrOffset;
         pre_tiny_ptr_value = non_temporal_entry[kTinyPtrOffset];
     }
+    */
     return false;
 }
 
