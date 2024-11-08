@@ -58,9 +58,14 @@ class Benchmark {
     void gen_erase_order(uint64_t size);
 
     int insert_cnt_to_overflow();
-    int insert_delete_opt_to_overflow(uint64_t size, uint16_t bin_size, double opt_ratio, double load_factor);
+    int insert_delete_opt_to_overflow(uint64_t size, uint16_t bin_size,
+                                      double opt_ratio, double load_factor);
     void obj_fill(int ins_cnt);
-    void batch_query(int query_cnt, double hit_rate);
+    void batch_query_vec_prepare(std::vector<uint64_t>& query_key_vec,
+                                 std::vector<uint8_t>& query_ptr_vec,
+                                 uint64_t op_cnt, double hit_rate);
+    void batch_query(std::vector<uint64_t>& query_key_vec,
+                     std::vector<uint8_t>& query_ptr_vec, uint64_t query_cnt);
     void batch_query_no_mem(int query_cnt, double hit_rate);
     void batch_update(int update_cnt);
     void erase_all();

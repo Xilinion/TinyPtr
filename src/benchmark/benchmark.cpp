@@ -14,6 +14,7 @@
 #include "../dereference_table_64.h"
 #include "benchmark_bin_aware_chainedht.h"
 #include "benchmark_bytearray_chainedht.h"
+#include "benchmark_chained.h"
 #include "benchmark_chainedht64.h"
 #include "benchmark_clht.h"
 #include "benchmark_cli_para.h"
@@ -199,7 +200,12 @@ void Benchmark::obj_fill(int ins_cnt) {
     }
 }
 
-void Benchmark::batch_query(int query_cnt, double hit_rate) {
+void Benchmark::batch_query_vec_prepare(std::vector<uint64_t>& query_key_vec,
+                                        std::vector<uint8_t>& query_ptr_vec,
+                                        uint64_t op_cnt, double hit_rate) {
+    query_key_vec.resize(op_cnt);
+    query_ptr_vec.resize(op_cnt);
+
     uint32_t hit_bar;
     if (hit_rate > 1 - kEps) {
         hit_bar = ~(uint32_t(0));
@@ -213,7 +219,7 @@ void Benchmark::batch_query(int query_cnt, double hit_rate) {
     // and nothing happens after that
     int key_ind_range = table_size;
 
-    while (query_cnt--) {
+    while (op_cnt--) {
         uint64_t key;
         uint8_t ptr;
 
@@ -226,7 +232,16 @@ void Benchmark::batch_query(int query_cnt, double hit_rate) {
             ptr = gen_rand_nonzero_8();
         }
 
-        obj->Query(key, ptr);
+        query_key_vec[op_cnt] = key;
+        query_ptr_vec[op_cnt] = ptr;
+    }
+}
+
+void Benchmark::batch_query(std::vector<uint64_t>& query_key_vec,
+                            std::vector<uint8_t>& query_ptr_vec,
+                            uint64_t query_cnt) {
+    for (uint64_t i = 0; i < query_cnt; ++i) {
+        obj->Query(query_key_vec[i], query_ptr_vec[i]);
     }
 }
 
@@ -566,9 +581,14 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
             run = [this, para]() {
                 obj_fill(table_size);
 
+                std::vector<uint64_t> query_key_vec;
+                std::vector<uint8_t> query_ptr_vec;
+                batch_query_vec_prepare(query_key_vec, query_ptr_vec, opt_num,
+                                        1);
+
                 std::clock_t start = std::clock();
 
-                batch_query(opt_num, 1);
+                batch_query(query_key_vec, query_ptr_vec, opt_num);
 
                 auto end = std::clock();
                 auto duration = end - start;
@@ -602,9 +622,14 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
             run = [this]() {
                 obj_fill(table_size);
 
+                std::vector<uint64_t> query_key_vec;
+                std::vector<uint8_t> query_ptr_vec;
+                batch_query_vec_prepare(query_key_vec, query_ptr_vec, opt_num,
+                                        0);
+
                 std::clock_t start = std::clock();
 
-                batch_query(opt_num, 0);
+                batch_query(query_key_vec, query_ptr_vec, opt_num);
 
                 auto end = std::clock();
                 auto duration = end - start;
@@ -630,9 +655,14 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
             run = [this]() {
                 obj_fill(table_size);
 
+                std::vector<uint64_t> query_key_vec;
+                std::vector<uint8_t> query_ptr_vec;
+                batch_query_vec_prepare(query_key_vec, query_ptr_vec, opt_num,
+                                        hit_ratio);
+
                 std::clock_t start = std::clock();
 
-                batch_query(opt_num, hit_ratio);
+                batch_query(query_key_vec, query_ptr_vec, opt_num);
 
                 auto end = std::clock();
                 auto duration = end - start;
@@ -658,9 +688,14 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
             run = [this]() {
                 obj_fill(int(floor(table_size * load_factor)));
 
+                std::vector<uint64_t> query_key_vec;
+                std::vector<uint8_t> query_ptr_vec;
+                batch_query_vec_prepare(query_key_vec, query_ptr_vec, opt_num,
+                                        1);
+
                 std::clock_t start = std::clock();
 
-                batch_query(opt_num, 1);
+                batch_query(query_key_vec, query_ptr_vec, opt_num);
 
                 auto end = std::clock();
                 auto duration = end - start;
@@ -686,9 +721,14 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
             run = [this]() {
                 obj_fill(int(floor(table_size * load_factor)));
 
+                std::vector<uint64_t> query_key_vec;
+                std::vector<uint8_t> query_ptr_vec;
+                batch_query_vec_prepare(query_key_vec, query_ptr_vec, opt_num,
+                                        0);
+
                 std::clock_t start = std::clock();
 
-                batch_query(opt_num, 0);
+                batch_query(query_key_vec, query_ptr_vec, opt_num);
 
                 auto end = std::clock();
                 auto duration = end - start;
@@ -714,9 +754,14 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
             run = [this]() {
                 obj_fill(int(floor(table_size * load_factor)));
 
+                std::vector<uint64_t> query_key_vec;
+                std::vector<uint8_t> query_ptr_vec;
+                batch_query_vec_prepare(query_key_vec, query_ptr_vec, opt_num,
+                                        hit_ratio);
+
                 std::clock_t start = std::clock();
 
-                batch_query(opt_num, hit_ratio);
+                batch_query(query_key_vec, query_ptr_vec, opt_num);
 
                 auto end = std::clock();
                 auto duration = end - start;
@@ -845,9 +890,14 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
 
                     gen_rand_vector(case_table_size);
 
+                    std::vector<uint64_t> query_key_vec;
+                    std::vector<uint8_t> query_ptr_vec;
+                    batch_query_vec_prepare(query_key_vec, query_ptr_vec,
+                                            opt_num, 0);
+
                     std::clock_t start = std::clock();
 
-                    batch_query(opt_num, 0);
+                    batch_query(query_key_vec, query_ptr_vec, opt_num);
 
                     auto end = std::clock();
                     auto duration = end - start;

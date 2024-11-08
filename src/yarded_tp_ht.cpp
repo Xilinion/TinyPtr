@@ -44,8 +44,6 @@ YardedTPHT::YardedTPHT(uint64_t size, uint16_t bin_size)
     // exit(0);
 }
 
-//  -o 10 -c 1 -e 0 -t 10000000 -p  10000000 -l 0 -h 0 -b 127 -q 0 -f /home/xt253/TinyPtr/results
-
 void YardedTPHT::print_duplex(uint64_t base_id, char* msg) {
 
     return;
