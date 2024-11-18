@@ -156,7 +156,7 @@ Init
 # DebugCompile
 # ValgrindCompile
 
-compile_option=3
+compile_option=1
 CompileWithOption
 
 table_size=1
@@ -166,7 +166,7 @@ hit_percent=0
 quotient_tail_length=0
 bin_size=127
 
-for case_id in 6; do
+for case_id in 1 6 7; do
     if [ $case_id -eq 5 ]; then
         continue
     fi
@@ -176,9 +176,9 @@ for case_id in 6; do
             # for table_size in 1000000 10000000; do
             opt_num=$table_size
 
-            RunValgrind
+            # RunValgrind
             # RunPerf
-            # Run
+            Run
 
             let "entry_id++"
         done
