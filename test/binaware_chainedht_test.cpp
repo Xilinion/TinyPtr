@@ -45,14 +45,15 @@ TEST(BinAwareChainedHT_TESTSUITE, StdMapCompliance_INSERT_QUERY) {
 
     while (n--) {
         uint64_t key = my_sparse_key_rand(), new_val = my_value_rand(), val = 0;
-        
+
         if (lala.find(key) == lala.end() && chained_ht.Insert(key, new_val)) {
             lala[key] = new_val;
         }
 
         key = my_sparse_key_rand(), new_val = my_value_rand(), val = 0;
 
-        if (chained_ht.Query(key, &val)) {
+        if (lala.find(key) != lala.end()) {
+            ASSERT_TRUE(chained_ht.Query(key, &val));
             ASSERT_EQ(val, lala[key]);
         }
     }

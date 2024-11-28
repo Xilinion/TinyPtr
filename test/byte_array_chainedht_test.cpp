@@ -52,7 +52,8 @@ TEST(ByteArrayChainedHT_TESTSUITE, StdMapCompliance) {
 
         key = my_sparse_key_rand(), new_val = my_value_rand(), val = 0;
 
-        if (chained_ht.Query(key, &val)) {
+        if (lala.find(key) != lala.end()) {
+            ASSERT_TRUE(chained_ht.Query(key, &val));
             ASSERT_EQ(val, lala[key]);
         }
 

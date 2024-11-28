@@ -53,29 +53,11 @@ TEST(SkulkerHT_TESTSUITE, StdMapCompliance_INSERT_QUERY) {
 
         uint64_t key = my_sparse_key_rand(), new_val = my_value_rand(), val = 0;
 
-        // if (((key >> 17) << 17) == 17860047068280782848ull) {
-        //     cout << "key: " << key << endl;
-        // }
-
-        // if (new_val == 5605366881116195956ull) {
-        //     cout << "insert key: " << key << endl;
-        //     cout << "new_val: " << new_val << endl;
-        // }
-        // if (new_val == 2879750557686564615ull) {
-        //     cout << "insert key: " << key << endl;
-        //     cout << "new_val: " << new_val << endl;
-        // }
-
         if (lala.find(key) == lala.end() && skulker_ht.Insert(key, new_val)) {
             lala[key] = new_val;
         }
 
         key = my_sparse_key_rand(), new_val = my_value_rand(), val = 0;
-
-        
-        // if (((key >> 17) << 17) == 17860047068280782848ull) {
-        //     cout << "query key: " << key << endl;
-        // }
 
         if (lala.find(key) != lala.end()) {
             ASSERT_TRUE(skulker_ht.Query(key, &val));
