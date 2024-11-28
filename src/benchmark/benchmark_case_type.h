@@ -18,10 +18,13 @@ struct BenchmarkCaseType {
         QUERY_HIT_ONLY_CUSTOM_LOAD_FACTOR = 9,
         QUERY_MISS_ONLY_CUSTOM_LOAD_FACTOR = 10,
         QUERY_HIT_PERCENT_CUSTOM_LOAD_FACTOR = 11,
-        XXHASH64THROUGHPUT = 12,
-        PRNGTHROUGHPUT = 13,
-        COUNT = 14
-    };;
+        XXHASH64_THROUGHPUT = 12,
+        PRNG_THROUGHPUT = 13,
+        LATENCY_VARYING_CHAINLENGTH = 14,
+        QUERY_NO_MEM = 15,
+        INSERT_DELETE_LOAD_FACTOR_SUPPORT = 16,
+        COUNT = 17
+    };
 
     BenchmarkCaseType() = default;
     BenchmarkCaseType(BenchmarkCaseType& b) = default;

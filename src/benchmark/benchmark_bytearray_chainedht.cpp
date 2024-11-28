@@ -7,7 +7,7 @@ const BenchmarkObjectType BenchmarkByteArrayChained::TYPE =
 
 BenchmarkByteArrayChained::BenchmarkByteArrayChained(
     int n, uint8_t quotienting_tail_length, uint16_t bin_size)
-    : BenchmarkObject64(TYPE) {
+    : BenchmarkChained(TYPE) {
     tab = new ByteArrayChainedHT(n, quotienting_tail_length, bin_size);
 }
 
@@ -43,6 +43,22 @@ uint32_t BenchmarkByteArrayChained::MaxChainLength() {
 
 uint64_t* BenchmarkByteArrayChained::ChainLengthHistogram() {
     return tab->ChainLengthHistogram();
+}
+
+void BenchmarkByteArrayChained::FillChainLength(uint8_t chain_length) {
+    tab->FillChainLength(chain_length);
+}
+
+void BenchmarkByteArrayChained::set_chain_length(uint64_t chain_length) {
+    tab->set_chain_length(chain_length);
+}
+
+bool BenchmarkByteArrayChained::QueryNoMem(uint64_t key, uint64_t* value_ptr) {
+    return tab->QueryNoMem(key, value_ptr);
+}
+
+uint64_t BenchmarkByteArrayChained::QueryEntryCnt() {
+    return tab->QueryEntryCnt();
 }
 
 }  // namespace tinyptr

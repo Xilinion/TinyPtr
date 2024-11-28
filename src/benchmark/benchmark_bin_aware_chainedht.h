@@ -2,21 +2,22 @@
 
 #include <cmath>
 #include <cstdint>
-#include "../byte_array_chained_ht.h"
-#include "benchmark_chained.h"
+#include "../bin_aware_chained_ht.h"
+#include "benchmark_bytearray_chainedht.h"
+#include "benchmark_object_64.h"
 #include "benchmark_object_type.h"
 
 namespace tinyptr {
 
-class BenchmarkByteArrayChained : public BenchmarkChained {
+class BenchmarkBinAwareChained : public BenchmarkChained {
    public:
     static const BenchmarkObjectType TYPE;
 
    public:
-    BenchmarkByteArrayChained(int n, uint8_t quotienting_tail_length,
-                              uint16_t bin_size);
+    BenchmarkBinAwareChained(int n, uint16_t bin_size,
+                         uint8_t double_slot_num = 126);
 
-    ~BenchmarkByteArrayChained() = default;
+    ~BenchmarkBinAwareChained() = default;
 
     uint8_t Insert(uint64_t key, uint64_t value);
     uint64_t Query(uint64_t key, uint8_t ptr);
@@ -26,13 +27,10 @@ class BenchmarkByteArrayChained : public BenchmarkChained {
     double AvgChainLength();
     uint32_t MaxChainLength();
     uint64_t* ChainLengthHistogram();
-    void FillChainLength(uint8_t chain_length);
-    void set_chain_length(uint64_t chain_length);
-    bool QueryNoMem(uint64_t key, uint64_t* value_ptr);
-    uint64_t QueryEntryCnt();
+    uint64_t* DoubleSlotStatistics();
 
    private:
-    ByteArrayChainedHT* tab;
+    BinAwareChainedHT* tab;
 };
 
 }  // namespace tinyptr
