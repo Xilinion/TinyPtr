@@ -173,7 +173,7 @@ Init
 # DebugCompile
 # ValgrindCompile
 
-compile_option=2
+compile_option=1
 CompileWithOption
 
 table_size=1
@@ -183,15 +183,11 @@ hit_percent=0
 quotient_tail_length=0
 bin_size=127
 
-RunCTest
-
-exit
-
 for case_id in 1 6 7; do
     if [ $case_id -eq 5 ]; then
         continue
     fi
-    for object_id in 10; do
+    for object_id in 12; do
         entry_id=0
         for table_size in 10000000; do
             # for table_size in 1000000 10000000; do

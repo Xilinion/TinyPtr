@@ -24,6 +24,7 @@
 #include "benchmark_intarray64.h"
 #include "benchmark_object_64.h"
 #include "benchmark_same_bin_chainedht.h"
+#include "benchmark_skulkerht.h"
 #include "benchmark_std_unordered_map_64.h"
 #include "benchmark_yarded_tp_ht.h"
 
@@ -370,6 +371,9 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
             break;
         case BenchmarkObjectType::ICEBERG:
             obj = new BenchmarkIceberg(table_size);
+            break;
+        case BenchmarkObjectType::SKULKERHT:
+            obj = new BenchmarkSkulkerHT(table_size, para.bin_size);
             break;
         default:
             abort();
