@@ -287,9 +287,6 @@ bool SkulkerHT::Query(uint64_t key, uint64_t* value_ptr) {
         }
     }
 
-    while (true) {
-        ;
-    }
     return false;
 }
 
