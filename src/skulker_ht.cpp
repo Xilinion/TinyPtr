@@ -28,7 +28,7 @@ SkulkerHT::SkulkerHT(uint64_t size, uint8_t quotienting_tail_length,
       kQuotKeyByteLength((64 + 7 - kQuotientingTailLength) >> 3),
       kEntryByteLength(kQuotKeyByteLength + 1 + 8),
       kBinByteLength(kBinSize * kEntryByteLength),
-      kBushRatio(0.5 * size / (1ULL << kQuotientingTailLength) + 0.15),
+      kBushRatio(0.5 * size / (1.0 * (1ULL << kQuotientingTailLength)) + 0.15),
       kBushOverflowBound(0.11),
       kSkulkerRatio((1 - kBushRatio * (1ULL << kQuotientingTailLength) / size) +
                     kBushOverflowBound),
@@ -73,6 +73,8 @@ SkulkerHT::SkulkerHT(uint64_t size, uint8_t quotienting_tail_length,
         bin_cnt_head[i << 1] = 0;
         bin_cnt_head[(i << 1) | 1] = 1;
     }
+
+    play_entry = new uint8_t[kEntryByteLength];
 }
 
 SkulkerHT::SkulkerHT(uint64_t size, uint16_t bin_size)
@@ -113,9 +115,9 @@ bool SkulkerHT::Insert(uint64_t key, uint64_t value) {
         uint8_t overload_flag =
             item_cnt + 1 > (kInitSkulkerNum + kInitExhibitorNum);
 
-        if (overload_flag) {
-            return false;
-        }
+        // if (overload_flag) {
+        //     return false;
+        // }
 
         // spill before inserting the new item
         if (pre_overload_flag == 0 && overload_flag == 1) {
@@ -144,7 +146,7 @@ bool SkulkerHT::Insert(uint64_t key, uint64_t value) {
 
                 uintptr_t spilled_base_id =
                     base_id - in_bush_offset + spilled_in_bush_offset;
-                
+
                 bush[kSkulkerOffset] = 0;
 
                 if (!ptab_insert(bush + kSkulkerOffset, spilled_base_id,
@@ -284,7 +286,6 @@ bool SkulkerHT::Query(uint64_t key, uint64_t* value_ptr) {
             pre_deref_key = reinterpret_cast<uintptr_t>(entry);
         }
     }
-
 
     while (true) {
         ;
