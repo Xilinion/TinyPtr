@@ -31,16 +31,12 @@ list(REMOVE_ITEM SOURCES ${DEPRECATED_TEST_SRC})
 
 add_library(tinyptr_lib ${SOURCES})
 target_include_directories(tinyptr_lib PRIVATE ${SOURCE_DIR})
-target_compile_options(tinyptr_lib INTERFACE -march=native)
+target_compile_options(tinyptr_lib INTERFACE -march=native -flto)
 
 add_executable(${PROJECT_NAME} src/main.cpp)
 target_link_libraries(${PROJECT_NAME} PRIVATE tinyptr_lib)
 
 # Add external dependencies
-include(xxHash)
-build_xxHash()
-add_dependencies(tinyptr_lib xxHash)
-target_link_libraries(tinyptr_lib PUBLIC xxHash_lib)
 
 include(CLHT)
 build_CLHT()

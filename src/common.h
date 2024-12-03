@@ -8,4 +8,5 @@
 
 #define XXH_INLINE_ALL
 #define XXH_STATIC_LINKING_ONLY
-#include "xxhash.h"
+#define XXH_NAMESPACE
+#include "utils/xxhash.h"
