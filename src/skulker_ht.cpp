@@ -46,8 +46,7 @@ SkulkerHT::SkulkerHT(uint64_t size, uint8_t quotienting_tail_length,
       kTinyPtrOffset(0),
       kKeyOffset(1),
       kValueOffset(kKeyOffset + kQuotKeyByteLength),
-      kFastDivisionReciprocal(kFastDivisionBase / kBushCapacity +
-                              kBushCapacity) {
+      kFastDivisionReciprocal(kFastDivisionBase / kBushCapacity + 1) {
 
     assert(2 * size >= (1ULL << (kQuotientingTailLength)));
     assert(bin_size < 128);

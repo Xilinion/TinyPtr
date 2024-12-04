@@ -57,7 +57,7 @@ class SkulkerHT {
         ~((uintptr_t)(utils::kCacheLineSize - 1));
 
     const uint64_t kFastDivisionShift = 36;
-    const uint64_t kFastDivisionUpperBound = 1ULL << 32;
+    const uint64_t kFastDivisionUpperBound = 1ULL << 31;
     const uint64_t kFastDivisionBase = 1ULL << kFastDivisionShift;
     const uint64_t kFastDivisionReciprocal;
 
