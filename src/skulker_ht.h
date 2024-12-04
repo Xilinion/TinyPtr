@@ -26,7 +26,9 @@ class SkulkerHT {
     const uint8_t kQuotKeyByteLength;
     const uint8_t kEntryByteLength;
 
-    const uint8_t kBushByteLength = utils::kCacheLineSize;
+    // const uint8_t kBushByteLength = utils::kCacheLineSize;
+    const uint8_t kBushByteLength = 64;
+    const uint8_t kBushIdShiftOffset = 6;
     // expected ratio of used quotienting slots
     const double kBushRatio;
     const double kBushOverflowBound;
@@ -53,6 +55,11 @@ class SkulkerHT {
     const uintptr_t kPtrCacheLineOffsetMask = utils::kCacheLineSize - 1;
     const uintptr_t kPtrCacheLineAlignMask =
         ~((uintptr_t)(utils::kCacheLineSize - 1));
+
+    const uint64_t kFastDivisionShift = 36;
+    const uint64_t kFastDivisionUpperBound = 1ULL << 32;
+    const uint64_t kFastDivisionBase = 1ULL << kFastDivisionShift;
+    const uint64_t kFastDivisionReciprocal;
 
    protected:
     uint8_t AutoQuotTailLength(uint64_t size);
@@ -171,6 +178,8 @@ class SkulkerHT {
     bool Update(uint64_t key, uint64_t value);
     void Free(uint64_t key);
 
+    uint64_t QueryEntryCnt();
+
    protected:
     uint8_t* bush_tab;
     uint8_t* byte_array;
@@ -178,6 +187,8 @@ class SkulkerHT {
     uint8_t* bin_cnt_head;
 
     uint8_t* play_entry;
+
+    uint64_t query_entry_cnt = 0;
 };
 
 struct SkulkerHTBushLookupInitializer {

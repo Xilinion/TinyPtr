@@ -32,4 +32,8 @@ void BenchmarkSkulkerHT::Erase(uint64_t key, uint8_t ptr) {
     tab->Free(key);
 }
 
+uint64_t BenchmarkSkulkerHT::QueryEntryCnt() {
+    return tab->QueryEntryCnt();
+}
+
 }  // namespace tinyptr

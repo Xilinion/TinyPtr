@@ -620,6 +620,13 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
                                ->QueryEntryCnt()
                         << std::endl;
                 }
+                if (para.object_id == BenchmarkObjectType::SKULKERHT) {
+                    output_stream
+                        << "Query Entry Count: "
+                        << dynamic_cast<BenchmarkSkulkerHT*>(obj)
+                               ->QueryEntryCnt()
+                        << std::endl;
+                }
             };
             break;
         case BenchmarkCaseType::QUERY_MISS_ONLY:

@@ -183,11 +183,11 @@ hit_percent=0
 quotient_tail_length=0
 bin_size=127
 
-for case_id in 1 6 7; do
+for case_id in 6 7; do
     if [ $case_id -eq 5 ]; then
         continue
     fi
-    for object_id in 12; do
+    for object_id in 7; do
         entry_id=0
         for table_size in 10000000; do
             # for table_size in 1000000 10000000; do

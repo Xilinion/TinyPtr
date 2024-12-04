@@ -22,6 +22,8 @@ class BenchmarkSkulkerHT : public BenchmarkObject64 {
     void Update(uint64_t key, uint8_t ptr, uint64_t value);
     void Erase(uint64_t key, uint8_t ptr);
 
+    uint64_t QueryEntryCnt();
+
    private:
     SkulkerHT* tab;
 };
