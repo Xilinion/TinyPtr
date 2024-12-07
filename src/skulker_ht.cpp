@@ -9,7 +9,8 @@ struct SkulkerHTBushLookupInitializer skulker_ht_bush_lookup_initializer;
 
 uint8_t SkulkerHT::AutoQuotTailLength(uint64_t size) {
     uint8_t res = 16;
-    size >>= 16;
+    // making 4 *size > 1 << res > 2 * size
+    size >>= 15;
     while (size) {
         size >>= 1;
         res++;
@@ -28,19 +29,19 @@ SkulkerHT::SkulkerHT(uint64_t size, uint8_t quotienting_tail_length,
       kQuotKeyByteLength((64 + 7 - kQuotientingTailLength) >> 3),
       kEntryByteLength(kQuotKeyByteLength + 1 + 8),
       kBinByteLength(kBinSize * kEntryByteLength),
-      kBushRatio(0.5 * size / (1.0 * (1ULL << kQuotientingTailLength)) + 0.15),
-      kBushOverflowBound(0.11),
+      kBushRatio(1 - std::exp(size / (-1.0 * (1ULL << kQuotientingTailLength)))),
+      kBushOverflowBound(0.21),
       kSkulkerRatio((1 - kBushRatio * (1ULL << kQuotientingTailLength) / size) +
                     kBushOverflowBound),
       kInitExhibitorNum(kBushByteLength / kEntryByteLength),
       kInitSkulkerNum(kBushByteLength - kInitExhibitorNum * kEntryByteLength -
-                      1),
-      kBushCapacity(
-          std::min(8, static_cast<int>(ceil(kInitExhibitorNum / kBushRatio)))),
+                      kControlByteLength),
+      kBushCapacity(std::min(
+          16, static_cast<int>(floor(kInitExhibitorNum / kBushRatio)))),
       kBushNum(((1ULL << kQuotientingTailLength) + kBushCapacity - 1) /
                kBushCapacity),
-      kControlByteOffset(kBushByteLength - 1),
-      kSkulkerOffset(kControlByteOffset - 1),
+      kControlOffset(kBushByteLength - kControlByteLength),
+      kSkulkerOffset(kControlOffset - 1),
       kBinSize(bin_size),
       kBinNum((size * kSkulkerRatio + kBinSize - 1) / kBinSize),
       kTinyPtrOffset(0),
@@ -48,7 +49,7 @@ SkulkerHT::SkulkerHT(uint64_t size, uint8_t quotienting_tail_length,
       kValueOffset(kKeyOffset + kQuotKeyByteLength),
       kFastDivisionReciprocal(kFastDivisionBase / kBushCapacity + 1) {
 
-    assert(2 * size >= (1ULL << (kQuotientingTailLength)));
+    assert(4 * size >= (1ULL << (kQuotientingTailLength)));
     assert(bin_size < 128);
 
     (void)posix_memalign(reinterpret_cast<void**>(&bush_tab), 64,
@@ -83,17 +84,29 @@ SkulkerHT::SkulkerHT(uint64_t size, uint16_t bin_size)
 
 bool SkulkerHT::Insert(uint64_t key, uint64_t value) {
     uint64_t base_id = hash_1_base_id(key);
-    uint64_t bush_id = base_id / kBushCapacity;
-    uint64_t in_bush_offset = base_id % kBushCapacity;
+
+    // do fast division
+    uint64_t bush_id;
+    if (base_id > kFastDivisionUpperBound) {
+        bush_id = base_id / kBushCapacity;
+    } else {
+        bush_id =
+            (1ULL * base_id * kFastDivisionReciprocal) >> kFastDivisionShift;
+    }
+    uint64_t in_bush_offset = base_id - bush_id * kBushCapacity;
 
     uint8_t* bush = &bush_tab[(bush_id << kBushIdShiftOffset)];
 
-    uint8_t& control_byte =
-        bush_tab[(bush_id << kBushIdShiftOffset) + kControlByteOffset];
-    uint8_t item_cnt = kBushLookup[control_byte];
-    uint8_t before_item_cnt = kBushLookup[control_byte >> in_bush_offset];
+    uint16_t& control_info = *reinterpret_cast<uint16_t*>(
+        bush_tab + (bush_id << kBushIdShiftOffset) + kControlOffset);
+    uint8_t item_cnt = kBushLookup[control_info & kByteMask] +
+                       kBushLookup[(control_info >> kByteShift)];
+    uint16_t control_info_before_item = control_info >> in_bush_offset;
+    uint8_t before_item_cnt =
+        kBushLookup[control_info_before_item & kByteMask] +
+        kBushLookup[(control_info_before_item >> kByteShift)];
 
-    if ((control_byte >> in_bush_offset) & 1) {
+    if ((control_info >> in_bush_offset) & 1) {
 
         uint8_t overload_flag =
             item_cnt > (kInitSkulkerNum + kInitExhibitorNum);
@@ -139,10 +152,16 @@ bool SkulkerHT::Insert(uint64_t key, uint64_t value) {
                 bush[kSkulkerOffset] = play_entry[kTinyPtrOffset];
                 // get the base_id of the last exhibitor
                 uint8_t spilled_in_bush_offset = 0;
-                while (
-                    kBushLookup[control_byte >> (spilled_in_bush_offset + 1)] >
-                    exhibitor_num - overload_flag) {
+                uint16_t control_info_before_spilled =
+                    control_info >> (spilled_in_bush_offset + 1);
+
+                while (kBushLookup[control_info_before_spilled & kByteMask] +
+                           kBushLookup[(control_info_before_spilled >>
+                                        kByteShift)] >
+                       exhibitor_num - overload_flag) {
                     spilled_in_bush_offset++;
+                    control_info_before_spilled =
+                        control_info >> (spilled_in_bush_offset + 1);
                 }
 
                 uintptr_t spilled_base_id =
@@ -160,7 +179,7 @@ bool SkulkerHT::Insert(uint64_t key, uint64_t value) {
             }
         }
 
-        control_byte |= (1 << in_bush_offset);
+        control_info |= (1u << in_bush_offset);
         item_cnt++;
         before_item_cnt++;
 
@@ -200,10 +219,15 @@ bool SkulkerHT::Insert(uint64_t key, uint64_t value) {
                 bush[kSkulkerOffset] = play_entry[kTinyPtrOffset];
                 // get the base_id of the last exhibitor
                 uint8_t spilled_in_bush_offset = 0;
-                while (
-                    kBushLookup[control_byte >> (spilled_in_bush_offset + 1)] >
-                    exhibitor_num - overload_flag) {
+                uint16_t control_info_before_spilled =
+                    control_info >> (spilled_in_bush_offset + 1);
+                while (kBushLookup[control_info_before_spilled & kByteMask] +
+                           kBushLookup[(control_info_before_spilled >>
+                                        kByteShift)] >
+                       exhibitor_num - overload_flag) {
                     spilled_in_bush_offset++;
+                    control_info_before_spilled =
+                        control_info >> (spilled_in_bush_offset + 1);
                 }
 
                 uintptr_t spilled_base_id =
@@ -249,33 +273,14 @@ bool SkulkerHT::Query(uint64_t key, uint64_t* value_ptr) {
 
     uint8_t* bush = &bush_tab[(bush_id << kBushIdShiftOffset)];
 
-    /*
-    // cache simluate without calculation
-    *value_ptr = *(uint64_t*)bush;
-
-    uint64_t bin_id = hash_2_bin(key);
-    uint64_t bin_offset = key % kBinSize;
-
-    uint64_t rand_val = hash_1(key) % 100;
-    
-    if (40 > rand_val) {
-        *value_ptr ^= 
-        // 0;
-        // bin_offset;
-        //  ^ bin_id;
-        *(uint64_t*)(byte_array + bin_id * kBinSize * kEntryByteLength +
-         bin_offset * kEntryByteLength + kValueOffset);
-    }
-
-    return true;
-    // simulation end
-
-*/
-
-    uint8_t& control_byte =
-        bush_tab[(bush_id << kBushIdShiftOffset) + kControlByteOffset];
-    uint8_t item_cnt = kBushLookup[control_byte];
-    uint8_t before_item_cnt = kBushLookup[control_byte >> in_bush_offset];
+    uint16_t& control_info = *reinterpret_cast<uint16_t*>(
+        bush_tab + (bush_id << kBushIdShiftOffset) + kControlOffset);
+    uint8_t item_cnt = kBushLookup[control_info & kByteMask] +
+                       kBushLookup[(control_info >> kByteShift)];
+    uint16_t control_info_before_item = control_info >> in_bush_offset;
+    uint8_t before_item_cnt =
+        kBushLookup[control_info_before_item & kByteMask] +
+        kBushLookup[(control_info_before_item >> kByteShift)];
 
     uint8_t overload_flag = item_cnt > (kInitSkulkerNum + kInitExhibitorNum);
 
@@ -283,7 +288,7 @@ bool SkulkerHT::Query(uint64_t key, uint64_t* value_ptr) {
 
     query_entry_cnt++;
 
-    if ((control_byte >> in_bush_offset) & 1) {
+    if ((control_info >> in_bush_offset) & 1) {
 
         // key >>= kQuotientingTailLength;
         // key <<= kQuotientingTailLength;

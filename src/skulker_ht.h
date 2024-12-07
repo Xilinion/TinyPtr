@@ -17,6 +17,8 @@ class SkulkerHT {
 
    public:
     static uint8_t kBushLookup[256];
+    static const uint8_t kByteMask = 0xFF;
+    static const uint8_t kByteShift = 8;
 
    public:
     const uint64_t kHashSeed1;
@@ -26,9 +28,17 @@ class SkulkerHT {
     const uint8_t kQuotKeyByteLength;
     const uint8_t kEntryByteLength;
 
+    // layout
+    // {4*{TP,K,V},{Skulkers},{Control}}
+
     // const uint8_t kBushByteLength = utils::kCacheLineSize;
     const uint8_t kBushByteLength = 64;
     const uint8_t kBushIdShiftOffset = 6;
+    // control byte and skulkers grow from the end of the bush
+    const uint8_t kControlByteLength = 2;
+    const uint8_t kControlOffset;
+    const uint8_t kSkulkerOffset;
+
     // expected ratio of used quotienting slots
     const double kBushRatio;
     const double kBushOverflowBound;
@@ -37,11 +47,7 @@ class SkulkerHT {
     const uint8_t kInitExhibitorNum;
     const uint8_t kInitSkulkerNum;
     const uint8_t kBushCapacity;
-
-    // control byte and skulkers grow from the end of the bush
     const uint64_t kBushNum;
-    const uint8_t kControlByteOffset;
-    const uint8_t kSkulkerOffset;
 
     const uint16_t kBinSize;
     const uint64_t kBinNum;
@@ -52,9 +58,10 @@ class SkulkerHT {
     const uintptr_t kPtr16BAlignMask = ~0xF;
     const uintptr_t kPtr16BBufferOffsetMask = 0xF;
     const uint8_t kPtr16BBufferSecondLoadOffset = 16;
-    const uintptr_t kPtrCacheLineOffsetMask = utils::kCacheLineSize - 1;
+    // const uintptr_t kPtrCacheLineOffsetMask = utils::kCacheLineSize - 1;
+    const uintptr_t kPtrCacheLineOffsetMask = kBushByteLength - 1;
     const uintptr_t kPtrCacheLineAlignMask =
-        ~((uintptr_t)(utils::kCacheLineSize - 1));
+        ~((uintptr_t)(kBushByteLength - 1));
 
     const uint64_t kFastDivisionShift = 36;
     const uint64_t kFastDivisionUpperBound = 1ULL << 31;
