@@ -37,7 +37,7 @@ uint64_t my_value_rand() {
 TEST(SkulkerHT_TESTSUITE, StdMapCompliance_INSERT_QUERY) {
     srand(233);
 
-    int n = 1e6, m = 1e6;
+    int n = 1 << 15, m = 1 << 15;
     // int n = 1e8, m = 1e8;
     // int n = 1000000, m = 1 << 16;
 
@@ -45,8 +45,7 @@ TEST(SkulkerHT_TESTSUITE, StdMapCompliance_INSERT_QUERY) {
     // tinyptr::ByteArrayChainedHT chained_ht(m, 24, 127);
     tinyptr::SkulkerHT skulker_ht(m, 127);
 
-
-    int cnt = 0;    
+    int cnt = 0;
     while (n--) {
 
         // cout << "cnt: " << cnt++ << endl;

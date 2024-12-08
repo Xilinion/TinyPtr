@@ -29,7 +29,8 @@ SkulkerHT::SkulkerHT(uint64_t size, uint8_t quotienting_tail_length,
       kQuotKeyByteLength((64 + 7 - kQuotientingTailLength) >> 3),
       kEntryByteLength(kQuotKeyByteLength + 1 + 8),
       kBinByteLength(kBinSize * kEntryByteLength),
-      kBushRatio(1 - std::exp(size / (-1.0 * (1ULL << kQuotientingTailLength)))),
+      kBushRatio(1 -
+                 std::exp(size / (-1.0 * (1ULL << kQuotientingTailLength)))),
       kBushOverflowBound(0.21),
       kSkulkerRatio((1 - kBushRatio * (1ULL << kQuotientingTailLength) / size) +
                     kBushOverflowBound),
@@ -129,132 +130,70 @@ bool SkulkerHT::Insert(uint64_t key, uint64_t value) {
         uint8_t overload_flag =
             item_cnt + 1 > (kInitSkulkerNum + kInitExhibitorNum);
 
-        // if (overload_flag) {
-        //     return false;
-        // }
+        uint8_t exhibitor_num;
 
         // spill before inserting the new item
         if (pre_overload_flag == 0 && overload_flag == 1) {
-            uint8_t exhibitor_num = kInitExhibitorNum;
-
-            // convert the last exhibitor to the first skulker
-            memcpy(play_entry, bush + (exhibitor_num - 1) * kEntryByteLength,
-                   kEntryByteLength);
-
-            if (item_cnt > exhibitor_num) {
-                // exhibitor spills and converts the last exhibitor to the first skulker
-                for (uint8_t* i =
-                         bush + kSkulkerOffset - (item_cnt - exhibitor_num - 1);
-                     i < bush + kSkulkerOffset; i++) {
-                    *i = *(i + 1);
-                }
-
-                bush[kSkulkerOffset] = play_entry[kTinyPtrOffset];
-                // get the base_id of the last exhibitor
-                uint8_t spilled_in_bush_offset = 0;
-                uint16_t control_info_before_spilled =
-                    control_info >> (spilled_in_bush_offset + 1);
-
-                while (kBushLookup[control_info_before_spilled & kByteMask] +
-                           kBushLookup[(control_info_before_spilled >>
-                                        kByteShift)] >
-                       exhibitor_num - overload_flag) {
-                    spilled_in_bush_offset++;
-                    control_info_before_spilled =
-                        control_info >> (spilled_in_bush_offset + 1);
-                }
-
-                uintptr_t spilled_base_id =
-                    base_id - in_bush_offset + spilled_in_bush_offset;
-
-                bush[kSkulkerOffset] = 0;
-
-                if (!ptab_insert(bush + kSkulkerOffset, spilled_base_id,
-                                 hash_1_key_rebuild(
-                                     *(uint64_t*)(play_entry + kKeyOffset),
-                                     spilled_base_id),
-                                 *(uint64_t*)(play_entry + kValueOffset))) {
-                    return false;
-                }
+            // spill the last exhibitor
+            exhibitor_num = kInitExhibitorNum;
+            if (!bush_spill_last_exhibitor(bush, base_id - in_bush_offset,
+                                           control_info, exhibitor_num,
+                                           item_cnt)) {
+                return false;
             }
         }
 
-        control_info |= (1u << in_bush_offset);
-        item_cnt++;
-        before_item_cnt++;
+        exhibitor_num = kInitExhibitorNum - overload_flag;
 
-        uint8_t exhibitor_num = kInitExhibitorNum - overload_flag;
-        if (before_item_cnt > exhibitor_num) {
+        if (before_item_cnt >= exhibitor_num) {
             // move skulkers after it one byte backwards
             for (uint8_t* i =
-                     bush + kSkulkerOffset - (item_cnt - exhibitor_num - 1);
-                 i <
-                 bush + kSkulkerOffset - (before_item_cnt - 1 - exhibitor_num);
+                     bush + kSkulkerOffset - (item_cnt - exhibitor_num);
+                 i < bush + kSkulkerOffset - (before_item_cnt - exhibitor_num);
                  i++) {
                 *i = *(i + 1);
             }
 
             uint8_t* pre_tiny_ptr =
-                bush + kSkulkerOffset - (before_item_cnt - 1 - exhibitor_num);
+                bush + kSkulkerOffset - (before_item_cnt - exhibitor_num);
             *pre_tiny_ptr = 0;
 
             uintptr_t pre_deref_key = base_id;
 
-            return ptab_insert(pre_tiny_ptr, pre_deref_key, key, value);
+            if (!ptab_insert(pre_tiny_ptr, pre_deref_key, key, value)) {
+                // recover the bush
+                for (uint8_t* i = bush + kSkulkerOffset -
+                                  (before_item_cnt - exhibitor_num);
+                     i > bush + kSkulkerOffset - (item_cnt - exhibitor_num);
+                     i--) {
+                    *i = *(i - 1);
+                }
+                return false;
+            }
 
         } else {
 
-            if (item_cnt > exhibitor_num) {
-                memcpy(play_entry,
-                       bush + (exhibitor_num - 1) * kEntryByteLength,
-                       kEntryByteLength);
-
-                // exhibitor spills and converts the last exhibitor to the first skulker
-                for (uint8_t* i =
-                         bush + kSkulkerOffset - (item_cnt - exhibitor_num - 1);
-                     i < bush + kSkulkerOffset; i++) {
-                    *i = *(i + 1);
-                }
-
-                bush[kSkulkerOffset] = play_entry[kTinyPtrOffset];
-                // get the base_id of the last exhibitor
-                uint8_t spilled_in_bush_offset = 0;
-                uint16_t control_info_before_spilled =
-                    control_info >> (spilled_in_bush_offset + 1);
-                while (kBushLookup[control_info_before_spilled & kByteMask] +
-                           kBushLookup[(control_info_before_spilled >>
-                                        kByteShift)] >
-                       exhibitor_num - overload_flag) {
-                    spilled_in_bush_offset++;
-                    control_info_before_spilled =
-                        control_info >> (spilled_in_bush_offset + 1);
-                }
-
-                uintptr_t spilled_base_id =
-                    base_id - in_bush_offset + spilled_in_bush_offset;
-
-                if (!ptab_insert(bush + kSkulkerOffset, spilled_base_id,
-                                 hash_1_key_rebuild(
-                                     *(uint64_t*)(play_entry + kKeyOffset),
-                                     spilled_base_id),
-                                 *(uint64_t*)(play_entry + kValueOffset))) {
+            if (item_cnt >= exhibitor_num) {
+                if (!bush_spill_last_exhibitor(bush, base_id - in_bush_offset,
+                                               control_info, exhibitor_num,
+                                               item_cnt)) {
                     return false;
                 }
             }
 
-            memmove(bush + before_item_cnt * kEntryByteLength,
-                    bush + (before_item_cnt - 1) * kEntryByteLength,
-                    kEntryByteLength * (exhibitor_num - before_item_cnt));
+            memmove(bush + (before_item_cnt + 1) * kEntryByteLength,
+                    bush + before_item_cnt * kEntryByteLength,
+                    kEntryByteLength * (exhibitor_num - before_item_cnt - 1));
 
-            uint8_t* new_entry =
-                bush + (before_item_cnt - 1) * kEntryByteLength;
+            uint8_t* new_entry = bush + before_item_cnt * kEntryByteLength;
             new_entry[kTinyPtrOffset] = 0;
             *(uint64_t*)(new_entry + kKeyOffset) =
                 key >> kQuotientingTailLength;
             *(uint64_t*)(new_entry + kValueOffset) = value;
-
-            return true;
         }
+
+        control_info |= (1u << in_bush_offset);
+        return true;
     }
 }
 

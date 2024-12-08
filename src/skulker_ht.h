@@ -179,6 +179,61 @@ class SkulkerHT {
         }
     }
 
+    __attribute__((always_inline)) inline bool bush_spill_last_exhibitor(
+        uint8_t* bush, uint64_t bush_offset,
+        uint16_t& control_info, uint8_t exhibitor_num, uint8_t item_cnt) {
+
+        // convert the last exhibitor to the first skulker
+        memcpy(play_entry, bush + (exhibitor_num - 1) * kEntryByteLength,
+               kEntryByteLength);
+
+        // exhibitor spills and converts the last exhibitor to the first skulker
+        for (uint8_t* i =
+                 bush + kSkulkerOffset - (item_cnt - exhibitor_num);
+             i < bush + kSkulkerOffset; i++) {
+            *i = *(i + 1);
+        }
+
+        // get the base_id of the last exhibitor
+        uint8_t spilled_in_bush_offset = 0;
+        uint16_t control_info_before_spilled =
+            control_info >> (spilled_in_bush_offset + 1);
+
+        while (kBushLookup[control_info_before_spilled & kByteMask] +
+                   kBushLookup[(control_info_before_spilled >> kByteShift)] >=
+               exhibitor_num) {
+            spilled_in_bush_offset++;
+            control_info_before_spilled =
+                control_info >> (spilled_in_bush_offset + 1);
+        }
+
+        uintptr_t spilled_base_id =
+            bush_offset + spilled_in_bush_offset;
+
+        bush[kSkulkerOffset] = play_entry[kTinyPtrOffset];
+
+        if (!ptab_insert(
+                bush + kSkulkerOffset, spilled_base_id,
+                hash_1_key_rebuild(*(uint64_t*)(play_entry + kKeyOffset),
+                                   spilled_base_id),
+                *(uint64_t*)(play_entry + kValueOffset))) {
+
+            // recover the bush
+            for (uint8_t* i = bush + kSkulkerOffset;
+                 i > bush + kSkulkerOffset - (item_cnt - exhibitor_num);
+                 i--) {
+                *i = *(i - 1);
+            }
+
+            memcpy(bush + (exhibitor_num - 1) * kEntryByteLength, play_entry,
+                   kEntryByteLength);
+
+            return false;
+        }
+
+        return true;
+    }
+
    public:
     bool Insert(uint64_t key, uint64_t value);
     bool Query(uint64_t key, uint64_t* value_ptr);
