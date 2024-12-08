@@ -229,9 +229,6 @@ bool SkulkerHT::Query(uint64_t key, uint64_t* value_ptr) {
 
     if ((control_info >> in_bush_offset) & 1) {
 
-        // key >>= kQuotientingTailLength;
-        // key <<= kQuotientingTailLength;
-
         key = key & (~kQuotientingTailMask);
 
         if (before_item_cnt <= exhibitor_num) {
@@ -274,6 +271,75 @@ bool SkulkerHT::Query(uint64_t key, uint64_t* value_ptr) {
 }
 
 bool SkulkerHT::Update(uint64_t key, uint64_t value) {
+    uint64_t base_id = hash_1_base_id(key);
+
+    // do fast division
+    uint64_t bush_id;
+    if (base_id > kFastDivisionUpperBound) {
+        bush_id = base_id / kBushCapacity;
+    } else {
+        bush_id =
+            (1ULL * base_id * kFastDivisionReciprocal) >> kFastDivisionShift;
+    }
+    uint64_t in_bush_offset = base_id - bush_id * kBushCapacity;
+
+    uint8_t* bush = &bush_tab[(bush_id << kBushIdShiftOffset)];
+
+    uint16_t& control_info = *reinterpret_cast<uint16_t*>(
+        bush_tab + (bush_id << kBushIdShiftOffset) + kControlOffset);
+    uint8_t item_cnt = kBushLookup[control_info & kByteMask] +
+                       kBushLookup[(control_info >> kByteShift)];
+    uint16_t control_info_before_item = control_info >> in_bush_offset;
+    uint8_t before_item_cnt =
+        kBushLookup[control_info_before_item & kByteMask] +
+        kBushLookup[(control_info_before_item >> kByteShift)];
+
+    uint8_t overload_flag = item_cnt > (kInitSkulkerNum + kInitExhibitorNum);
+
+    uint8_t exhibitor_num = kInitExhibitorNum - overload_flag;
+
+    query_entry_cnt++;
+
+    if ((control_info >> in_bush_offset) & 1) {
+
+        key = key & (~kQuotientingTailMask);
+
+        if (before_item_cnt <= exhibitor_num) {
+            uint8_t* exhibitor_ptr =
+                bush + (before_item_cnt - 1) * kEntryByteLength;
+            if ((*reinterpret_cast<uint64_t*>(exhibitor_ptr + kKeyOffset)
+                 << kQuotientingTailLength) == key) {
+                *reinterpret_cast<uint64_t*>(exhibitor_ptr + kValueOffset) =
+                    value;
+                return true;
+            }
+        }
+
+        uint8_t* pre_tiny_ptr =
+            &bush_tab[(bush_id << kBushIdShiftOffset) +
+                      (before_item_cnt > exhibitor_num
+                           ? kSkulkerOffset -
+                                 (before_item_cnt - 1 - exhibitor_num)
+                           : (before_item_cnt - 1) * kEntryByteLength)];
+
+        uintptr_t pre_deref_key = base_id;
+
+        while (*pre_tiny_ptr != 0) {
+
+            query_entry_cnt++;
+
+            uint8_t* entry =
+                ptab_query_entry_address(pre_deref_key, *pre_tiny_ptr);
+            if ((*reinterpret_cast<uint64_t*>(entry + kKeyOffset)
+                 << kQuotientingTailLength) == key) {
+                *reinterpret_cast<uint64_t*>(entry + kValueOffset) = value;
+                return true;
+            }
+            pre_tiny_ptr = entry + kTinyPtrOffset;
+            pre_deref_key = reinterpret_cast<uintptr_t>(entry);
+        }
+    }
+
     return false;
 }
 
