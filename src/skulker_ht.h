@@ -17,6 +17,8 @@ class SkulkerHT {
 
    public:
     static uint8_t kBushLookup[256];
+    static const uint8_t kByteMask = 0xFF;
+    static const uint8_t kByteShift = 8;
 
    public:
     const uint64_t kHashSeed1;
@@ -26,7 +28,17 @@ class SkulkerHT {
     const uint8_t kQuotKeyByteLength;
     const uint8_t kEntryByteLength;
 
-    const uint8_t kBushByteLength = utils::kCacheLineSize;
+    // layout
+    // {4*{TP,K,V},{Skulkers},{Control}}
+
+    // const uint8_t kBushByteLength = utils::kCacheLineSize;
+    const uint8_t kBushByteLength = 64;
+    const uint8_t kBushIdShiftOffset = 6;
+    // control byte and skulkers grow from the end of the bush
+    const uint8_t kControlByteLength = 2;
+    const uint8_t kControlOffset;
+    const uint8_t kSkulkerOffset;
+
     // expected ratio of used quotienting slots
     const double kBushRatio;
     const double kBushOverflowBound;
@@ -35,11 +47,7 @@ class SkulkerHT {
     const uint8_t kInitExhibitorNum;
     const uint8_t kInitSkulkerNum;
     const uint8_t kBushCapacity;
-
-    // control byte and skulkers grow from the end of the bush
     const uint64_t kBushNum;
-    const uint8_t kControlByteOffset;
-    const uint8_t kSkulkerOffset;
 
     const uint16_t kBinSize;
     const uint64_t kBinNum;
@@ -50,9 +58,15 @@ class SkulkerHT {
     const uintptr_t kPtr16BAlignMask = ~0xF;
     const uintptr_t kPtr16BBufferOffsetMask = 0xF;
     const uint8_t kPtr16BBufferSecondLoadOffset = 16;
-    const uintptr_t kPtrCacheLineOffsetMask = utils::kCacheLineSize - 1;
+    // const uintptr_t kPtrCacheLineOffsetMask = utils::kCacheLineSize - 1;
+    const uintptr_t kPtrCacheLineOffsetMask = kBushByteLength - 1;
     const uintptr_t kPtrCacheLineAlignMask =
-        ~((uintptr_t)(utils::kCacheLineSize - 1));
+        ~((uintptr_t)(kBushByteLength - 1));
+
+    const uint64_t kFastDivisionShift = 36;
+    const uint64_t kFastDivisionUpperBound = 1ULL << 31;
+    const uint64_t kFastDivisionBase = 1ULL << kFastDivisionShift;
+    const uint64_t kFastDivisionReciprocal;
 
    protected:
     uint8_t AutoQuotTailLength(uint64_t size);
@@ -165,11 +179,178 @@ class SkulkerHT {
         }
     }
 
+    __attribute__((always_inline)) inline void ptab_free(
+        uint8_t* pre_tiny_ptr, uintptr_t pre_deref_key,
+        uint64_t quotiented_N_reshifted_key) {
+
+        uint8_t* cur_tiny_ptr = nullptr;
+        uint8_t* cur_entry = nullptr;
+        uint8_t* aiming_entry = nullptr;
+
+        if (*pre_tiny_ptr != 0) {
+            cur_entry = ptab_query_entry_address(pre_deref_key, *pre_tiny_ptr);
+            if ((*reinterpret_cast<uint64_t*>(cur_entry + kKeyOffset)
+                 << kQuotientingTailLength) == quotiented_N_reshifted_key) {
+                aiming_entry = cur_entry;
+            }
+            cur_tiny_ptr = cur_entry + kTinyPtrOffset;
+        } else {
+            return;
+        }
+
+        while (*cur_tiny_ptr != 0) {
+            pre_tiny_ptr = cur_tiny_ptr;
+
+            cur_entry = ptab_query_entry_address(
+                reinterpret_cast<uint64_t>(cur_tiny_ptr), *cur_tiny_ptr);
+            if ((*reinterpret_cast<uint64_t*>(cur_entry + kKeyOffset)
+                 << kQuotientingTailLength) == quotiented_N_reshifted_key) {
+                aiming_entry = cur_entry;
+            }
+            cur_tiny_ptr = cur_entry + kTinyPtrOffset;
+        }
+
+        if (aiming_entry == nullptr) {
+            return;
+        }
+
+        uint8_t tmp = aiming_entry[kTinyPtrOffset];
+        memcpy(aiming_entry, cur_entry, kEntryByteLength);
+        aiming_entry[kTinyPtrOffset] = tmp;
+
+        uint64_t bin_id = (cur_entry - byte_array) / kBinByteLength;
+        bin_cnt(bin_id)--;
+        uint8_t& head = bin_head(bin_id);
+        cur_entry[kTinyPtrOffset] = head;
+        head = ((uint8_t)((*pre_tiny_ptr) << 1) >> 1);
+        *pre_tiny_ptr = 0;
+    }
+
+    __attribute__((always_inline)) inline void ptab_lift_to_bush(
+        uint8_t* pre_tiny_ptr, uintptr_t pre_deref_key,
+        uint8_t* exhibitor_ptr) {
+
+        uint8_t* cur_tiny_ptr = nullptr;
+        uint8_t* cur_entry = nullptr;
+
+        if (*pre_tiny_ptr != 0) {
+            cur_entry = ptab_query_entry_address(pre_deref_key, *pre_tiny_ptr);
+            cur_tiny_ptr = cur_entry + kTinyPtrOffset;
+        } else {
+            return;
+        }
+
+        while (*cur_tiny_ptr != 0) {
+            pre_tiny_ptr = cur_tiny_ptr;
+
+            cur_entry = ptab_query_entry_address(
+                reinterpret_cast<uint64_t>(cur_tiny_ptr), *cur_tiny_ptr);
+            cur_tiny_ptr = cur_entry + kTinyPtrOffset;
+        }
+
+        uint8_t tmp = exhibitor_ptr[kTinyPtrOffset];
+        memcpy(exhibitor_ptr, cur_entry, kEntryByteLength);
+        exhibitor_ptr[kTinyPtrOffset] = tmp;
+
+        uint64_t bin_id = (cur_entry - byte_array) / kBinByteLength;
+        bin_cnt(bin_id)--;
+        uint8_t& head = bin_head(bin_id);
+        cur_entry[kTinyPtrOffset] = head;
+        head = ((uint8_t)((*pre_tiny_ptr) << 1) >> 1);
+        *pre_tiny_ptr = 0;
+    }
+
+    __attribute__((always_inline)) inline bool bush_exhibitor_hide(
+        uint8_t* bush, uint64_t bush_offset, uint16_t& control_info,
+        uint8_t exhibitor_num, uint8_t item_cnt) {
+
+        // convert the last exhibitor to the first skulker
+        memcpy(play_entry, bush + (exhibitor_num - 1) * kEntryByteLength,
+               kEntryByteLength);
+
+        // exhibitor spills and converts the last exhibitor to the first skulker
+        for (uint8_t* i = bush + kSkulkerOffset - (item_cnt - exhibitor_num);
+             i < bush + kSkulkerOffset; i++) {
+            *i = *(i + 1);
+        }
+
+        // get the base_id of the last exhibitor
+        uint8_t hide_in_bush_offset = 0;
+        uint16_t control_info_before_spilled =
+            control_info >> (hide_in_bush_offset + 1);
+
+        while (kBushLookup[control_info_before_spilled & kByteMask] +
+                   kBushLookup[(control_info_before_spilled >> kByteShift)] >=
+               exhibitor_num) {
+            hide_in_bush_offset++;
+            control_info_before_spilled =
+                control_info >> (hide_in_bush_offset + 1);
+        }
+
+        uintptr_t spilled_base_id = bush_offset + hide_in_bush_offset;
+
+        bush[kSkulkerOffset] = play_entry[kTinyPtrOffset];
+
+        if (!ptab_insert(
+                bush + kSkulkerOffset, spilled_base_id,
+                hash_1_key_rebuild(*(uint64_t*)(play_entry + kKeyOffset),
+                                   spilled_base_id),
+                *(uint64_t*)(play_entry + kValueOffset))) {
+
+            // recover the bush
+            for (uint8_t* i = bush + kSkulkerOffset;
+                 i > bush + kSkulkerOffset - (item_cnt - exhibitor_num); i--) {
+                *i = *(i - 1);
+            }
+
+            memcpy(bush + (exhibitor_num - 1) * kEntryByteLength, play_entry,
+                   kEntryByteLength);
+
+            return false;
+        }
+
+        return true;
+    }
+
+    // exhibitor_num is the # we currently have in the bush
+    __attribute__((always_inline)) inline void bush_skulker_raid(
+        uint8_t* bush, uint64_t bush_offset, uint16_t& control_info,
+        uint8_t exhibitor_num, uint8_t item_cnt) {
+
+        uint8_t* exhibitor_ptr = bush + (exhibitor_num)*kEntryByteLength;
+        exhibitor_ptr[kTinyPtrOffset] = bush[kSkulkerOffset];
+
+        for (uint8_t* i = bush + kSkulkerOffset;
+             i > bush + kSkulkerOffset - (item_cnt - exhibitor_num - 1); i--) {
+            *i = *(i - 1);
+        }
+
+        // get the base_id of the first skulker
+        uint8_t raid_in_bush_offset = 0;
+        uint16_t control_info_before_spilled =
+            control_info >> (raid_in_bush_offset + 1);
+
+        while (kBushLookup[control_info_before_spilled & kByteMask] +
+                   kBushLookup[(control_info_before_spilled >> kByteShift)] >
+               exhibitor_num) {
+            raid_in_bush_offset++;
+            control_info_before_spilled =
+                control_info >> (raid_in_bush_offset + 1);
+        }
+
+        uint8_t* pre_tiny_ptr = exhibitor_ptr + kTinyPtrOffset;
+        uintptr_t pre_deref_key = bush_offset + raid_in_bush_offset;
+
+        ptab_lift_to_bush(pre_tiny_ptr, pre_deref_key, exhibitor_ptr);
+    }
+
    public:
     bool Insert(uint64_t key, uint64_t value);
     bool Query(uint64_t key, uint64_t* value_ptr);
     bool Update(uint64_t key, uint64_t value);
     void Free(uint64_t key);
+
+    uint64_t QueryEntryCnt();
 
    protected:
     uint8_t* bush_tab;
@@ -178,6 +359,8 @@ class SkulkerHT {
     uint8_t* bin_cnt_head;
 
     uint8_t* play_entry;
+
+    uint64_t query_entry_cnt = 0;
 };
 
 struct SkulkerHTBushLookupInitializer {

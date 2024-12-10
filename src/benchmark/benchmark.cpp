@@ -24,6 +24,7 @@
 #include "benchmark_intarray64.h"
 #include "benchmark_object_64.h"
 #include "benchmark_same_bin_chainedht.h"
+#include "benchmark_skulkerht.h"
 #include "benchmark_std_unordered_map_64.h"
 #include "benchmark_yarded_tp_ht.h"
 
@@ -371,6 +372,9 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
         case BenchmarkObjectType::ICEBERG:
             obj = new BenchmarkIceberg(table_size);
             break;
+        case BenchmarkObjectType::SKULKERHT:
+            obj = new BenchmarkSkulkerHT(table_size, para.bin_size);
+            break;
         default:
             abort();
     }
@@ -613,6 +617,13 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
                     output_stream
                         << "Query Entry Count: "
                         << dynamic_cast<BenchmarkByteArrayChained*>(obj)
+                               ->QueryEntryCnt()
+                        << std::endl;
+                }
+                if (para.object_id == BenchmarkObjectType::SKULKERHT) {
+                    output_stream
+                        << "Query Entry Count: "
+                        << dynamic_cast<BenchmarkSkulkerHT*>(obj)
                                ->QueryEntryCnt()
                         << std::endl;
                 }

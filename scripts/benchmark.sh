@@ -68,6 +68,16 @@ function ValgrindCompile() {
     sudo setcap -r ../build/tinyptr
 }
 
+function AsanCompile() {
+    cd ..
+    rm -rf ./build
+    cmake -B build -DCMAKE_BUILD_TYPE=Debug -DCOMPILE_FOR_ASAN=ON | tail -n 90
+    cmake --build build --config Debug -j8 | tail -n 90
+    cd scripts
+
+    sudo setcap CAP_SYS_RAWIO+eip ../build/tinyptr
+}
+
 function CompileWithOption() {
     if [ $compile_option -eq 1 ]; then
         Compile
@@ -75,6 +85,8 @@ function CompileWithOption() {
         DebugCompile
     elif [ $compile_option -eq 3 ]; then
         ValgrindCompile
+    elif [ $compile_option -eq 4 ]; then
+        AsanCompile
     fi
 }
 
@@ -150,13 +162,18 @@ function RunValgrind() {
     echo "== file path: "$res_path/object_${object_id}_case_${case_id}_entry_${entry_id}_cachegrind_annotate.txt""
 }
 
+function RunCTest() {
+    ctest --test-dir ../build
+}
+
+
 Init
 
 # Compile
 # DebugCompile
 # ValgrindCompile
 
-compile_option=2
+compile_option=1
 CompileWithOption
 
 table_size=1
@@ -166,15 +183,11 @@ hit_percent=0
 quotient_tail_length=0
 bin_size=127
 
-ctest --test-dir ../build
-
-exit
-
-for case_id in 1 6 7; do
-    if [ $case_id -eq 5 ]; then
-        continue
-    fi
-    for object_id in 10; do
+for case_id in 5; do
+    # if [ $case_id -eq 5 ]; then
+    #     continue
+    # fi
+    for object_id in 12; do
         entry_id=0
         for table_size in 10000000; do
             # for table_size in 1000000 10000000; do

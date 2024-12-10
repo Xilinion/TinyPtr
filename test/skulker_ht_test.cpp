@@ -37,16 +37,15 @@ uint64_t my_value_rand() {
 TEST(SkulkerHT_TESTSUITE, StdMapCompliance_INSERT_QUERY) {
     srand(233);
 
-    int n = 1e6, m = 1e6;
+    int n = 1 << 15, m = 1 << 15;
     // int n = 1e8, m = 1e8;
     // int n = 1000000, m = 1 << 16;
 
     std::unordered_map<uint64_t, uint64_t> lala;
-    // tinyptr::ByteArrayChainedHT chained_ht(m, 24, 127);
+    // tinyptr::ByteArrayChainedHT skulker_ht(m, 24, 127);
     tinyptr::SkulkerHT skulker_ht(m, 127);
 
-
-    int cnt = 0;    
+    int cnt = 0;
     while (n--) {
 
         // cout << "cnt: " << cnt++ << endl;
@@ -62,6 +61,37 @@ TEST(SkulkerHT_TESTSUITE, StdMapCompliance_INSERT_QUERY) {
         if (lala.find(key) != lala.end()) {
             ASSERT_TRUE(skulker_ht.Query(key, &val));
             ASSERT_EQ(val, lala[key]);
+        }
+    }
+}
+
+TEST(ByteArrayChainedHT_TESTSUITE, StdMapCompliance) {
+    srand(233);
+
+    int n = 1e6, m = 1 << 14;
+    std::unordered_map<uint64_t, uint64_t> lala;
+    tinyptr::SkulkerHT skulker_ht(m, 127);
+
+    while (n--) {
+        uint64_t key = my_sparse_key_rand(), new_val = my_value_rand(), val = 0;
+
+        if (lala.find(key) == lala.end() && skulker_ht.Insert(key, new_val)) {
+            lala[key] = new_val;
+        }
+
+        key = my_sparse_key_rand(), new_val = my_value_rand(), val = 0;
+
+        if (lala.find(key) != lala.end()) {
+            ASSERT_TRUE(skulker_ht.Query(key, &val));
+            ASSERT_EQ(val, lala[key]);
+        }
+
+        if (skulker_ht.Update(key, new_val)) {
+            lala[key] = new_val;
+        }
+
+        if (1 > (rand() & ((1 << 3) - 1))) {
+            skulker_ht.Free(key), lala.erase(key);
         }
     }
 }
