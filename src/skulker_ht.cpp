@@ -132,13 +132,13 @@ bool SkulkerHT::Insert(uint64_t key, uint64_t value) {
 
         uint8_t exhibitor_num;
 
+        bool new_overload_flag = pre_overload_flag == 0 && overload_flag == 1;
         // spill before inserting the new item
-        if (pre_overload_flag == 0 && overload_flag == 1) {
+        if (new_overload_flag) {
             // spill the last exhibitor
             exhibitor_num = kInitExhibitorNum;
-            if (!bush_spill_last_exhibitor(bush, base_id - in_bush_offset,
-                                           control_info, exhibitor_num,
-                                           item_cnt)) {
+            if (!bush_exhibitor_hide(bush, base_id - in_bush_offset,
+                                     control_info, exhibitor_num, item_cnt)) {
                 return false;
             }
         }
@@ -168,15 +168,25 @@ bool SkulkerHT::Insert(uint64_t key, uint64_t value) {
                      i--) {
                     *i = *(i - 1);
                 }
+
+                if (new_overload_flag) {
+                    bush_skulker_raid(bush, base_id - in_bush_offset,
+                                      control_info, exhibitor_num, item_cnt);
+                }
                 return false;
             }
 
         } else {
 
             if (item_cnt >= exhibitor_num) {
-                if (!bush_spill_last_exhibitor(bush, base_id - in_bush_offset,
-                                               control_info, exhibitor_num,
-                                               item_cnt)) {
+                if (!bush_exhibitor_hide(bush, base_id - in_bush_offset,
+                                         control_info, exhibitor_num,
+                                         item_cnt)) {
+                    if (new_overload_flag) {
+                        bush_skulker_raid(bush, base_id - in_bush_offset,
+                                          control_info, exhibitor_num,
+                                          item_cnt);
+                    }
                     return false;
                 }
             }
@@ -344,7 +354,112 @@ bool SkulkerHT::Update(uint64_t key, uint64_t value) {
 }
 
 void SkulkerHT::Free(uint64_t key) {
-    return;
+    uint64_t base_id = hash_1_base_id(key);
+
+    // do fast division
+    uint64_t bush_id;
+    if (base_id > kFastDivisionUpperBound) {
+        bush_id = base_id / kBushCapacity;
+    } else {
+        bush_id =
+            (1ULL * base_id * kFastDivisionReciprocal) >> kFastDivisionShift;
+    }
+    uint64_t in_bush_offset = base_id - bush_id * kBushCapacity;
+
+    uint8_t* bush = &bush_tab[(bush_id << kBushIdShiftOffset)];
+
+    uint16_t& control_info = *reinterpret_cast<uint16_t*>(
+        bush_tab + (bush_id << kBushIdShiftOffset) + kControlOffset);
+    uint8_t item_cnt = kBushLookup[control_info & kByteMask] +
+                       kBushLookup[(control_info >> kByteShift)];
+    uint16_t control_info_before_item = control_info >> in_bush_offset;
+    uint8_t before_item_cnt =
+        kBushLookup[control_info_before_item & kByteMask] +
+        kBushLookup[(control_info_before_item >> kByteShift)];
+
+    uint8_t overload_flag = item_cnt > (kInitSkulkerNum + kInitExhibitorNum);
+
+    uint8_t exhibitor_num = kInitExhibitorNum - overload_flag;
+
+    if ((control_info >> in_bush_offset) & 1) {
+
+        key = key & (~kQuotientingTailMask);
+
+        if (before_item_cnt <= exhibitor_num) {
+
+            uint8_t* exhibitor_ptr =
+                bush + (before_item_cnt - 1) * kEntryByteLength;
+            if ((*reinterpret_cast<uint64_t*>(exhibitor_ptr + kKeyOffset)
+                 << kQuotientingTailLength) == key) {
+
+                if (exhibitor_ptr[kTinyPtrOffset] == 0) {
+
+                    memmove(
+                        bush + (before_item_cnt - 1) * kEntryByteLength,
+                        bush + before_item_cnt * kEntryByteLength,
+                        kEntryByteLength * (exhibitor_num - before_item_cnt));
+
+                    control_info &= ~(1u << in_bush_offset);
+                    item_cnt--;
+                    before_item_cnt--;
+
+                    if (item_cnt >= exhibitor_num) {
+                        bush_skulker_raid(bush, base_id - in_bush_offset,
+                                          control_info, exhibitor_num - 1,
+                                          item_cnt);
+
+                        uint8_t overflow_flag_after =
+                            item_cnt > (kInitSkulkerNum + kInitExhibitorNum);
+
+                        if (overload_flag && !overflow_flag_after) {
+                            bush_skulker_raid(bush, base_id - in_bush_offset,
+                                              control_info, exhibitor_num,
+                                              item_cnt);
+                        }
+                    }
+
+                } else {
+                    uint8_t* pre_tiny_ptr = exhibitor_ptr + kTinyPtrOffset;
+                    uintptr_t pre_deref_key = base_id;
+
+                    ptab_lift_to_bush(pre_tiny_ptr, pre_deref_key,
+                                      exhibitor_ptr);
+                }
+                return;
+            }
+        }
+
+        uint8_t* pre_tiny_ptr =
+            &bush_tab[(bush_id << kBushIdShiftOffset) +
+                      (before_item_cnt > exhibitor_num
+                           ? kSkulkerOffset -
+                                 (before_item_cnt - 1 - exhibitor_num)
+                           : (before_item_cnt - 1) * kEntryByteLength)];
+
+        uintptr_t pre_deref_key = base_id;
+
+        ptab_free(pre_tiny_ptr, pre_deref_key, key);
+
+        if (*pre_tiny_ptr == 0 && before_item_cnt > exhibitor_num) {
+            control_info &= ~(1u << in_bush_offset);
+            item_cnt--;
+            before_item_cnt--;
+
+            for (uint8_t* i =
+                     bush + kSkulkerOffset - (before_item_cnt - exhibitor_num);
+                 i > bush + kSkulkerOffset - (item_cnt - exhibitor_num); i--) {
+                *i = *(i - 1);
+            }
+
+            uint8_t overflow_flag_after =
+                item_cnt > (kInitSkulkerNum + kInitExhibitorNum);
+
+            if (overload_flag && !overflow_flag_after) {
+                bush_skulker_raid(bush, base_id - in_bush_offset, control_info,
+                                  exhibitor_num, item_cnt);
+            }
+        }
+    }
 }
 
 uint64_t SkulkerHT::QueryEntryCnt() {
