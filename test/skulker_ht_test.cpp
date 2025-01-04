@@ -65,7 +65,7 @@ TEST(SkulkerHT_TESTSUITE, StdMapCompliance_INSERT_QUERY) {
     }
 }
 
-TEST(ByteArrayChainedHT_TESTSUITE, StdMapCompliance) {
+TEST(SkulkerHT_TESTSUITE, StdMapCompliance) {
     srand(233);
 
     int n = 1e6, m = 1 << 14;
@@ -90,7 +90,7 @@ TEST(ByteArrayChainedHT_TESTSUITE, StdMapCompliance) {
             lala[key] = new_val;
         }
 
-        if (1 > (rand() & ((1 << 3) - 1))) {
+        if (3 > (rand() & ((1 << 3) - 1))) {
             skulker_ht.Free(key), lala.erase(key);
         }
     }
