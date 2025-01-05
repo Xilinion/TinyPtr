@@ -63,6 +63,10 @@ class SkulkerHT {
     const uintptr_t kPtrCacheLineAlignMask =
         ~((uintptr_t)(kBushByteLength - 1));
 
+    // base hash, spread the base_id
+    const uint64_t kBaseHashFactor;
+    const uint64_t kBaseHashInverse;
+
     const uint64_t kFastDivisionShift = 36;
     const uint64_t kFastDivisionUpperBound = 1ULL << 31;
     const uint64_t kFastDivisionBase = 1ULL << kFastDivisionShift;
@@ -70,6 +74,9 @@ class SkulkerHT {
 
    protected:
     uint8_t AutoQuotTailLength(uint64_t size);
+    uint64_t GenBaseHashFactor(uint64_t min_gap, uint64_t mod_mask);
+    uint64_t GenBaseHashInverse(uint64_t base_hash_factor, uint64_t mod_mask,
+                                uint64_t mod_bit_length);
 
    public:
     SkulkerHT(uint64_t size, uint8_t quotienting_tail_length,
@@ -85,18 +92,20 @@ class SkulkerHT {
         return (XXH64(&key, sizeof(uint64_t), kHashSeed1)) % kBinNum;
     }
 
-    __attribute__((always_inline)) inline uint64_t hash_1_base_id(
-        uint64_t key) {
+    __attribute__((always_inline)) inline uint64_t hash_base_id(uint64_t key) {
         uint64_t tmp = key >> kQuotientingTailLength;
-        return (XXH64(&tmp, sizeof(uint64_t), kHashSeed1) ^ key) &
+        return (((XXH64(&tmp, sizeof(uint64_t), kHashSeed1) ^ key) &
+                 kQuotientingTailMask) *
+                kBaseHashFactor) &
                kQuotientingTailMask;
     }
 
-    __attribute__((always_inline)) inline uint64_t hash_1_key_rebuild(
+    __attribute__((always_inline)) inline uint64_t hash_key_rebuild(
         uint64_t quotiented_key, uint64_t base_id) {
         uint64_t tmp = (quotiented_key << kQuotientingTailLength) >>
                        kQuotientingTailLength;
-        return ((XXH64(&tmp, sizeof(uint64_t), kHashSeed1) ^ base_id) &
+        return ((XXH64(&tmp, sizeof(uint64_t), kHashSeed1) ^
+                 ((base_id * kBaseHashInverse) & kQuotientingTailMask)) &
                 kQuotientingTailMask) |
                (tmp << kQuotientingTailLength);
     }
@@ -293,7 +302,7 @@ class SkulkerHT {
 
         if (!ptab_insert(
                 bush + kSkulkerOffset, spilled_base_id,
-                hash_1_key_rebuild(*(uint64_t*)(play_entry + kKeyOffset),
+                hash_key_rebuild(*(uint64_t*)(play_entry + kKeyOffset),
                                    spilled_base_id),
                 *(uint64_t*)(play_entry + kValueOffset))) {
 

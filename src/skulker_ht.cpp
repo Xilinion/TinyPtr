@@ -18,6 +18,27 @@ uint8_t SkulkerHT::AutoQuotTailLength(uint64_t size) {
     return res;
 }
 
+uint64_t SkulkerHT::GenBaseHashFactor(uint64_t min_gap, uint64_t mod_mask) {
+    // mod must be a power of 2
+    // min_gap should be a relative small threshold
+    uint64_t res = (rand() | 1) & mod_mask;
+    while (res < min_gap) {
+        res = (rand() | 1) & mod_mask;
+    }
+    return res;
+}
+
+uint64_t SkulkerHT::GenBaseHashInverse(uint64_t base_hash_factor,
+                                       uint64_t mod_mask,
+                                       uint64_t mod_bit_length) {
+    uint64_t res = 1;
+    while (--mod_bit_length) {
+        res = (base_hash_factor * res) & mod_mask;
+        base_hash_factor = (base_hash_factor * base_hash_factor) & mod_mask;
+    }
+    return res;
+}
+
 SkulkerHT::SkulkerHT(uint64_t size, uint8_t quotienting_tail_length,
                      uint16_t bin_size)
     : kHashSeed1(rand() & ((1 << 16) - 1)),
@@ -48,6 +69,9 @@ SkulkerHT::SkulkerHT(uint64_t size, uint8_t quotienting_tail_length,
       kTinyPtrOffset(0),
       kKeyOffset(1),
       kValueOffset(kKeyOffset + kQuotKeyByteLength),
+      kBaseHashFactor(GenBaseHashFactor(kBushCapacity, kQuotientingTailMask)),
+      kBaseHashInverse(GenBaseHashInverse(kBaseHashFactor, kQuotientingTailMask,
+                                          kQuotientingTailLength)),
       kFastDivisionReciprocal(kFastDivisionBase / kBushCapacity + 1) {
 
     assert(4 * size >= (1ULL << (kQuotientingTailLength)));
@@ -84,7 +108,7 @@ SkulkerHT::SkulkerHT(uint64_t size, uint16_t bin_size)
     : SkulkerHT(size, 0, bin_size) {}
 
 bool SkulkerHT::Insert(uint64_t key, uint64_t value) {
-    uint64_t base_id = hash_1_base_id(key);
+    uint64_t base_id = hash_base_id(key);
 
     // do fast division
     uint64_t bush_id;
@@ -208,7 +232,7 @@ bool SkulkerHT::Insert(uint64_t key, uint64_t value) {
 }
 
 bool SkulkerHT::Query(uint64_t key, uint64_t* value_ptr) {
-    uint64_t base_id = hash_1_base_id(key);
+    uint64_t base_id = hash_base_id(key);
 
     // do fast division
     uint64_t bush_id;
@@ -281,7 +305,7 @@ bool SkulkerHT::Query(uint64_t key, uint64_t* value_ptr) {
 }
 
 bool SkulkerHT::Update(uint64_t key, uint64_t value) {
-    uint64_t base_id = hash_1_base_id(key);
+    uint64_t base_id = hash_base_id(key);
 
     // do fast division
     uint64_t bush_id;
@@ -308,8 +332,6 @@ bool SkulkerHT::Update(uint64_t key, uint64_t value) {
 
     uint8_t exhibitor_num = kInitExhibitorNum - overload_flag;
 
-    query_entry_cnt++;
-
     if ((control_info >> in_bush_offset) & 1) {
 
         key = key & (~kQuotientingTailMask);
@@ -335,9 +357,6 @@ bool SkulkerHT::Update(uint64_t key, uint64_t value) {
         uintptr_t pre_deref_key = base_id;
 
         while (*pre_tiny_ptr != 0) {
-
-            query_entry_cnt++;
-
             uint8_t* entry =
                 ptab_query_entry_address(pre_deref_key, *pre_tiny_ptr);
             if ((*reinterpret_cast<uint64_t*>(entry + kKeyOffset)
@@ -354,7 +373,7 @@ bool SkulkerHT::Update(uint64_t key, uint64_t value) {
 }
 
 void SkulkerHT::Free(uint64_t key) {
-    uint64_t base_id = hash_1_base_id(key);
+    uint64_t base_id = hash_base_id(key);
 
     // do fast division
     uint64_t bush_id;
