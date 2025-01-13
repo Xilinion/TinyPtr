@@ -5,15 +5,20 @@
 #include <nmmintrin.h>
 #include <sys/cdefs.h>
 #include <sys/types.h>
+#include <atomic>
 #include <cstdint>
 #include <functional>
+#include <iostream>
+#include <memory>  // Include for std::unique_ptr
+#include <mutex>   // Include for concurrency
+#include <thread>
 #include "common.h"
 #include "utils/cache_line_size.h"
 
 namespace tinyptr {
 
-class SkulkerHT {
-    friend struct SkulkerHTBushLookupInitializer;
+class ConcurrentSkulkerHT {
+    friend struct ConcurrentSkulkerHTBushLookupInitializer;
 
    public:
     static uint8_t kBushLookup[256];
@@ -35,6 +40,8 @@ class SkulkerHT {
     const uint8_t kBushByteLength = 64;
     const uint8_t kBushIdShiftOffset = 6;
     // control byte and skulkers grow from the end of the bush
+    const uint8_t kConcurrentVersionByteLength = 1;
+    const uint8_t kConcurrentVersionOffset;
     const uint8_t kControlByteLength = 2;
     const uint8_t kControlOffset;
     const uint8_t kSkulkerOffset;
@@ -77,13 +84,30 @@ class SkulkerHT {
     uint64_t GenBaseHashFactor(uint64_t min_gap, uint64_t mod_mask);
     uint64_t GenBaseHashInverse(uint64_t base_hash_factor, uint64_t mod_mask,
                                 uint64_t mod_bit_length);
+    uint8_t AutoLockNum(uint64_t thread_num_supported);
 
    public:
-    SkulkerHT(uint64_t size, uint8_t quotienting_tail_length,
-              uint16_t bin_size);
-    SkulkerHT(uint64_t size, uint16_t bin_size);
+    ConcurrentSkulkerHT(uint64_t size, uint8_t quotienting_tail_length,
+                        uint16_t bin_size);
+    ConcurrentSkulkerHT(uint64_t size, uint16_t bin_size);
+
+    bool Insert(uint64_t key, uint64_t value);
+    bool Query(uint64_t key, uint64_t* value_ptr);
+    bool Update(uint64_t key, uint64_t value);
+    void Free(uint64_t key);
 
    protected:
+    uint8_t* bush_tab;
+    uint8_t* byte_array;
+    uint8_t* base_tab;
+    uint8_t* bin_cnt_head;
+
+    std::unique_ptr<std::atomic_flag[]> bush_locks;
+    std::unique_ptr<std::atomic_flag[]> bin_locks;
+
+    size_t bush_locks_size;
+    size_t bin_locks_size;
+
     __attribute__((always_inline)) inline uint64_t hash_1(uint64_t key) {
         return XXH64(&key, sizeof(uint64_t), kHashSeed1);
     }
@@ -116,7 +140,6 @@ class SkulkerHT {
 
     __attribute__((always_inline)) inline uint64_t hash_2_bin(uint64_t key) {
         return (XXH64(&key, sizeof(uint64_t), kHashSeed2)) % kBinNum;
-        // return 0;
     }
 
     __attribute__((always_inline)) inline uint8_t& bin_cnt(uint64_t bin_id) {
@@ -144,22 +167,69 @@ class SkulkerHT {
         uint64_t key) {
         uint64_t bin1 = hash_1_bin(key);
         uint64_t bin2 = hash_2_bin(key);
-        uint8_t flag = bin_cnt(bin1) > bin_cnt(bin2);
-        uint64_t bin_id = flag ? bin2 : bin1;
 
-        uint8_t& head = bin_head(bin_id);
-        uint8_t& cnt = bin_cnt(bin_id);
+        if (bin1 == bin2) {
+            // If bin1 and bin2 are the same, lock only once
+            while (bin_locks[bin1].test_and_set(std::memory_order_acquire))
+                ;
 
-        if (head) {
-            uint8_t* entry =
-                byte_array + (bin_id * kBinSize + head - 1) * kEntryByteLength;
-            uint8_t new_pre_tiny_ptr = head | (flag << 7);
-            head = entry[kTinyPtrOffset];
-            *entry = new_pre_tiny_ptr;
-            cnt++;
-            return entry;
+            uint8_t& head = bin_head(bin1);
+            uint8_t& cnt = bin_cnt(bin1);
+
+            if (head) {
+                uint8_t* entry = byte_array + (bin1 * kBinSize + head - 1) *
+                                                  kEntryByteLength;
+                uint8_t new_pre_tiny_ptr = head;
+                head = entry[kTinyPtrOffset];
+                *entry = new_pre_tiny_ptr;
+                cnt++;
+                bin_locks[bin1].clear(std::memory_order_release);
+                return entry;
+            } else {
+                bin_locks[bin1].clear(std::memory_order_release);
+                return nullptr;
+            }
         } else {
-            return nullptr;
+            uint64_t lock_bin1 = bin1;
+            uint64_t lock_bin2 = bin2;
+
+            bool lock_flag = lock_bin1 > lock_bin2;
+            if (lock_flag) {
+                std::swap(lock_bin1, lock_bin2);
+            }
+
+            // Lock lock_bin1 first, then lock_bin2
+            while (bin_locks[lock_bin1].test_and_set(std::memory_order_acquire))
+                ;
+            while (bin_locks[lock_bin2].test_and_set(std::memory_order_acquire))
+                ;
+
+            uint8_t flag = bin_cnt(bin1) > bin_cnt(bin2);
+            uint64_t bin_id = flag ? bin2 : bin1;
+
+            // Unlock the mutex of the bin not being used
+            if (flag ^ lock_flag) {
+                bin_locks[lock_bin1].clear(std::memory_order_release);
+            } else {
+                bin_locks[lock_bin2].clear(std::memory_order_release);
+            }
+
+            uint8_t& head = bin_head(bin_id);
+            uint8_t& cnt = bin_cnt(bin_id);
+
+            if (head) {
+                uint8_t* entry = byte_array + (bin_id * kBinSize + head - 1) *
+                                                  kEntryByteLength;
+                uint8_t new_pre_tiny_ptr = head | (flag << 7);
+                head = entry[kTinyPtrOffset];
+                *entry = new_pre_tiny_ptr;
+                cnt++;
+                bin_locks[bin_id].clear(std::memory_order_release);
+                return entry;
+            } else {
+                bin_locks[bin_id].clear(std::memory_order_release);
+                return nullptr;
+            }
         }
     }
 
@@ -228,11 +298,17 @@ class SkulkerHT {
         aiming_entry[kTinyPtrOffset] = tmp;
 
         uint64_t bin_id = (cur_entry - byte_array) / kBinByteLength;
+
+        while (bin_locks[bin_id].test_and_set(std::memory_order_acquire))
+            ;
+
         bin_cnt(bin_id)--;
         uint8_t& head = bin_head(bin_id);
         cur_entry[kTinyPtrOffset] = head;
         head = ((uint8_t)((*pre_tiny_ptr) << 1) >> 1);
         *pre_tiny_ptr = 0;
+
+        bin_locks[bin_id].clear(std::memory_order_release);
     }
 
     __attribute__((always_inline)) inline void ptab_lift_to_bush(
@@ -262,16 +338,24 @@ class SkulkerHT {
         exhibitor_ptr[kTinyPtrOffset] = tmp;
 
         uint64_t bin_id = (cur_entry - byte_array) / kBinByteLength;
+
+        while (bin_locks[bin_id].test_and_set(std::memory_order_acquire))
+            ;
+
         bin_cnt(bin_id)--;
         uint8_t& head = bin_head(bin_id);
         cur_entry[kTinyPtrOffset] = head;
         head = ((uint8_t)((*pre_tiny_ptr) << 1) >> 1);
         *pre_tiny_ptr = 0;
+
+        bin_locks[bin_id].clear(std::memory_order_release);
     }
 
     __attribute__((always_inline)) inline bool bush_exhibitor_hide(
         uint8_t* bush, uint64_t bush_offset, uint16_t& control_info,
         uint8_t exhibitor_num, uint8_t item_cnt) {
+
+        thread_local static uint8_t* play_entry = new uint8_t[kEntryByteLength];
 
         // convert the last exhibitor to the first skulker
         memcpy(play_entry, bush + (exhibitor_num - 1) * kEntryByteLength,
@@ -300,11 +384,10 @@ class SkulkerHT {
 
         bush[kSkulkerOffset] = play_entry[kTinyPtrOffset];
 
-        if (!ptab_insert(
-                bush + kSkulkerOffset, spilled_base_id,
-                hash_key_rebuild(*(uint64_t*)(play_entry + kKeyOffset),
-                                   spilled_base_id),
-                *(uint64_t*)(play_entry + kValueOffset))) {
+        if (!ptab_insert(bush + kSkulkerOffset, spilled_base_id,
+                         hash_key_rebuild(*(uint64_t*)(play_entry + kKeyOffset),
+                                          spilled_base_id),
+                         *(uint64_t*)(play_entry + kValueOffset))) {
 
             // recover the bush
             for (uint8_t* i = bush + kSkulkerOffset;
@@ -325,7 +408,6 @@ class SkulkerHT {
     __attribute__((always_inline)) inline void bush_skulker_raid(
         uint8_t* bush, uint64_t bush_offset, uint16_t& control_info,
         uint8_t exhibitor_num, uint8_t item_cnt) {
-
         uint8_t* exhibitor_ptr = bush + (exhibitor_num)*kEntryByteLength;
         exhibitor_ptr[kTinyPtrOffset] = bush[kSkulkerOffset];
 
@@ -352,33 +434,15 @@ class SkulkerHT {
 
         ptab_lift_to_bush(pre_tiny_ptr, pre_deref_key, exhibitor_ptr);
     }
-
-   public:
-    bool Insert(uint64_t key, uint64_t value);
-    bool Query(uint64_t key, uint64_t* value_ptr);
-    bool Update(uint64_t key, uint64_t value);
-    void Free(uint64_t key);
-
-    uint64_t QueryEntryCnt();
-
-   protected:
-    uint8_t* bush_tab;
-    uint8_t* byte_array;
-    uint8_t* base_tab;
-    uint8_t* bin_cnt_head;
-
-    uint8_t* play_entry;
-
-    uint64_t query_entry_cnt = 0;
 };
 
-struct SkulkerHTBushLookupInitializer {
-    SkulkerHTBushLookupInitializer() {
+struct ConcurrentSkulkerHTBushLookupInitializer {
+    ConcurrentSkulkerHTBushLookupInitializer() {
         for (int i = 0; i < 256; ++i) {
-            SkulkerHT::kBushLookup[i] = 0;
+            ConcurrentSkulkerHT::kBushLookup[i] = 0;
             int tmp = i;
             while (tmp) {
-                SkulkerHT::kBushLookup[i]++;
+                ConcurrentSkulkerHT::kBushLookup[i]++;
                 tmp -= tmp & (-tmp);
             }
         }
