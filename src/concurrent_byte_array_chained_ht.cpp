@@ -23,9 +23,8 @@ uint8_t ConcurrentByteArrayChainedHT::AutoQuotTailLength(uint64_t size) {
     return res;
 }
 
-ConcurrentByteArrayChainedHT::ConcurrentByteArrayChainedHT(uint64_t size,
-                                       uint8_t quotienting_tail_length,
-                                       uint16_t bin_size)
+ConcurrentByteArrayChainedHT::ConcurrentByteArrayChainedHT(
+    uint64_t size, uint8_t quotienting_tail_length, uint16_t bin_size)
     : kHashSeed1(rand() & ((1 << 16) - 1)),
       kHashSeed2(65536 + rand()),
       kQuotientingTailLength(quotienting_tail_length
@@ -40,6 +39,29 @@ ConcurrentByteArrayChainedHT::ConcurrentByteArrayChainedHT(uint64_t size,
       kQuotKeyByteLength(kTinyPtrOffset),
       kEntryByteLength(kQuotKeyByteLength + 1 + 8),
       kBinByteLength(kBinSize * kEntryByteLength) {
+
+    // Determine the number of threads
+    unsigned int num_threads = std::thread::hardware_concurrency();
+    if (num_threads == 0) {
+        num_threads =
+            4;  // Fallback to a default value if hardware_concurrency is not available
+    }
+
+    bin_locks_size = kBinNum;
+    base_tab_concurrent_version_size = kBaseTabSize;
+
+    bin_locks = std::make_unique<std::atomic_flag[]>(bin_locks_size);
+    base_tab_concurrent_version =
+        std::make_unique<std::atomic_flag[]>(base_tab_concurrent_version_size);
+
+    // Initialize all atomic flags to clear
+    for (size_t i = 0; i < bin_locks_size; ++i) {
+        bin_locks[i].clear();
+    }
+    for (size_t i = 0; i < base_tab_concurrent_version_size; ++i) {
+        base_tab_concurrent_version[i].clear();
+    }
+
     (void)posix_memalign(reinterpret_cast<void**>(&byte_array), 64,
                          kBinNum * kBinSize * kEntryByteLength);
     memset(byte_array, 0, kBinNum * kBinSize * kEntryByteLength);
@@ -66,7 +88,8 @@ ConcurrentByteArrayChainedHT::ConcurrentByteArrayChainedHT(uint64_t size,
     play_entry = new uint8_t[kEntryByteLength];
 }
 
-ConcurrentByteArrayChainedHT::ConcurrentByteArrayChainedHT(uint64_t size, uint16_t bin_size)
+ConcurrentByteArrayChainedHT::ConcurrentByteArrayChainedHT(uint64_t size,
+                                                           uint16_t bin_size)
     : ConcurrentByteArrayChainedHT(size, 0, bin_size) {}
 
 uint64_t ConcurrentByteArrayChainedHT::limited_base_id(uint64_t key) {
@@ -88,7 +111,8 @@ void ConcurrentByteArrayChainedHT::random_base_entry_prefetch() {
     }
 }
 
-uint8_t* ConcurrentByteArrayChainedHT::non_temporal_load_single_entry(uint8_t* entry) {
+uint8_t* ConcurrentByteArrayChainedHT::non_temporal_load_single_entry(
+    uint8_t* entry) {
     uintptr_t entry_intptr = (uintptr_t)entry;
 #if defined(__SSE2__)
     __m128i* entry_ptr = reinterpret_cast<__m128i*>(entry_intptr);
@@ -129,6 +153,17 @@ bool ConcurrentByteArrayChainedHT::Insert(uint64_t key, uint64_t value) {
     uint64_t base_id = hash_1_base_id(key);
     uint8_t* pre_tiny_ptr = &base_tab_ptr(base_id);
 
+    std::atomic<uint8_t>& concurrent_version =
+        *reinterpret_cast<std::atomic<uint8_t>*>(
+            &base_tab_concurrent_version[base_id]);
+
+    uint8_t expected_version;
+    do {
+        expected_version = concurrent_version.load();
+    } while ((expected_version & 1) ||
+             !concurrent_version.compare_exchange_weak(expected_version,
+                                                       expected_version + 1));
+
     while (*pre_tiny_ptr != 0) {
         uint8_t* entry = ptab_query_entry_address(
             reinterpret_cast<uint64_t>(pre_tiny_ptr), *pre_tiny_ptr);
@@ -144,16 +179,32 @@ bool ConcurrentByteArrayChainedHT::Insert(uint64_t key, uint64_t value) {
         *reinterpret_cast<uint64_t*>(entry) = key >> kQuotientingTailLength;
         entry[kTinyPtrOffset] = 0;
         *reinterpret_cast<uint64_t*>(entry + kValueOffset) = value;
+        // Release the lock
+        concurrent_version.fetch_add(1);
         return true;
     } else {
+        // Release the lock
+        concurrent_version.fetch_add(1);
         return false;
     }
 }
 
 bool ConcurrentByteArrayChainedHT::Query(uint64_t key, uint64_t* value_ptr) {
+#ifdef USE_CONCURRENT_VERSION_QUERY
     uint64_t base_id = hash_1_base_id(key);
 
     uint8_t* pre_tiny_ptr = &base_tab_ptr(base_id);
+
+    std::atomic<uint8_t>& concurrent_version =
+        *reinterpret_cast<std::atomic<uint8_t>*>(
+            &base_tab_concurrent_version[base_id]);
+
+    uint8_t expected_version;
+    do {
+        expected_version = concurrent_version.load();
+    } while ((expected_version & 1) ||
+             !concurrent_version.compare_exchange_weak(expected_version,
+                                                       expected_version + 1));
 
     // quotienting and shifting back
     key >>= kQuotientingTailLength;
@@ -161,7 +212,7 @@ bool ConcurrentByteArrayChainedHT::Query(uint64_t key, uint64_t* value_ptr) {
 
     while (*pre_tiny_ptr != 0) {
 
-        query_entry_cnt++;
+        // query_entry_cnt++;
 
         uint8_t* entry = ptab_query_entry_address(
             reinterpret_cast<uint64_t>(pre_tiny_ptr), *pre_tiny_ptr);
@@ -169,6 +220,48 @@ bool ConcurrentByteArrayChainedHT::Query(uint64_t key, uint64_t* value_ptr) {
             key) {
             *value_ptr = *reinterpret_cast<uint64_t*>(entry + kValueOffset);
             // evict_entry_cache_line(entry);
+            concurrent_version.fetch_add(1);
+            return true;
+        }
+        // evict_entry_cache_line(entry);
+        pre_tiny_ptr = entry + kTinyPtrOffset;
+    }
+
+    concurrent_version.fetch_add(1);
+    return false;
+#else
+    uint64_t base_id = hash_1_base_id(key);
+
+    uint8_t* pre_tiny_ptr = &base_tab_ptr(base_id);
+
+    std::atomic<uint8_t>& concurrent_version =
+        *reinterpret_cast<std::atomic<uint8_t>*>(
+            &base_tab_concurrent_version[base_id]);
+
+query_again:
+
+    uint8_t expected_version;
+    do {
+        expected_version = concurrent_version.load();
+    } while (expected_version & 1);
+
+    // quotienting and shifting back
+    key >>= kQuotientingTailLength;
+    key <<= kQuotientingTailLength;
+
+    while (*pre_tiny_ptr != 0) {
+
+        // query_entry_cnt++;
+
+        uint8_t* entry = ptab_query_entry_address(
+            reinterpret_cast<uint64_t>(pre_tiny_ptr), *pre_tiny_ptr);
+        if ((*reinterpret_cast<uint64_t*>(entry) << kQuotientingTailLength) ==
+            key) {
+            *value_ptr = *reinterpret_cast<uint64_t*>(entry + kValueOffset);
+            // evict_entry_cache_line(entry);
+            if (concurrent_version.load() != expected_version) {
+                goto query_again;
+            }
             return true;
         }
         // evict_entry_cache_line(entry);
@@ -193,14 +286,19 @@ bool ConcurrentByteArrayChainedHT::Query(uint64_t key, uint64_t* value_ptr) {
         pre_tiny_ptr_value = non_temporal_entry[kTinyPtrOffset];
     }
     */
+    if (concurrent_version.load() != expected_version) {
+        goto query_again;
+    }
     return false;
+#endif
 }
 
 void ConcurrentByteArrayChainedHT::set_chain_length(uint64_t chain_length) {
     this->chain_length = chain_length;
 }
 
-bool ConcurrentByteArrayChainedHT::QueryNoMem(uint64_t key, uint64_t* value_ptr) {
+bool ConcurrentByteArrayChainedHT::QueryNoMem(uint64_t key,
+                                              uint64_t* value_ptr) {
     uint64_t base_id = hash_1_base_id(key);
     uint8_t* pre_tiny_ptr = &base_tab_ptr(base_id);
 
@@ -226,6 +324,17 @@ bool ConcurrentByteArrayChainedHT::Update(uint64_t key, uint64_t value) {
     uint64_t base_id = hash_1_base_id(key);
     uint8_t* pre_tiny_ptr = &base_tab_ptr(base_id);
 
+    std::atomic<uint8_t>& concurrent_version =
+        *reinterpret_cast<std::atomic<uint8_t>*>(
+            &base_tab_concurrent_version[base_id]);
+
+    uint8_t expected_version;
+    do {
+        expected_version = concurrent_version.load();
+    } while ((expected_version & 1) ||
+             !concurrent_version.compare_exchange_weak(expected_version,
+                                                       expected_version + 1));
+
     // quotienting
     key >>= kQuotientingTailLength;
 
@@ -235,11 +344,13 @@ bool ConcurrentByteArrayChainedHT::Update(uint64_t key, uint64_t value) {
         if (((*reinterpret_cast<uint64_t*>(entry) << kQuotientingTailLength) >>
              kQuotientingTailLength) == key) {
             *reinterpret_cast<uint64_t*>(entry + kValueOffset) = value;
+            concurrent_version.fetch_add(1);
             return true;
         }
         pre_tiny_ptr = entry + kTinyPtrOffset;
     }
 
+    concurrent_version.fetch_add(1);
     return false;
 }
 
@@ -247,6 +358,17 @@ void ConcurrentByteArrayChainedHT::Free(uint64_t key) {
     uint64_t base_id = hash_1_base_id(key);
     uint8_t* pre_tiny_ptr = &base_tab_ptr(base_id);
     uint8_t* cur_tiny_ptr = nullptr;
+
+    std::atomic<uint8_t>& concurrent_version =
+        *reinterpret_cast<std::atomic<uint8_t>*>(
+            &base_tab_concurrent_version[base_id]);
+
+    uint8_t expected_version;
+    do {
+        expected_version = concurrent_version.load();
+    } while ((expected_version & 1) ||
+             !concurrent_version.compare_exchange_weak(expected_version,
+                                                       expected_version + 1));
 
     // quotienting
     key >>= kQuotientingTailLength;
@@ -264,6 +386,7 @@ void ConcurrentByteArrayChainedHT::Free(uint64_t key) {
         }
         cur_tiny_ptr = cur_entry + kTinyPtrOffset;
     } else {
+        concurrent_version.fetch_add(1);
         return;
     }
 
@@ -281,6 +404,7 @@ void ConcurrentByteArrayChainedHT::Free(uint64_t key) {
     }
 
     if (aiming_entry == nullptr) {
+        concurrent_version.fetch_add(1);
         return;
     }
 
@@ -294,6 +418,7 @@ void ConcurrentByteArrayChainedHT::Free(uint64_t key) {
     cur_entry[kTinyPtrOffset] = head;
     head = ((uint8_t)((*pre_tiny_ptr) << 1) >> 1);
     *pre_tiny_ptr = 0;
+    concurrent_version.fetch_add(1);
 }
 
 double ConcurrentByteArrayChainedHT::AvgChainLength() {

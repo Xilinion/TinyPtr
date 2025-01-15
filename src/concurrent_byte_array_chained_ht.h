@@ -5,6 +5,7 @@
 #include <nmmintrin.h>
 #include <sys/cdefs.h>
 #include <sys/types.h>
+#include <atomic>
 #include <cstdint>
 #include <functional>
 #include "common.h"
@@ -38,7 +39,7 @@ class ConcurrentByteArrayChainedHT {
 
    public:
     ConcurrentByteArrayChainedHT(uint64_t size, uint8_t quotienting_tail_length,
-                       uint16_t bin_size);
+                                 uint16_t bin_size);
     ConcurrentByteArrayChainedHT(uint64_t size, uint16_t bin_size);
 
    protected:
@@ -97,21 +98,59 @@ class ConcurrentByteArrayChainedHT {
         uint64_t key) {
         uint64_t bin1 = hash_1_bin(key);
         uint64_t bin2 = hash_2_bin(key);
-        uint8_t flag = bin_cnt(bin1) > bin_cnt(bin2);
-        uint64_t bin_id = flag ? bin2 : bin1;
 
-        uint8_t& head = bin_head(bin_id);
-        uint8_t& cnt = bin_cnt(bin_id);
+        if (bin1 == bin2) {
+            // If bin1 and bin2 are the same, lock only once
+            while (bin_locks[bin1].test_and_set(std::memory_order_acquire))
+                ;
 
-        if (head) {
-            uint8_t* entry =
-                byte_array + (bin_id * kBinSize + head - 1) * kEntryByteLength;
-            *entry = head | (flag << 7);
-            head = entry[kTinyPtrOffset];
-            cnt++;
-            return entry;
+            uint8_t& head = bin_head(bin1);
+            uint8_t& cnt = bin_cnt(bin1);
+
+            if (head) {
+                uint8_t* entry = byte_array + (bin1 * kBinSize + head - 1) *
+                                                  kEntryByteLength;
+                uint8_t new_pre_tiny_ptr = head;
+                head = entry[kTinyPtrOffset];
+                *entry = new_pre_tiny_ptr;
+                cnt++;
+                bin_locks[bin1].clear(std::memory_order_release);
+                return entry;
+            } else {
+                bin_locks[bin1].clear(std::memory_order_release);
+                return nullptr;
+            }
         } else {
-            return nullptr;
+            uint64_t lock_bin1 = bin1;
+            uint64_t lock_bin2 = bin2;
+
+            bool lock_flag = lock_bin1 > lock_bin2;
+            if (lock_flag) {
+                std::swap(lock_bin1, lock_bin2);
+            }
+
+            // Lock lock_bin1 first, then lock_bin2
+            while (bin_locks[lock_bin1].test_and_set(std::memory_order_acquire))
+                ;
+            while (bin_locks[lock_bin2].test_and_set(std::memory_order_acquire))
+                ;
+
+            uint8_t flag = bin_cnt(bin1) > bin_cnt(bin2);
+            uint64_t bin_id = flag ? bin2 : bin1;
+
+            uint8_t& head = bin_head(bin_id);
+            uint8_t& cnt = bin_cnt(bin_id);
+
+            if (head) {
+                uint8_t* entry = byte_array + (bin_id * kBinSize + head - 1) *
+                                                  kEntryByteLength;
+                *entry = head | (flag << 7);
+                head = entry[kTinyPtrOffset];
+                cnt++;
+                return entry;
+            } else {
+                return nullptr;
+            }
         }
     }
 
@@ -141,6 +180,12 @@ class ConcurrentByteArrayChainedHT {
     uint8_t* byte_array;
     uint8_t* base_tab;
     uint8_t* bin_cnt_head;
+
+    std::unique_ptr<std::atomic_flag[]> bin_locks;
+    std::unique_ptr<std::atomic_flag[]> base_tab_concurrent_version;
+
+    size_t bin_locks_size;
+    size_t base_tab_concurrent_version_size;
 
    protected:
     uint8_t non_temporal_load_entry_buffer[64];
