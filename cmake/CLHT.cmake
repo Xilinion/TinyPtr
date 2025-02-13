@@ -43,7 +43,6 @@ function(build_CLHT)
         INTERFACE_INCLUDE_DIRECTORIES ${SOURCE_DIR}
     )
 
-
     ExternalProject_Add(
         CLHT
         URL https://github.com/LPD-EPFL/CLHT/archive/b86ea2c6e6eb178d8d0b0abc38c1ce4386c4ad94.zip
@@ -55,7 +54,12 @@ function(build_CLHT)
         COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/ssmem/src/ssmem/include/ssmem.h <BINARY_DIR>/external/include/ssmem.h
         COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/sspfd/src/sspfd/libsspfd.a <BINARY_DIR>/external/lib/libsspfd.a
         COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/sspfd/src/sspfd/sspfd.h <BINARY_DIR>/external/include/sspfd.h
+        COMMAND ${CMAKE_COMMAND} -E echo "#define __GNUC_MINOR__ 3" | cat - <BINARY_DIR>/include/clht.h > temp && mv temp <BINARY_DIR>/include/clht.h
+        # COMMAND /bin/sh -c "sed -i 's/^CFLAGS = .*/CFLAGS = -D__GNUC_MINOR__=3 -D_GNU_SOURCE/' <BINARY_DIR>/Makefile"
         COMMAND ${CMAKE_COMMAND} -E copy <BINARY_DIR>/include/clht.h <BINARY_DIR>/clht.h
+        # COMMAND ${CMAKE_MAKE_PROGRAM} libclht_lb_res.a
+        # COMMAND ${CMAKE_MAKE_PROGRAM} dependencies
+        # COMMAND ${CMAKE_MAKE_PROGRAM} all
         COMMAND ${CMAKE_MAKE_PROGRAM} libclht_lb_res.a
         INSTALL_COMMAND ""
         CONFIGURE_COMMAND ""
