@@ -76,6 +76,8 @@ class Benchmark {
     void Run();
 
    private:
+    bool rand_mem_free = false;
+
     std::ofstream output_stream;
     uint64_t table_size;
     uint64_t opt_num;

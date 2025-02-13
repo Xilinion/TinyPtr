@@ -102,6 +102,33 @@ function Run() {
     echo "== file path: "$res_path/object_${object_id}_case_${case_id}_entry_${entry_id}_.txt""
 }
 
+function RunRandMemFree() {
+    #####native execution
+
+    echo "== begin benchmarking: -o $object_id -c $case_id -e $entry_id -t $table_size -p  $opt_num -l $load_factor -h $hit_percent -b $bin_size -q $quotient_tail_length -m -f "$res_path""
+
+    ../build/tinyptr -o $object_id -c $case_id -e $entry_id -t $table_size -p $opt_num -l $load_factor -h $hit_percent -b $bin_size -q $quotient_tail_length -m -f "$res_path" &
+
+    # perf stat ../build/tinyptr -o $object_id -c $case_id -e $entry_id -t $table_size -p $opt_num -l $load_factor -h $hit_percent -b $bin_size -q $quotient_tail_length -m -f "$res_path"
+
+    # sleep 1
+
+    pid=$!
+
+    echo "pid: $pid"
+
+
+    psrecord $pid --interval 0.1 --log activity.log --plot plot.png
+
+
+
+    wait $pid
+
+    echo "== end benchmarking: -o $object_id -c $case_id -e $entry_id -t $table_size -p  $opt_num -l $load_factor -h $hit_percent -b $bin_size -q $quotient_tail_length -m -f "$res_path""
+
+    echo "== file path: "$res_path/object_${object_id}_case_${case_id}_entry_${entry_id}_memuse.txt""
+}
+
 function RunPerf() {
     # warm up
     ../build/tinyptr -o $object_id -c $case_id -e $entry_id -t $table_size -p $opt_num -l $load_factor -h $hit_percent -b $bin_size -q $quotient_tail_length -f "$res_path"
@@ -166,7 +193,6 @@ function RunCTest() {
     ctest --test-dir ../build
 }
 
-
 Init
 
 # Compile
@@ -183,18 +209,26 @@ hit_percent=0
 quotient_tail_length=0
 bin_size=127
 
-for case_id in 5; do
-    # if [ $case_id -eq 5 ]; then
-    #     continue
-    # fi
-    for object_id in 12; do
+# RunCTest
+
+../build/concurrent_skulker_ht_test
+# ../build/concurrent_growt_ht_test
+
+exit
+
+for case_id in 1 6 7; do
+    for object_id in 13; do
+        # for object_id in 3 4 6 7 10 12; do
         entry_id=0
+        # for table_size in 1000000 2000000 4000000 8000000 16000000 32000000 64000000 128000000; do
         for table_size in 10000000; do
-            # for table_size in 1000000 10000000; do
             opt_num=$table_size
 
             # RunValgrind
             # RunPerf
+            # FlameGraph
+            # RunRandMemFree
+            # sleep 3
             Run
 
             let "entry_id++"

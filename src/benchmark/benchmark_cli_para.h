@@ -29,6 +29,7 @@ class BenchmarkCLIPara {
     double hit_percent;
     int quotienting_tail_length;
     int bin_size;
+    bool rand_mem_free = false;
     std::string path;
 };
 }  // namespace tinyptr

@@ -9,7 +9,7 @@
 #include <functional>
 #include "common.h"
 #include "utils/cache_line_size.h"
-
+#include <iostream>
 namespace tinyptr {
 
 class SkulkerHT {

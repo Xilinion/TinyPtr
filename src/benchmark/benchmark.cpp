@@ -1,5 +1,6 @@
 
 #include "benchmark.h"
+#include <unistd.h>
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
@@ -20,6 +21,7 @@
 #include "benchmark_cli_para.h"
 #include "benchmark_cuckoo.h"
 #include "benchmark_dereftab64.h"
+#include "benchmark_growt.h"
 #include "benchmark_iceberg.h"
 #include "benchmark_intarray64.h"
 #include "benchmark_object_64.h"
@@ -61,6 +63,9 @@ uint8_t Benchmark::RandVec::gen_rand_nonzero_8() {
 }
 
 uint8_t Benchmark::gen_rand_nonzero_8() {
+    if (rand_mem_free) {
+        return rand_vec->gen_rand_nonzero_8();
+    }
     return rand_vec->ptr_vec[rand_vec->ptr_vec_head++];
 }
 
@@ -76,6 +81,9 @@ uint64_t Benchmark::RandVec::gen_key_hittable() {
 
 uint64_t Benchmark::gen_key_hittable() {
     // odd
+    if (rand_mem_free) {
+        return rand_vec->gen_key_hittable();
+    }
     return rand_vec->key_vec[0][rand_vec->key_vec_head[0]++];
 }
 
@@ -87,10 +95,17 @@ uint64_t Benchmark::RandVec::gen_key_miss() {
 
 uint64_t Benchmark::gen_key_miss() {
     // even
+    if (rand_mem_free) {
+        return rand_vec->gen_key_miss();
+    }
     return rand_vec->key_vec[1][rand_vec->key_vec_head[1]++];
 }
 
 uint64_t Benchmark::rgen64() {
+    if (rand_mem_free) {
+        return rand_vec->rgen64();
+    }
+
     if (rand_vec->rand_vec_head >= rand_vec->rand_vec.size()) {
         rand_vec->rand_vec_head = 0;
         int tmp = rand_vec->rand_vec.size();
@@ -106,14 +121,23 @@ uint64_t Benchmark::RandVec::gen_value() {
 }
 
 uint64_t Benchmark::gen_value() {
+    if (rand_mem_free) {
+        return rgen64();
+    }
     return rand_vec->val_vec[rand_vec->val_vec_head++];
 }
 
 void Benchmark::gen_rand_vector(uint64_t size) {
+    if (rand_mem_free) {
+        return;
+    }
     rand_vec = new RandVec(size);
 }
 
 void Benchmark::gen_erase_order(uint64_t size) {
+    if (rand_mem_free) {
+        return;
+    }
     int key_ind_range = table_size;
 
     rand_vec->erase_order.resize(key_ind_range);
@@ -332,7 +356,8 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
       table_size(para.table_size),
       opt_num(para.opt_num),
       load_factor(para.load_factor),
-      hit_ratio(para.hit_percent) {
+      hit_ratio(para.hit_percent),
+      rand_mem_free(para.rand_mem_free) {
 
     switch (para.object_id) {
         case BenchmarkObjectType::DEREFTAB64:
@@ -373,7 +398,10 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
             obj = new BenchmarkIceberg(table_size);
             break;
         case BenchmarkObjectType::SKULKERHT:
-            obj = new BenchmarkSkulkerHT(table_size, para.bin_size);
+            obj = new BenchmarkSkulkerHT(table_size *2, para.bin_size);
+            break;
+        case BenchmarkObjectType::GROWT:
+            obj = new BenchmarkGrowt(table_size);
             break;
         default:
             abort();
@@ -621,11 +649,10 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
                         << std::endl;
                 }
                 if (para.object_id == BenchmarkObjectType::SKULKERHT) {
-                    output_stream
-                        << "Query Entry Count: "
-                        << dynamic_cast<BenchmarkSkulkerHT*>(obj)
-                               ->QueryEntryCnt()
-                        << std::endl;
+                    output_stream << "Query Entry Count: "
+                                  << dynamic_cast<BenchmarkSkulkerHT*>(obj)
+                                         ->QueryEntryCnt()
+                                  << std::endl;
                 }
             };
             break;
@@ -1078,5 +1105,9 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
 
 void Benchmark::Run() {
     this->run();
+
+    if (rand_mem_free) {
+        sleep(1);
+    }
 }
 }  // namespace tinyptr
