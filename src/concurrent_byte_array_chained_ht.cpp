@@ -48,7 +48,8 @@ ConcurrentByteArrayChainedHT::ConcurrentByteArrayChainedHT(
     }
 
     bin_locks_size = kBinNum;
-    base_tab_concurrent_version_size = kBaseTabSize;
+    // currently use the sqaure of number of threads, can modify later
+    base_tab_concurrent_version_size = num_threads * num_threads;
 
     bin_locks = std::make_unique<std::atomic_flag[]>(bin_locks_size);
     base_tab_concurrent_version =
@@ -155,7 +156,7 @@ bool ConcurrentByteArrayChainedHT::Insert(uint64_t key, uint64_t value) {
 
     std::atomic<uint8_t>& concurrent_version =
         *reinterpret_cast<std::atomic<uint8_t>*>(
-            &base_tab_concurrent_version[base_id]);
+            &base_tab_concurrent_version[base_id_to_version_id(base_id)]);
 
     uint8_t expected_version;
     do {
@@ -236,7 +237,7 @@ bool ConcurrentByteArrayChainedHT::Query(uint64_t key, uint64_t* value_ptr) {
 
     std::atomic<uint8_t>& concurrent_version =
         *reinterpret_cast<std::atomic<uint8_t>*>(
-            &base_tab_concurrent_version[base_id]);
+            &base_tab_concurrent_version[base_id_to_version_id(base_id)]);
 
 query_again:
 
@@ -326,7 +327,7 @@ bool ConcurrentByteArrayChainedHT::Update(uint64_t key, uint64_t value) {
 
     std::atomic<uint8_t>& concurrent_version =
         *reinterpret_cast<std::atomic<uint8_t>*>(
-            &base_tab_concurrent_version[base_id]);
+            &base_tab_concurrent_version[base_id_to_version_id(base_id)]);
 
     uint8_t expected_version;
     do {
@@ -361,7 +362,7 @@ void ConcurrentByteArrayChainedHT::Free(uint64_t key) {
 
     std::atomic<uint8_t>& concurrent_version =
         *reinterpret_cast<std::atomic<uint8_t>*>(
-            &base_tab_concurrent_version[base_id]);
+            &base_tab_concurrent_version[base_id_to_version_id(base_id)]);
 
     uint8_t expected_version;
     do {

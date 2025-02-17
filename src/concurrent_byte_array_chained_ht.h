@@ -138,6 +138,13 @@ class ConcurrentByteArrayChainedHT {
             uint8_t flag = bin_cnt(bin1) > bin_cnt(bin2);
             uint64_t bin_id = flag ? bin2 : bin1;
 
+            // Unlock the mutex of the bin not being used
+            if (flag ^ lock_flag) {
+                bin_locks[lock_bin1].clear(std::memory_order_release);
+            } else {
+                bin_locks[lock_bin2].clear(std::memory_order_release);
+            }
+
             uint8_t& head = bin_head(bin_id);
             uint8_t& cnt = bin_cnt(bin_id);
 
@@ -147,11 +154,18 @@ class ConcurrentByteArrayChainedHT {
                 *entry = head | (flag << 7);
                 head = entry[kTinyPtrOffset];
                 cnt++;
+                bin_locks[bin_id].clear(std::memory_order_release);
                 return entry;
             } else {
+                bin_locks[bin_id].clear(std::memory_order_release);
                 return nullptr;
             }
         }
+    }
+
+    __attribute__((always_inline)) inline uint64_t base_id_to_version_id(
+        uint64_t base_id) {
+        return base_id % base_tab_concurrent_version_size;
     }
 
    protected:
