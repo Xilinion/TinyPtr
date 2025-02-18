@@ -9,8 +9,10 @@
 #include <iostream>
 #include <iterator>
 #include <ostream>
+#include <queue>
 #include <random>
 #include <set>
+#include <unordered_set>
 #include "../chained_ht_64.h"
 #include "../dereference_table_64.h"
 #include "benchmark_bin_aware_chainedht.h"
@@ -154,67 +156,85 @@ int Benchmark::insert_cnt_to_overflow() {
     }
 }
 
-int Benchmark::insert_delete_opt_to_overflow(uint64_t size, uint16_t bin_size,
-                                             double opt_ratio,
-                                             double load_factor) {
+uint64_t Benchmark::insert_delete_opt_to_overflow(uint64_t size,
+                                                  uint16_t bin_size,
+                                                  double opt_ratio,
+                                                  double load_factor) {
     size = (size + bin_size - 1) / bin_size * bin_size;
     int mx_cnt = int(floor(size * load_factor));
 
-    std::set<uint64_t> inserted_keys;
+    std::vector<uint64_t> inserted_keys_vec;
+    std::queue<uint64_t> vac_pos_queue;
+
+    auto dynamic_cast_obj = dynamic_cast<BenchmarkByteArrayChained*>(obj);
+
+    uint64_t val_tmp = 0;
 
     for (int i = 0; i < mx_cnt; ++i) {
         uint64_t key = gen_key_hittable();
-        obj->Insert(key, gen_value());
-        inserted_keys.insert(key);
+        while (dynamic_cast_obj->Query(key, &val_tmp) || key == 0) {
+            key = gen_key_hittable();
+        }
+        dynamic_cast_obj->Insert(key, i);
+        inserted_keys_vec.push_back(key);
     }
 
-    int operation_count = 0;
-    while (true) {
+    uint64_t opt_stop_cnt = 1ll * size * 100;
+    uint64_t operation_count = 0;
 
-        std::cout << "operation_count: " << operation_count << std::endl;
+    while (operation_count < opt_stop_cnt) {
 
         if (rgen64() % 2) {
             int num_inserts = rgen64() % int(size * opt_ratio) + 1;
             for (int i = 0; i < num_inserts; ++i) {
-                if (inserted_keys.size() >= mx_cnt) {
+                if (vac_pos_queue.empty()) {
                     break;
                 }
+                uint64_t pos = vac_pos_queue.front();
+                vac_pos_queue.pop();
+
                 uint64_t key;
                 do {
                     key = rgen64();
-                } while (inserted_keys.find(key) != inserted_keys.end());
+                } while (dynamic_cast_obj->Query(key, &val_tmp) || key == 0);
 
                 // printf("Inserting key: %llu\n", key);
 
-                if (!((uint8_t)(~obj->Insert(key, rgen64())))) {
+                if (!((uint8_t)(~dynamic_cast_obj->Insert(key, pos)))) {
                     return operation_count;
                 }
-                inserted_keys.insert(key);
+                inserted_keys_vec[pos] = key;
                 operation_count++;
             }
         } else {
 
             int num_deletes = rgen64() % int(size * opt_ratio) + 1;
-            for (int i = 0; i < num_deletes && !inserted_keys.empty(); ++i) {
-                if (inserted_keys.empty()) {
+            for (int i = 0; i < num_deletes; ++i) {
+                if (inserted_keys_vec.empty()) {
                     continue;
                 }
-                uint64_t random_value = rgen64();
 
-                auto it = inserted_keys.lower_bound(random_value);
-                if (it == inserted_keys.end()) {
-                    it = inserted_keys.begin();
+                uint64_t pos = rgen64() % mx_cnt;
+
+                while (inserted_keys_vec[pos] == 0) {
+                    pos = rgen64() % mx_cnt;
                 }
-                uint64_t key = *it;
 
-                inserted_keys.erase(it);
+                uint64_t key = inserted_keys_vec[pos];
+                inserted_keys_vec[pos] = 0;
 
                 // continue;
-                obj->Erase(key,
-                           rgen64());  // Assuming Erase takes two arguments
+                dynamic_cast_obj->Erase(
+                    key,
+                    rgen64());  // Assuming Erase takes two arguments
+                vac_pos_queue.push(pos);
                 operation_count++;
             }
         }
+    }
+
+    if (operation_count >= opt_stop_cnt) {
+        std::cerr << "good run!" << std::endl;
     }
     return operation_count;
 }
@@ -398,7 +418,7 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
             obj = new BenchmarkIceberg(table_size);
             break;
         case BenchmarkObjectType::SKULKERHT:
-            obj = new BenchmarkSkulkerHT(table_size *2, para.bin_size);
+            obj = new BenchmarkSkulkerHT(table_size * 2, para.bin_size);
             break;
         case BenchmarkObjectType::GROWT:
             obj = new BenchmarkGrowt(table_size);
@@ -1039,21 +1059,20 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
                 }
                 std::clock_t start = std::clock();
 
-                double load_factor = 0.9355;
+                double op_ratio = 0.000001;
 
-                double op_ratio = 0.000002;
-
-                int opt_cnt = insert_delete_opt_to_overflow(
+                uint64_t opt_cnt = insert_delete_opt_to_overflow(
                     table_size, para.bin_size, op_ratio, load_factor);
 
                 auto end = std::clock();
                 auto duration = end - start;
 
                 output_stream << "Table Size: " << table_size << std::endl;
+                output_stream << "Bin Size: " << para.bin_size << std::endl;
                 output_stream << "Load Factor: " << load_factor << std::endl;
                 output_stream << "Operation Ratio: " << op_ratio << std::endl;
                 output_stream << "Operation Capacity: " << opt_cnt << std::endl;
-                output_stream << "Op/Size Ratio: " << opt_cnt / table_size
+                output_stream << "Op/Size Ratio: " << 1.0 * opt_cnt / table_size
                               << std::endl;
                 output_stream
                     << "CPU Time: "

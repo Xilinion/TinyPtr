@@ -58,7 +58,7 @@ class Benchmark {
     void gen_erase_order(uint64_t size);
 
     int insert_cnt_to_overflow();
-    int insert_delete_opt_to_overflow(uint64_t size, uint16_t bin_size,
+    uint64_t insert_delete_opt_to_overflow(uint64_t size, uint16_t bin_size,
                                       double opt_ratio, double load_factor);
     void obj_fill(int ins_cnt);
     void batch_query_vec_prepare(std::vector<uint64_t>& query_key_vec,

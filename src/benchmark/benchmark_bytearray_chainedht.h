@@ -20,6 +20,7 @@ class BenchmarkByteArrayChained : public BenchmarkChained {
 
     uint8_t Insert(uint64_t key, uint64_t value);
     uint64_t Query(uint64_t key, uint8_t ptr);
+    bool Query(uint64_t key, uint64_t* value_ptr);
     void Update(uint64_t key, uint8_t ptr, uint64_t value);
     void Erase(uint64_t key, uint8_t ptr);
 
