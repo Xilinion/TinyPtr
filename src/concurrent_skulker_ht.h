@@ -90,11 +90,15 @@ class ConcurrentSkulkerHT {
     ConcurrentSkulkerHT(uint64_t size, uint8_t quotienting_tail_length,
                         uint16_t bin_size);
     ConcurrentSkulkerHT(uint64_t size, uint16_t bin_size);
+    ConcurrentSkulkerHT(uint64_t size);
 
     bool Insert(uint64_t key, uint64_t value);
     bool Query(uint64_t key, uint64_t* value_ptr);
     bool Update(uint64_t key, uint64_t value);
     void Free(uint64_t key);
+
+    void SetResizeStride(uint64_t stride_num);
+    bool ResizeMoveStride(uint64_t stride_id, ConcurrentSkulkerHT* new_ht);
 
    protected:
     uint8_t* bush_tab;
@@ -108,6 +112,9 @@ class ConcurrentSkulkerHT {
     size_t bush_locks_size;
     size_t bin_locks_size;
 
+    uint64_t resize_stride_size;
+
+   protected:
     __attribute__((always_inline)) inline uint64_t hash_1(uint64_t key) {
         return XXH64(&key, sizeof(uint64_t), kHashSeed1);
     }

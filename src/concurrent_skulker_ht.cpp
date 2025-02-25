@@ -154,6 +154,9 @@ ConcurrentSkulkerHT::ConcurrentSkulkerHT(uint64_t size,
 ConcurrentSkulkerHT::ConcurrentSkulkerHT(uint64_t size, uint16_t bin_size)
     : ConcurrentSkulkerHT(size, 0, bin_size) {}
 
+ConcurrentSkulkerHT::ConcurrentSkulkerHT(uint64_t size)
+    : ConcurrentSkulkerHT(size, 0, 127) {}
+
 bool ConcurrentSkulkerHT::Insert(uint64_t key, uint64_t value) {
     uint64_t base_id = hash_base_id(key);
 
@@ -167,16 +170,21 @@ bool ConcurrentSkulkerHT::Insert(uint64_t key, uint64_t value) {
     }
 
     // Use std::atomic for concurrent_version
-    std::atomic<uint8_t> &concurrent_version = *reinterpret_cast<std::atomic<uint8_t>*>(&bush_tab[(bush_id << kBushIdShiftOffset) + kConcurrentVersionOffset]);
+    std::atomic<uint8_t>& concurrent_version =
+        *reinterpret_cast<std::atomic<uint8_t>*>(
+            &bush_tab[(bush_id << kBushIdShiftOffset) +
+                      kConcurrentVersionOffset]);
 
     uint8_t expected_version;
     do {
         expected_version = concurrent_version.load();
-    } while ((expected_version & 1) || !concurrent_version.compare_exchange_weak(expected_version, expected_version + 1));
+    } while ((expected_version & 1) ||
+             !concurrent_version.compare_exchange_weak(expected_version,
+                                                       expected_version + 1));
 
     // {
     //     std::lock_guard<std::mutex> lock(output_mutex);
-        // std::cout << "thread_id: " << std::this_thread::get_id() << " bush_id: " << bush_id <<   " concurrent_version before: " << (int)concurrent_version << std::endl;
+    // std::cout << "thread_id: " << std::this_thread::get_id() << " bush_id: " << bush_id <<   " concurrent_version before: " << (int)concurrent_version << std::endl;
     // }
 
     uint64_t in_bush_offset = base_id - bush_id * kBushCapacity;
@@ -314,12 +322,17 @@ bool ConcurrentSkulkerHT::Query(uint64_t key, uint64_t* value_ptr) {
     }
 
     // Use std::atomic for concurrent_version
-    std::atomic<uint8_t> &concurrent_version = *reinterpret_cast<std::atomic<uint8_t>*>(&bush_tab[(bush_id << kBushIdShiftOffset) + kConcurrentVersionOffset]);
+    std::atomic<uint8_t>& concurrent_version =
+        *reinterpret_cast<std::atomic<uint8_t>*>(
+            &bush_tab[(bush_id << kBushIdShiftOffset) +
+                      kConcurrentVersionOffset]);
 
     uint8_t expected_version;
     do {
         expected_version = concurrent_version.load();
-    } while (expected_version % 2 != 0 || !concurrent_version.compare_exchange_weak(expected_version, expected_version + 1));
+    } while (expected_version % 2 != 0 ||
+             !concurrent_version.compare_exchange_weak(expected_version,
+                                                       expected_version + 1));
 
     uint64_t in_bush_offset = base_id - bush_id * kBushCapacity;
 
@@ -394,7 +407,10 @@ bool ConcurrentSkulkerHT::Query(uint64_t key, uint64_t* value_ptr) {
     }
 
     // Use std::atomic for concurrent_version
-    std::atomic<uint8_t> &concurrent_version = *reinterpret_cast<std::atomic<uint8_t>*>(&bush_tab[(bush_id << kBushIdShiftOffset) + kConcurrentVersionOffset]);
+    std::atomic<uint8_t>& concurrent_version =
+        *reinterpret_cast<std::atomic<uint8_t>*>(
+            &bush_tab[(bush_id << kBushIdShiftOffset) +
+                      kConcurrentVersionOffset]);
 
 query_again:
 
@@ -490,12 +506,17 @@ bool ConcurrentSkulkerHT::Update(uint64_t key, uint64_t value) {
     }
 
     // Use std::atomic for concurrent_version
-    std::atomic<uint8_t> &concurrent_version = *reinterpret_cast<std::atomic<uint8_t>*>(&bush_tab[(bush_id << kBushIdShiftOffset) + kConcurrentVersionOffset]);
+    std::atomic<uint8_t>& concurrent_version =
+        *reinterpret_cast<std::atomic<uint8_t>*>(
+            &bush_tab[(bush_id << kBushIdShiftOffset) +
+                      kConcurrentVersionOffset]);
 
     uint8_t expected_version;
     do {
         expected_version = concurrent_version.load();
-    } while ((expected_version & 1) || !concurrent_version.compare_exchange_weak(expected_version, expected_version + 1));
+    } while ((expected_version & 1) ||
+             !concurrent_version.compare_exchange_weak(expected_version,
+                                                       expected_version + 1));
 
     uint64_t in_bush_offset = base_id - bush_id * kBushCapacity;
 
@@ -570,12 +591,17 @@ void ConcurrentSkulkerHT::Free(uint64_t key) {
     }
 
     // Use std::atomic for concurrent_version
-    std::atomic<uint8_t> &concurrent_version = *reinterpret_cast<std::atomic<uint8_t>*>(&bush_tab[(bush_id << kBushIdShiftOffset) + kConcurrentVersionOffset]);
+    std::atomic<uint8_t>& concurrent_version =
+        *reinterpret_cast<std::atomic<uint8_t>*>(
+            &bush_tab[(bush_id << kBushIdShiftOffset) +
+                      kConcurrentVersionOffset]);
 
     uint8_t expected_version;
     do {
         expected_version = concurrent_version.load();
-    } while ((expected_version & 1) || !concurrent_version.compare_exchange_weak(expected_version, expected_version + 1));
+    } while ((expected_version & 1) ||
+             !concurrent_version.compare_exchange_weak(expected_version,
+                                                       expected_version + 1));
 
     uint64_t in_bush_offset = base_id - bush_id * kBushCapacity;
 
@@ -676,6 +702,97 @@ void ConcurrentSkulkerHT::Free(uint64_t key) {
     }
 
     concurrent_version.fetch_add(1);
+}
+
+void ConcurrentSkulkerHT::SetResizeStride(uint64_t stride_num) {
+    resize_stride_size = ceil(1.0 * kBushNum / (stride_num));
+}
+
+bool ConcurrentSkulkerHT::ResizeMoveStride(uint64_t stride_id,
+                                           ConcurrentSkulkerHT* new_ht) {
+    uint64_t stride_id_start = stride_id * resize_stride_size;
+    uint64_t stride_id_end = stride_id_start + resize_stride_size;
+    if (stride_id_end > kBushNum) {
+        stride_id_end = kBushNum;
+    }
+
+    for (uint64_t bush_id = stride_id_start; bush_id < stride_id_end;
+         bush_id++) {
+        uint8_t* bush = &bush_tab[(bush_id << kBushIdShiftOffset)];
+        uint16_t& control_info =
+            *reinterpret_cast<uint16_t*>(bush + kControlOffset);
+        uint8_t item_cnt = kBushLookup[control_info & kByteMask] +
+                           kBushLookup[(control_info >> kByteShift)];
+        uint8_t overflow_flag =
+            item_cnt > (kInitSkulkerNum + kInitExhibitorNum);
+
+        uint8_t exhibitor_num = kInitExhibitorNum - overflow_flag;
+
+        for (uint8_t in_bush_offset = 0, moved_cnt = 0;
+             in_bush_offset < kBushCapacity; in_bush_offset++) {
+            if ((control_info >> in_bush_offset) & 1) {
+
+                if (item_cnt - moved_cnt <= exhibitor_num) {
+                    uint64_t base_id = bush_id * kBushCapacity + in_bush_offset;
+
+                    uint8_t* entry =
+                        bush + (item_cnt - moved_cnt - 1) * kEntryByteLength;
+
+                    if (!new_ht->Insert(
+                            hash_key_rebuild((*reinterpret_cast<uint64_t*>(
+                                                 entry + kKeyOffset)),
+                                             base_id),
+                            *reinterpret_cast<uint64_t*>(entry +
+                                                         kValueOffset))) {
+                        return false;
+                    }
+
+                    uintptr_t pre_deref_key = base_id;
+                    uint8_t* pre_tiny_ptr = entry + kTinyPtrOffset;
+
+                    while (*pre_tiny_ptr != 0) {
+                        uint8_t* entry = ptab_query_entry_address(
+                            pre_deref_key, *pre_tiny_ptr);
+
+                        if (!new_ht->Insert(
+                                hash_key_rebuild((*reinterpret_cast<uint64_t*>(
+                                                     entry + kKeyOffset)),
+                                                 base_id),
+                                *reinterpret_cast<uint64_t*>(entry +
+                                                             kValueOffset))) {
+                            return false;
+                        }
+                        pre_tiny_ptr = entry + kTinyPtrOffset;
+                        pre_deref_key = reinterpret_cast<uintptr_t>(entry);
+                    }
+                } else {
+                    uint64_t base_id = bush_id * kBushCapacity + in_bush_offset;
+                    uintptr_t pre_deref_key = base_id;
+                    uint8_t* pre_tiny_ptr =
+                        bush + kSkulkerOffset -
+                        (item_cnt - exhibitor_num - moved_cnt - 1);
+
+                    while (*pre_tiny_ptr != 0) {
+                        uint8_t* entry = ptab_query_entry_address(
+                            pre_deref_key, *pre_tiny_ptr);
+
+                        if (!new_ht->Insert(
+                                hash_key_rebuild((*reinterpret_cast<uint64_t*>(
+                                                     entry + kKeyOffset)),
+                                                 base_id),
+                                *reinterpret_cast<uint64_t*>(entry +
+                                                             kValueOffset))) {
+                            return false;
+                        }
+                        pre_tiny_ptr = entry + kTinyPtrOffset;
+                        pre_deref_key = reinterpret_cast<uintptr_t>(entry);
+                    }
+                }
+                moved_cnt++;
+            }
+        }
+    }
+    return true;
 }
 
 }  // namespace tinyptr

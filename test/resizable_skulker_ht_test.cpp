@@ -1,5 +1,3 @@
-#include "concurrent_skulker_ht.h"
-#include "utils/rng.h"
 #include <gtest/gtest.h>
 #include <chrono>
 #include <cstdint>
@@ -10,6 +8,9 @@
 #include <thread>
 #include <unordered_map>
 #include <vector>
+#include "concurrent_skulker_ht.h"
+#include "resizable_ht.h"
+#include "utils/rng.h"
 
 rng::rng64 rng64(123456789);
 
@@ -34,38 +35,46 @@ uint64_t my_value_rand() {
     // return SlowXXHash64::hash(&tmp, sizeof(int32_t), 1);
 }
 
-void concurrent_insert(ConcurrentSkulkerHT& ht,
+void concurrent_insert(ResizableSkulkerHT& ht,
                        const vector<pair<uint64_t, uint64_t>>& data, int start,
                        int end) {
+
+    uint64_t handle = ht.GetHandle();
     for (int i = start; i < end; ++i) {
-        if (!ht.Insert(data[i].first, data[i].second)) {
+        if (!ht.Insert(handle, data[i].first, data[i].second)) {
             printf("insert failed: %llu, %llu\n", data[i].first,
                    data[i].second);
-            exit(0);
+            // printf("handle: %llu\n", handle);
+            // printf("i: %llu\n", i);
+            // ht.FreeHandle(handle);
+            // exit(0);
         }
     }
+    ht.FreeHandle(handle);
 }
 
-void concurrent_query(ConcurrentSkulkerHT& ht,
+void concurrent_query(ResizableSkulkerHT& ht,
                       const vector<pair<uint64_t, uint64_t>>& data, int start,
                       int end) {
+    uint64_t handle = ht.GetHandle();
     for (int i = start; i < end; ++i) {
         uint64_t val = 0;
         // std::cout << i - start << std::endl;
         // ht.Query(data[i].first + 1000000000000000000ull, &val);
-        ht.Query(data[i].first, &val);
-        // ASSERT_TRUE(ht.Query(data[i].first, &val));
+        ht.Query(handle, data[i].first, &val);
+        // ASSERT_TRUE(ht.Query(handle, data[i].first, &val));
         // ASSERT_EQ(val, data[i].second);
     }
+    ht.FreeHandle(handle);
 }
 
-TEST(ConcurrentSkulkerHT_TESTSUITE, ParallelInsertQuery) {
+TEST(ResizableSkulkerHT_TESTSUITE, ParallelInsertQuery) {
     srand(233);
 
     // int num_threads = std::thread::hardware_concurrency();
     int num_threads = 10;
     int num_operations = 1e8;  // Large number of operations
-
+    int part_num = 5;
     // Declare start and end for timing
     chrono::time_point<chrono::high_resolution_clock> start, end;
 
@@ -73,7 +82,7 @@ TEST(ConcurrentSkulkerHT_TESTSUITE, ParallelInsertQuery) {
     vector<pair<uint64_t, uint64_t>> data(num_operations);
     for (int i = 0; i < num_operations; ++i) {
         // cout << i << endl;
-        data[i] = {static_cast<uint64_t>(i*233), my_value_rand()};
+        data[i] = {static_cast<uint64_t>(i * 233), my_value_rand()};
     }
 
     // Ensure SlowXXHash64 is defined or included
@@ -82,12 +91,10 @@ TEST(ConcurrentSkulkerHT_TESTSUITE, ParallelInsertQuery) {
     // Ensure ConcurrentSkulkerHT is defined in concurrent_skulker_ht.h
     // If not, include the correct header or define the class
 
-    // Correct the namespace usage
-    using namespace std;
-    using namespace tinyptr;  // Ensure tinyptr is a valid namespace
-
     start = chrono::high_resolution_clock::now();
-    ConcurrentSkulkerHT ht(static_cast<uint64_t>(num_operations)*2, 127);
+
+    ResizableSkulkerHT ht(num_threads, part_num, 1000000/part_num);
+    
     end = chrono::high_resolution_clock::now();
     std::cout
         << "init time: "
@@ -140,6 +147,7 @@ TEST(ConcurrentSkulkerHT_TESTSUITE, ParallelInsertQuery) {
 }
 
 int main(int argc, char** argv) {
+    srand(233);
     testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
 }

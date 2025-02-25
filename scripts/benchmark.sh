@@ -212,8 +212,36 @@ bin_size=127
 
 # ../build/concurrent_skulker_ht_test
 # ../build/concurrent_growt_ht_test
+../build/resizable_skulker_ht_test
 
-# exit
+exit
+
+for case_id in 0; do
+    for object_id in 4; do
+        # for object_id in 3 4 6 7 10 12; do
+        entry_id=0
+        # for table_size in 1000000 2000000 4000000 8000000 16000000 32000000 64000000 128000000; do
+        for table_size in 270000000; do
+            for bin_size in 3 7 15 31 63 127; do
+                opt_num=$table_size
+
+                # RunValgrind
+                # RunPerf
+                # FlameGraph
+                # RunRandMemFree
+                # sleep 3
+                output=$(Run)
+                echo "$output"
+
+                let "entry_id++"
+            done
+        done
+    done
+done
+
+exit
+
+# load factor with deletion
 
 for case_id in 16; do
     for object_id in 4; do
@@ -243,8 +271,6 @@ for case_id in 16; do
         done
     done
 done
-
-exit
 
 for case_id in 16; do
     for object_id in 8; do
