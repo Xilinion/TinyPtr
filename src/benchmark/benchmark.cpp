@@ -477,6 +477,9 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
                 if (para.object_id == BenchmarkObjectType::BYTEARRAYCHAINEDHT ||
                     para.object_id == BenchmarkObjectType::BINAWARECHAINEDHT ||
                     para.object_id == BenchmarkObjectType::SAMEBINCHAINEDHT) {
+
+                    output_stream << "Bin Size: " << para.bin_size << std::endl;
+                    
                     output_stream << "Avg Chain Length: "
                                   << dynamic_cast<BenchmarkChained*>(obj)
                                          ->AvgChainLength()
