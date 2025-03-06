@@ -212,7 +212,7 @@ bin_size=127
 
 # ../build/concurrent_skulker_ht_test
 # ../build/concurrent_growt_ht_test
-../build/resizable_skulker_ht_test
+../build/resizable_empty_ht_test
 
 exit
 

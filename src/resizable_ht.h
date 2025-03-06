@@ -1,14 +1,17 @@
 #pragma once
 
 #include <sys/types.h>
-#include "concurrent_skulker_ht.h"
-
 #include <algorithm>
 #include <atomic>
 #include <cmath>
 #include <cstdint>
+#include <iostream>
 #include <set>
+#include <string>
 #include <thread>
+#include <vector>
+#include "concurrent_skulker_ht.h"
+#include "emptyht.h"
 
 namespace tinyptr {
 
@@ -21,7 +24,7 @@ class ResizableHT {
    public:
     ResizableHT(uint32_t thread_num = 0, uint64_t part_num = 0,
                 uint64_t initial_size_per_part = 40000,
-                double resize_threshold = 0.75, double resize_factor = 2.0);
+                double resize_threshold = 1, double resize_factor = 2.0);
 
    protected:
     HTType** partitions;
@@ -102,14 +105,7 @@ class ResizableHT {
                         }
                     } else if (stage >= thread_num) {
                         thread_working_lock[handle].store(part_id);
-
-                        // part_resizing_thread_num[part_index].fetch_sub(1);
-
-                        if (part_resizing_thread_num[part_index].fetch_sub(1) ==
-                            0) {
-                            std::cout << "fuck" << std::endl;
-                        }
-
+                        part_resizing_thread_num[part_index].fetch_sub(1);
                         while (part_resizing_thread_num[part_index].load() > 0)
                             ;
                         break;
@@ -138,15 +134,16 @@ class ResizableHT {
                 if (part_cnt[part_index].load() <=
                     part_resize_threshold[part_id]) {
                     part_resizing_stage[part_index].store(thread_num);
+
                     uint64_t expected = 1;
                     while (!part_resizing_thread_num[part_index]
-                                .compare_exchange_weak(expected, 0))
-                        ;
+                                .compare_exchange_weak(expected, 0)) {
+                        expected = 1;
+                    }
+
                     part_resizing_stage[part_index].store(0);
                     return;
                 }
-
-                // std::cout << "fuck2" << std::endl;
 
                 thread_working_lock[handle].store(uint64_t(-1));
 
@@ -171,10 +168,9 @@ class ResizableHT {
                             stage, partitions_new[part_id]);
                         part_resizing_stride_done[part_index]++;
                     }
-                    stage = part_resizing_stage[part_index].load();
                 }
 
-                while (part_resizing_stride_done[part_index] < thread_num)
+                while (part_resizing_stride_done[part_index].load() < thread_num)
                     ;
 
                 delete partitions[part_id];
@@ -184,6 +180,7 @@ class ResizableHT {
                     uint64_t(part_size[part_id] * resize_factor);
                 part_resize_threshold[part_id] =
                     uint64_t(part_size[part_id] * resize_threshold);
+
                 part_resizing_stride_done[part_index].store(0);
 
                 thread_working_lock[handle].store(part_id);
@@ -191,13 +188,12 @@ class ResizableHT {
                 uint64_t expected = 1;
                 while (
                     !part_resizing_thread_num[part_index].compare_exchange_weak(
-                        expected, 0))
-                    ;
+                        expected, 0)) {
+                    expected = 1;
+                }
+
                 part_resizing_stage[part_index].store(0);
             }
-            // else {
-            //     check_join_resize(handle, part_id);
-            // }
         }
     };
 };
@@ -253,6 +249,11 @@ ResizableHT<HTType>::ResizableHT(uint32_t thread_num_, uint64_t part_num_,
                                   sizeof(uint64_t)];
     thread_part_cnt =
         new int64_t*[thread_num * kCacheLineSize / sizeof(uint64_t)];
+
+    state_stacks = new std::vector<uint64_t>*[thread_num * kCacheLineSize /
+                                              sizeof(uint64_t)];
+    thread_num_stacks = new std::vector<uint64_t>*[thread_num * kCacheLineSize /
+                                                   sizeof(uint64_t)];
 
     for (uint64_t i = 0; i < part_num; i++) {
         part_cnt[i * (kCacheLineSize / sizeof(int64_t))] = 0;
@@ -325,5 +326,6 @@ void ResizableHT<HTType>::Erase(uint64_t handle, uint64_t key) {
 }
 
 using ResizableSkulkerHT = ResizableHT<ConcurrentSkulkerHT>;
+using ResizableEmptyHT = ResizableHT<EmptyHT>;
 
 }  // namespace tinyptr

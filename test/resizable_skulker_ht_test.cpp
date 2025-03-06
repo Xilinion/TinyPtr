@@ -94,6 +94,7 @@ TEST(ResizableSkulkerHT_TESTSUITE, ParallelInsertQuery) {
     start = chrono::high_resolution_clock::now();
 
     ResizableSkulkerHT ht(num_threads, part_num, 1000000/part_num);
+    // ResizableEmptyHT ht(num_threads, part_num, 1000000/part_num);
     
     end = chrono::high_resolution_clock::now();
     std::cout
