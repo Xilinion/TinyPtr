@@ -204,6 +204,7 @@ CompileWithOption
 
 table_size=1
 opt_num=0
+thread_num=0
 load_factor=0
 hit_percent=0
 quotient_tail_length=0

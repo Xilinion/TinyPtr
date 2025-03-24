@@ -403,57 +403,12 @@ void Benchmark::ycsb_exe_load(
     }
 }
 
-void Benchmark::ycsb_fill(std::vector<uint64_t>& ycsb_keys, int thread_num) {
-    std::vector<std::thread> threads;
-    size_t chunk_size = ycsb_keys.size() / thread_num;
-
-    for (int i = 0; i < thread_num; ++i) {
-        size_t start_index = i * chunk_size;
-        size_t end_index =
-            (i == thread_num - 1) ? ycsb_keys.size() : start_index + chunk_size;
-
-        threads.emplace_back([this, &ycsb_keys, start_index, end_index]() {
-            for (size_t j = start_index; j < end_index; ++j) {
-                obj->Insert(ycsb_keys[j], 0);
-            }
-        });
-    }
-
-    for (auto& thread : threads) {
-        thread.join();
-    }
-}
-
-void Benchmark::ycsb_run(
-    std::vector<std::pair<uint64_t, uint64_t>>& ycsb_exe_vec, int thread_num) {
-    std::vector<std::thread> threads;
-    size_t chunk_size = ycsb_exe_vec.size() / thread_num;
-
-    for (int i = 0; i < thread_num; ++i) {
-        size_t start_index = i * chunk_size;
-        size_t end_index = (i == thread_num - 1) ? ycsb_exe_vec.size()
-                                                 : start_index + chunk_size;
-
-        threads.emplace_back([this, &ycsb_exe_vec, start_index, end_index]() {
-            for (size_t j = start_index; j < end_index; ++j) {
-                if (ycsb_exe_vec[j].first == 1) {
-                    obj->Insert(ycsb_exe_vec[j].second, 0);
-                } else {
-                    obj->Query(ycsb_exe_vec[j].second, nullptr);
-                }
-            }
-        });
-    }
-
-    for (auto& thread : threads) {
-        thread.join();
-    }
-}
-
 Benchmark::Benchmark(BenchmarkCLIPara& para)
     : output_stream(para.GetOuputFileName()),
       table_size(para.table_size),
       opt_num(para.opt_num),
+      thread_num(para.thread_num),
+      if_resize(para.if_resize),
       load_factor(para.load_factor),
       hit_ratio(para.hit_percent),
       rand_mem_free(para.rand_mem_free) {
@@ -497,10 +452,13 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
             obj = new BenchmarkIceberg(table_size);
             break;
         case BenchmarkObjectType::SKULKERHT:
-            obj = new BenchmarkSkulkerHT(table_size * 2, para.bin_size);
+            obj = new BenchmarkSkulkerHT(table_size, para.bin_size);
             break;
         case BenchmarkObjectType::GROWT:
             obj = new BenchmarkGrowt(table_size);
+            break;
+        case BenchmarkObjectType::CONCURRENT_SKULKERHT:
+            obj = new BenchmarkConcSkulkerHT(table_size, para.bin_size);
             break;
         default:
             abort();
@@ -1210,12 +1168,12 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
 
                 std::clock_t start = std::clock();
 
-                ycsb_fill(ycsb_keys, para.thread_num);
+                obj->YCSBFill(ycsb_keys, para.thread_num);
 
                 auto start_fill = std::clock();
                 auto fill_duration = start_fill - start;
 
-                ycsb_run(ycsb_exe_vec, para.thread_num);
+                obj->YCSBRun(ycsb_exe_vec, para.thread_num);
 
                 auto start_run = std::clock();
                 auto run_duration = start_run - start_fill;

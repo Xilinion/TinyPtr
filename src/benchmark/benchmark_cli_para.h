@@ -24,9 +24,9 @@ class BenchmarkCLIPara {
     int entry_id;
     int object_id;
 
-    int thread_num;
+    int thread_num = 0;
 
-    int if_resize;
+    int if_resize = 0;
 
     int table_size;
     uint64_t opt_num;

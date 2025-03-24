@@ -21,7 +21,8 @@ struct BenchmarkObjectType {
         FLATHASH = 11,
         SKULKERHT = 12,
         GROWT = 13,
-        COUNT = 14
+        CONCURRENT_SKULKERHT = 14,
+        COUNT = 15
     };
 
     BenchmarkObjectType(const BenchmarkObjectType& b) = default;

@@ -74,13 +74,6 @@ class Benchmark {
     void alternating_insert_erase(int opt_cnt);
     void all_operation_rand(int opt_cnt);
 
-    void ycsb_load(std::vector<uint64_t>& ycsb_keys, std::string path);
-    void ycsb_exe_load(std::vector<std::pair<uint64_t, uint64_t>>& ycsb_exe_vec,
-                       std::string path);
-    void ycsb_fill(std::vector<uint64_t>& ycsb_keys, int thread_num);
-    void ycsb_run(std::vector<std::pair<uint64_t, uint64_t>>& ycsb_exe_vec,
-                  int thread_num);
-
    public:
     void Run();
 
@@ -90,6 +83,8 @@ class Benchmark {
     std::ofstream output_stream;
     uint64_t table_size;
     uint64_t opt_num;
+    uint64_t thread_num;
+    int if_resize;
     double load_factor;
     double hit_ratio;
 
