@@ -34,6 +34,7 @@ function Init() {
     sudo sysctl kernel.perf_event_paranoid=-1
     sudo sysctl kernel.kptr_restrict=0
     sudo sysctl kernel.yama.ptrace_scope=0
+    echo "always" | sudo tee /sys/kernel/mm/transparent_hugepage/enabled
     sudo chmod 777 ../scripts/FlameGraph/stackcollapse-perf.pl
     sudo chmod 777 ../scripts/FlameGraph/flamegraph.pl
 }
@@ -212,7 +213,54 @@ bin_size=127
 
 # ../build/concurrent_skulker_ht_test
 # ../build/concurrent_growt_ht_test
-../build/resizable_empty_ht_test
+# ../build/resizable_empty_ht_test
+# ../build/resizable_byte_array_ht_test
+# ../build/resizable_skulker_ht_test
+# ../build/concurrent_byte_array_chained_ht_test
+# ../build/skulker_ht_test
+
+# ../build/byte_array_chainedht_test
+
+# for case_id in 1; do
+#     for object_id in 7; do
+#         entry_id=0
+#         for table_size in 16777216 67108864; do
+#             opt_num=134217728
+#             Run
+#             let "entry_id++"
+#         done
+#     done
+# done
+
+# exit
+
+# load factor with deletion
+
+for case_id in 1; do
+    for object_id in 12; do
+        # for object_id in 3 4 6 7 10 12; do
+        entry_id=0
+        # for table_size in 1000000 2000000 4000000 8000000 16000000 32000000 64000000 128000000; do
+        for table_size in 100000000; do
+            opt_num=$table_size
+
+            # RunValgrind
+            # RunPerf
+            # FlameGraph
+            # RunRandMemFree
+            # sleep 3
+            # output=$(Run)
+            output=$(RunRandMemFree)
+            echo "$output"
+
+            let "entry_id++"
+            if echo "$output" | grep -q "good"; then
+                break
+            fi
+
+        done
+    done
+done
 
 exit
 
@@ -234,39 +282,6 @@ for case_id in 0; do
                 echo "$output"
 
                 let "entry_id++"
-            done
-        done
-    done
-done
-
-exit
-
-# load factor with deletion
-
-for case_id in 16; do
-    for object_id in 4; do
-        # for object_id in 3 4 6 7 10 12; do
-        entry_id=0
-        # for table_size in 1000000 2000000 4000000 8000000 16000000 32000000 64000000 128000000; do
-        for table_size in 270000000; do
-            for bin_size in 3 7 15 31 63 127; do
-                for load_factor in 0.99 0.97 0.95 0.93 0.91 0.89 0.87 0.85 0.83 0.81 0.79 0.77 0.75 0.73 0.71 0.69 0.67 0.65 0.63 0.61 0.59 0.57 0.55 0.53 0.51 0.49 0.47 0.45 0.43 0.41 0.39 0.37 0.35 0.33 0.31 0.29 0.27 0.25 0.23 0.21 0.19 0.17 0.15 0.13 0.11 0.09 0.07 0.05 0.03 0.01; do
-                    opt_num=$table_size
-
-                    # RunValgrind
-                    # RunPerf
-                    # FlameGraph
-                    # RunRandMemFree
-                    # sleep 3
-                    output=$(Run)
-                    echo "$output"
-
-                    let "entry_id++"
-                    if echo "$output" | grep -q "good"; then
-                        break
-                    fi
-
-                done
             done
         done
     done

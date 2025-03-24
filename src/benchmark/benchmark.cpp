@@ -371,6 +371,85 @@ void Benchmark::all_operation_rand(int opt_cnt) {
     }
 }
 
+void Benchmark::ycsb_load(std::vector<uint64_t>& ycsb_keys, std::string path) {
+    FILE* file = fopen(path.c_str(), "r");
+    if (file) {
+        char buffer[256];
+        while (fgets(buffer, sizeof(buffer), file)) {
+            sscanf(buffer + 7, "%llu", &key);
+            ycsb_keys.push_back(key);
+        }
+        fclose(file);
+    }
+}
+
+void Benchmark::ycsb_exe_load(
+    std::vector<std::pair<uint64_t, uint64_t>>& ycsb_exe_vec,
+    std::string path) {
+    FILE* file = fopen(path.c_str(), "r");
+    if (file) {
+        char buffer[256];
+        while (fgets(buffer, sizeof(buffer), file)) {
+            uint64_t key;
+            if (strncmp(buffer, "INSERT", 6) == 0) {
+                sscanf(buffer + 7, "%llu", &key);
+                ycsb_exe_vec.emplace_back(1, key);
+            } else if (strncmp(buffer, "READ", 4) == 0) {
+                sscanf(buffer + 5, "%llu", &key);
+                ycsb_exe_vec.emplace_back(0, key);
+            }
+        }
+        fclose(file);
+    }
+}
+
+void Benchmark::ycsb_fill(std::vector<uint64_t>& ycsb_keys, int thread_num) {
+    std::vector<std::thread> threads;
+    size_t chunk_size = ycsb_keys.size() / thread_num;
+
+    for (int i = 0; i < thread_num; ++i) {
+        size_t start_index = i * chunk_size;
+        size_t end_index =
+            (i == thread_num - 1) ? ycsb_keys.size() : start_index + chunk_size;
+
+        threads.emplace_back([this, &ycsb_keys, start_index, end_index]() {
+            for (size_t j = start_index; j < end_index; ++j) {
+                obj->Insert(ycsb_keys[j], 0);
+            }
+        });
+    }
+
+    for (auto& thread : threads) {
+        thread.join();
+    }
+}
+
+void Benchmark::ycsb_run(
+    std::vector<std::pair<uint64_t, uint64_t>>& ycsb_exe_vec, int thread_num) {
+    std::vector<std::thread> threads;
+    size_t chunk_size = ycsb_exe_vec.size() / thread_num;
+
+    for (int i = 0; i < thread_num; ++i) {
+        size_t start_index = i * chunk_size;
+        size_t end_index = (i == thread_num - 1) ? ycsb_exe_vec.size()
+                                                 : start_index + chunk_size;
+
+        threads.emplace_back([this, &ycsb_exe_vec, start_index, end_index]() {
+            for (size_t j = start_index; j < end_index; ++j) {
+                if (ycsb_exe_vec[j].first == 1) {
+                    obj->Insert(ycsb_exe_vec[j].second, 0);
+                } else {
+                    obj->Query(ycsb_exe_vec[j].second, nullptr);
+                }
+            }
+        });
+    }
+
+    for (auto& thread : threads) {
+        thread.join();
+    }
+}
+
 Benchmark::Benchmark(BenchmarkCLIPara& para)
     : output_stream(para.GetOuputFileName()),
       table_size(para.table_size),
@@ -479,7 +558,7 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
                     para.object_id == BenchmarkObjectType::SAMEBINCHAINEDHT) {
 
                     output_stream << "Bin Size: " << para.bin_size << std::endl;
-                    
+
                     output_stream << "Avg Chain Length: "
                                   << dynamic_cast<BenchmarkChained*>(obj)
                                          ->AvgChainLength()
@@ -1120,6 +1199,63 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
                 }
             };
             break;
+        case BenchmarkCaseType::YCSB_A:
+        case BenchmarkCaseType::YCSB_B:
+        case BenchmarkCaseType::YCSB_C:
+            run = [this, para]() {
+                std::vector<uint64_t> ycsb_keys;
+                ycsb_load(ycsb_keys, para.ycsb_load_path);
+                std::vector<std::pair<uint64_t, uint64_t>> ycsb_exe_vec;
+                ycsb_exe_load(ycsb_exe_vec, para.ycsb_exe_path);
+
+                std::clock_t start = std::clock();
+
+                ycsb_fill(ycsb_keys, para.thread_num);
+
+                auto start_fill = std::clock();
+                auto fill_duration = start_fill - start;
+
+                ycsb_run(ycsb_exe_vec, para.thread_num);
+
+                auto start_run = std::clock();
+                auto run_duration = start_run - start_fill;
+
+                auto end = std::clock();
+                auto duration = end - start;
+
+                int fill_op_cnt = ycsb_keys.size();
+                int run_op_cnt = ycsb_exe_vec.size();
+
+                output_stream
+                    << "CPU Time: " << int(1000.0 * (duration) / CLOCKS_PER_SEC)
+                    << " ms" << std::endl;
+                output_stream << "Fill Time: "
+                              << int(1000.0 * (fill_duration) / CLOCKS_PER_SEC)
+                              << " ms" << std::endl;
+                output_stream << "Run Time: "
+                              << int(1000.0 * (run_duration) / CLOCKS_PER_SEC)
+                              << " ms" << std::endl;
+                output_stream
+                    << "Fill Latency: "
+                    << int(double(fill_duration) / double(fill_op_cnt) /
+                           CLOCKS_PER_SEC * (1ll * 1000 * 1000 * 1000))
+                    << " ns/op" << std::endl;
+                output_stream
+                    << "Run Latency: "
+                    << int(double(run_duration) / double(run_op_cnt) /
+                           CLOCKS_PER_SEC * (1ll * 1000 * 1000 * 1000))
+                    << " ns/op" << std::endl;
+                output_stream << "Fill Throughput: "
+                              << int(double(fill_op_cnt) /
+                                     double(fill_duration) * CLOCKS_PER_SEC)
+                              << " ops/s" << std::endl;
+                output_stream << "Run Throughput: "
+                              << int(double(run_op_cnt) / double(run_duration) *
+                                     CLOCKS_PER_SEC)
+                              << " ops/s" << std::endl;
+            };
+            break;
+
         default:
             abort();
     }

@@ -59,8 +59,10 @@ class Benchmark {
 
     int insert_cnt_to_overflow();
     uint64_t insert_delete_opt_to_overflow(uint64_t size, uint16_t bin_size,
-                                      double opt_ratio, double load_factor);
+                                           double opt_ratio,
+                                           double load_factor);
     void obj_fill(int ins_cnt);
+    void obj_fill(int ins_cnt, int thread_num);
     void batch_query_vec_prepare(std::vector<uint64_t>& query_key_vec,
                                  std::vector<uint8_t>& query_ptr_vec,
                                  uint64_t op_cnt, double hit_rate);
@@ -71,6 +73,13 @@ class Benchmark {
     void erase_all();
     void alternating_insert_erase(int opt_cnt);
     void all_operation_rand(int opt_cnt);
+
+    void ycsb_load(std::vector<uint64_t>& ycsb_keys, std::string path);
+    void ycsb_exe_load(std::vector<std::pair<uint64_t, uint64_t>>& ycsb_exe_vec,
+                       std::string path);
+    void ycsb_fill(std::vector<uint64_t>& ycsb_keys, int thread_num);
+    void ycsb_run(std::vector<std::pair<uint64_t, uint64_t>>& ycsb_exe_vec,
+                  int thread_num);
 
    public:
     void Run();

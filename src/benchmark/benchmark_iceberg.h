@@ -8,6 +8,8 @@
 #include <thread>
 #include "benchmark_object_64.h"
 #include "benchmark_object_type.h"
+
+#define ENABLE_RESIZE
 #include "iceberg_table.h"
 
 namespace tinyptr {

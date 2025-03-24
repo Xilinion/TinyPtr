@@ -23,7 +23,10 @@ struct BenchmarkCaseType {
         LATENCY_VARYING_CHAINLENGTH = 14,
         QUERY_NO_MEM = 15,
         INSERT_DELETE_LOAD_FACTOR_SUPPORT = 16,
-        COUNT = 17
+        YCSB_A = 17,
+        YCSB_B = 18,
+        YCSB_C = 19,
+        COUNT = 20
     };
 
     BenchmarkCaseType() = default;
