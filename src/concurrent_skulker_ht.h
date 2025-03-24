@@ -11,7 +11,10 @@
 #include <iostream>
 #include <memory>  // Include for std::unique_ptr
 #include <mutex>   // Include for concurrency
+#include <queue>
 #include <thread>
+#include <utility>
+#include <vector>
 #include "common.h"
 #include "utils/cache_line_size.h"
 
@@ -183,11 +186,14 @@ class ConcurrentSkulkerHT {
             uint8_t& head = bin_head(bin1);
             uint8_t& cnt = bin_cnt(bin1);
 
-            if (head) {
-                uint8_t* entry = byte_array + (bin1 * kBinSize + head - 1) *
-                                                  kEntryByteLength;
-                uint8_t new_pre_tiny_ptr = head;
-                head = entry[kTinyPtrOffset];
+            if (head < kBinSize) {
+                uint8_t* entry =
+                    byte_array + (bin1 * kBinSize + head) * kEntryByteLength;
+                uint8_t new_pre_tiny_ptr = head + 1;
+                head = head + 1 + entry[kTinyPtrOffset];
+                if (head > kBinSize) {
+                    head -= (kBinSize + 1);
+                }
                 *entry = new_pre_tiny_ptr;
                 cnt++;
                 bin_locks[bin1].clear(std::memory_order_release);
@@ -224,11 +230,14 @@ class ConcurrentSkulkerHT {
             uint8_t& head = bin_head(bin_id);
             uint8_t& cnt = bin_cnt(bin_id);
 
-            if (head) {
-                uint8_t* entry = byte_array + (bin_id * kBinSize + head - 1) *
-                                                  kEntryByteLength;
-                uint8_t new_pre_tiny_ptr = head | (flag << 7);
-                head = entry[kTinyPtrOffset];
+            if (head < kBinSize) {
+                uint8_t* entry =
+                    byte_array + (bin_id * kBinSize + head) * kEntryByteLength;
+                uint8_t new_pre_tiny_ptr = (head + 1) | (flag << 7);
+                head = head + 1 + entry[kTinyPtrOffset];
+                if (head > kBinSize) {
+                    head -= (kBinSize + 1);
+                }
                 *entry = new_pre_tiny_ptr;
                 cnt++;
                 bin_locks[bin_id].clear(std::memory_order_release);
@@ -311,8 +320,12 @@ class ConcurrentSkulkerHT {
 
         bin_cnt(bin_id)--;
         uint8_t& head = bin_head(bin_id);
-        cur_entry[kTinyPtrOffset] = head;
-        head = ((uint8_t)((*pre_tiny_ptr) << 1) >> 1);
+        uint8_t cur_in_bin_pos = ((uint8_t)((*pre_tiny_ptr) << 1) >> 1) - 1;
+        cur_entry[kTinyPtrOffset] = head + kBinSize - cur_in_bin_pos;
+        if (cur_entry[kTinyPtrOffset] > kBinSize) {
+            cur_entry[kTinyPtrOffset] -= (kBinSize + 1);
+        }
+        head = cur_in_bin_pos;
         *pre_tiny_ptr = 0;
 
         bin_locks[bin_id].clear(std::memory_order_release);
@@ -351,8 +364,12 @@ class ConcurrentSkulkerHT {
 
         bin_cnt(bin_id)--;
         uint8_t& head = bin_head(bin_id);
-        cur_entry[kTinyPtrOffset] = head;
-        head = ((uint8_t)((*pre_tiny_ptr) << 1) >> 1);
+        uint8_t cur_in_bin_pos = ((uint8_t)((*pre_tiny_ptr) << 1) >> 1) - 1;
+        cur_entry[kTinyPtrOffset] = head + kBinSize - cur_in_bin_pos;
+        if (cur_entry[kTinyPtrOffset] > kBinSize) {
+            cur_entry[kTinyPtrOffset] -= (kBinSize + 1);
+        }
+        head = cur_in_bin_pos;
         *pre_tiny_ptr = 0;
 
         bin_locks[bin_id].clear(std::memory_order_release);
@@ -440,6 +457,21 @@ class ConcurrentSkulkerHT {
         uintptr_t pre_deref_key = bush_offset + raid_in_bush_offset;
 
         ptab_lift_to_bush(pre_tiny_ptr, pre_deref_key, exhibitor_ptr);
+    }
+
+   public:
+    __attribute__((always_inline)) inline void prefetch_key(uint64_t key) {
+        uint64_t base_id = hash_base_id(key);
+        // do fast division
+        uint64_t bush_id;
+        if (base_id > kFastDivisionUpperBound) {
+            bush_id = base_id / kBushCapacity;
+        } else {
+            bush_id = (1ULL * base_id * kFastDivisionReciprocal) >>
+                      kFastDivisionShift;
+        }
+        __builtin_prefetch(
+            (const void*)(bush_tab + (bush_id << kBushIdShiftOffset)));
     }
 };
 

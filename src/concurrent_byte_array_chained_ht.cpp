@@ -2,6 +2,7 @@
 #include <emmintrin.h>
 #include <inttypes.h>
 #include <sys/cdefs.h>
+#include <sys/mman.h>
 #include <sys/types.h>
 #include <cstdint>
 #include <cstdio>
@@ -63,6 +64,7 @@ ConcurrentByteArrayChainedHT::ConcurrentByteArrayChainedHT(
         base_tab_concurrent_version[i].clear();
     }
 
+    /*
     (void)posix_memalign(reinterpret_cast<void**>(&byte_array), 64,
                          kBinNum * kBinSize * kEntryByteLength);
     memset(byte_array, 0, kBinNum * kBinSize * kEntryByteLength);
@@ -72,7 +74,36 @@ ConcurrentByteArrayChainedHT::ConcurrentByteArrayChainedHT(
 
     (void)posix_memalign(reinterpret_cast<void**>(&bin_cnt_head), 64,
                          kBinNum << 1);
+    memset(bin_cnt_head, 0, kBinNum << 1);
+*/
 
+    {
+        size_t total_bytes = kBinNum * kBinSize * kEntryByteLength;
+        byte_array = static_cast<uint8_t*>(calloc(1, total_bytes));
+        if (!byte_array) {
+            perror("calloc(byte_array)");
+            exit(EXIT_FAILURE);
+        }
+    }
+
+    {
+        base_tab = static_cast<uint8_t*>(calloc(1, kBaseTabSize));
+        if (!base_tab) {
+            perror("calloc(base_tab)");
+            exit(EXIT_FAILURE);
+        }
+    }
+
+    {
+        size_t cnt_bytes = kBinNum << 1;
+        bin_cnt_head = static_cast<uint8_t*>(calloc(1, cnt_bytes));
+        if (!bin_cnt_head) {
+            perror("calloc(bin_cnt_head)");
+            exit(EXIT_FAILURE);
+        }
+    }
+
+    /*
     for (uint64_t i = 0, ptr_offset = kTinyPtrOffset; i < kBinNum; i++) {
         for (uint8_t j = 0; j < kBinSize - 1; j++) {
             byte_array[ptr_offset] = j + 2;
@@ -85,6 +116,7 @@ ConcurrentByteArrayChainedHT::ConcurrentByteArrayChainedHT(
         bin_cnt_head[i << 1] = 0;
         bin_cnt_head[(i << 1) | 1] = 1;
     }
+*/
 
     play_entry = new uint8_t[kEntryByteLength];
 }
@@ -92,6 +124,9 @@ ConcurrentByteArrayChainedHT::ConcurrentByteArrayChainedHT(
 ConcurrentByteArrayChainedHT::ConcurrentByteArrayChainedHT(uint64_t size,
                                                            uint16_t bin_size)
     : ConcurrentByteArrayChainedHT(size, 0, bin_size) {}
+
+ConcurrentByteArrayChainedHT::ConcurrentByteArrayChainedHT(uint64_t size)
+    : ConcurrentByteArrayChainedHT(size, 0, 127) {}
 
 uint64_t ConcurrentByteArrayChainedHT::limited_base_id(uint64_t key) {
     if (limited_base_cnt < limited_base_entry_num) {
@@ -416,8 +451,12 @@ void ConcurrentByteArrayChainedHT::Free(uint64_t key) {
     uint64_t bin_id = (cur_entry - byte_array) / kBinByteLength;
     bin_cnt(bin_id)--;
     uint8_t& head = bin_head(bin_id);
-    cur_entry[kTinyPtrOffset] = head;
-    head = ((uint8_t)((*pre_tiny_ptr) << 1) >> 1);
+    uint8_t cur_in_bin_pos = ((uint8_t)((*pre_tiny_ptr) << 1) >> 1) - 1;
+    cur_entry[kTinyPtrOffset] = head + kBinSize - cur_in_bin_pos;
+    if (cur_entry[kTinyPtrOffset] > kBinSize) {
+        cur_entry[kTinyPtrOffset] -= (kBinSize + 1);
+    }
+    head = cur_in_bin_pos;
     *pre_tiny_ptr = 0;
     concurrent_version.fetch_add(1);
 }
@@ -494,6 +533,39 @@ void ConcurrentByteArrayChainedHT::FillChainLength(uint8_t chain_length) {
 
 uint64_t ConcurrentByteArrayChainedHT::QueryEntryCnt() {
     return query_entry_cnt;
+}
+
+void ConcurrentByteArrayChainedHT::SetResizeStride(uint64_t stride_num) {
+    resize_stride_size = ceil(1.0 * kBaseTabSize / (stride_num));
+}
+
+bool ConcurrentByteArrayChainedHT::ResizeMoveStride(
+    uint64_t stride_id, ConcurrentByteArrayChainedHT* new_ht) {
+
+    uint64_t start_base_id = stride_id * resize_stride_size;
+    uint64_t end_base_id = start_base_id + resize_stride_size;
+    if (end_base_id > kBaseTabSize) {
+        end_base_id = kBaseTabSize;
+    }
+    for (uint64_t base_id = start_base_id; base_id < end_base_id; base_id++) {
+
+        uint8_t* pre_tiny_ptr = &base_tab_ptr(base_id);
+        while (*pre_tiny_ptr != 0) {
+
+            uint8_t* entry = ptab_query_entry_address(
+                reinterpret_cast<uint64_t>(pre_tiny_ptr), *pre_tiny_ptr);
+
+            if (!new_ht->Insert(
+                    hash_key_rebuild(*reinterpret_cast<uint64_t*>(entry),
+                                     base_id),
+                    *reinterpret_cast<uint64_t*>(entry + kValueOffset))) {
+                return false;
+            }
+
+            pre_tiny_ptr = entry + kTinyPtrOffset;
+        }
+    }
+    return true;
 }
 
 }  // namespace tinyptr

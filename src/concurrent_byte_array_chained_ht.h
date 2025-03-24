@@ -41,6 +41,7 @@ class ConcurrentByteArrayChainedHT {
     ConcurrentByteArrayChainedHT(uint64_t size, uint8_t quotienting_tail_length,
                                  uint16_t bin_size);
     ConcurrentByteArrayChainedHT(uint64_t size, uint16_t bin_size);
+    ConcurrentByteArrayChainedHT(uint64_t size);
 
    protected:
     __attribute__((always_inline)) inline uint64_t hash_1(uint64_t key) {
@@ -57,6 +58,15 @@ class ConcurrentByteArrayChainedHT {
         uint64_t tmp = key >> kQuotientingTailLength;
         return (XXH64(&tmp, sizeof(uint64_t), kHashSeed1) ^ key) &
                kQuotientingTailMask;
+    }
+
+    __attribute__((always_inline)) inline uint64_t hash_key_rebuild(
+        uint64_t quotiented_key, uint64_t base_id) {
+        uint64_t tmp = (quotiented_key << kQuotientingTailLength) >>
+                       kQuotientingTailLength;
+        return ((XXH64(&tmp, sizeof(uint64_t), kHashSeed1) ^ base_id) &
+                kQuotientingTailMask) |
+               (tmp << kQuotientingTailLength);
     }
 
     __attribute__((always_inline)) inline uint64_t hash_2(uint64_t key) {
@@ -107,11 +117,14 @@ class ConcurrentByteArrayChainedHT {
             uint8_t& head = bin_head(bin1);
             uint8_t& cnt = bin_cnt(bin1);
 
-            if (head) {
-                uint8_t* entry = byte_array + (bin1 * kBinSize + head - 1) *
-                                                  kEntryByteLength;
-                uint8_t new_pre_tiny_ptr = head;
-                head = entry[kTinyPtrOffset];
+            if (head < kBinSize) {
+                uint8_t* entry =
+                    byte_array + (bin1 * kBinSize + head) * kEntryByteLength;
+                uint8_t new_pre_tiny_ptr = head + 1;
+                head = head + 1 + entry[kTinyPtrOffset];
+                if (head > kBinSize) {
+                    head -= (kBinSize + 1);
+                }
                 *entry = new_pre_tiny_ptr;
                 cnt++;
                 bin_locks[bin1].clear(std::memory_order_release);
@@ -148,11 +161,15 @@ class ConcurrentByteArrayChainedHT {
             uint8_t& head = bin_head(bin_id);
             uint8_t& cnt = bin_cnt(bin_id);
 
-            if (head) {
-                uint8_t* entry = byte_array + (bin_id * kBinSize + head - 1) *
-                                                  kEntryByteLength;
-                *entry = head | (flag << 7);
-                head = entry[kTinyPtrOffset];
+            if (head < kBinSize) {
+                uint8_t* entry =
+                    byte_array + (bin_id * kBinSize + head) * kEntryByteLength;
+                uint8_t new_pre_tiny_ptr = head + 1;
+                *entry = new_pre_tiny_ptr | (flag << 7);
+                head = head + 1 + entry[kTinyPtrOffset];
+                if (head > kBinSize) {
+                    head -= (kBinSize + 1);
+                }
                 cnt++;
                 bin_locks[bin_id].clear(std::memory_order_release);
                 return entry;
@@ -182,6 +199,10 @@ class ConcurrentByteArrayChainedHT {
     bool Update(uint64_t key, uint64_t value);
     void Free(uint64_t key);
 
+    void SetResizeStride(uint64_t stride_num);
+    bool ResizeMoveStride(uint64_t stride_id,
+                          ConcurrentByteArrayChainedHT* new_ht);
+
     // Experimental Utility Functions
    public:
     double AvgChainLength();
@@ -200,6 +221,8 @@ class ConcurrentByteArrayChainedHT {
 
     size_t bin_locks_size;
     size_t base_tab_concurrent_version_size;
+
+    uint64_t resize_stride_size;
 
    protected:
     uint8_t non_temporal_load_entry_buffer[64];

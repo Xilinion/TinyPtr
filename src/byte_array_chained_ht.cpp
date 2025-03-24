@@ -49,7 +49,9 @@ ByteArrayChainedHT::ByteArrayChainedHT(uint64_t size,
 
     (void)posix_memalign(reinterpret_cast<void**>(&bin_cnt_head), 64,
                          kBinNum << 1);
+    memset(bin_cnt_head, 0, kBinNum << 1);
 
+    /*
     for (uint64_t i = 0, ptr_offset = kTinyPtrOffset; i < kBinNum; i++) {
         for (uint8_t j = 0; j < kBinSize - 1; j++) {
             byte_array[ptr_offset] = j + 2;
@@ -62,6 +64,7 @@ ByteArrayChainedHT::ByteArrayChainedHT(uint64_t size,
         bin_cnt_head[i << 1] = 0;
         bin_cnt_head[(i << 1) | 1] = 1;
     }
+*/
 
     play_entry = new uint8_t[kEntryByteLength];
 }
@@ -291,8 +294,12 @@ void ByteArrayChainedHT::Free(uint64_t key) {
     uint64_t bin_id = (cur_entry - byte_array) / kBinByteLength;
     bin_cnt(bin_id)--;
     uint8_t& head = bin_head(bin_id);
-    cur_entry[kTinyPtrOffset] = head;
-    head = ((uint8_t)((*pre_tiny_ptr) << 1) >> 1);
+    uint8_t cur_in_bin_pos = ((uint8_t)((*pre_tiny_ptr) << 1) >> 1) - 1;
+    cur_entry[kTinyPtrOffset] = head + kBinSize - cur_in_bin_pos;
+    if (cur_entry[kTinyPtrOffset] > kBinSize) {
+        cur_entry[kTinyPtrOffset] -= (kBinSize + 1);
+    }
+    head = cur_in_bin_pos;
     *pre_tiny_ptr = 0;
 }
 

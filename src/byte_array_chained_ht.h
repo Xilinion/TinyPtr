@@ -103,11 +103,14 @@ class ByteArrayChainedHT {
         uint8_t& head = bin_head(bin_id);
         uint8_t& cnt = bin_cnt(bin_id);
 
-        if (head) {
+        if (head < kBinSize) {
             uint8_t* entry =
-                byte_array + (bin_id * kBinSize + head - 1) * kEntryByteLength;
-            *entry = head | (flag << 7);
-            head = entry[kTinyPtrOffset];
+                byte_array + (bin_id * kBinSize + head) * kEntryByteLength;
+            *entry = (head + 1) | (flag << 7);
+            head = head + 1 + entry[kTinyPtrOffset];
+            if (head > kBinSize) {
+                head -= (kBinSize + 1);
+            }
             cnt++;
             return entry;
         } else {

@@ -87,7 +87,9 @@ SkulkerHT::SkulkerHT(uint64_t size, uint8_t quotienting_tail_length,
 
     (void)posix_memalign(reinterpret_cast<void**>(&bin_cnt_head), 64,
                          kBinNum << 1);
+    memset(bin_cnt_head, 0, kBinNum << 1);
 
+    /*
     for (uint64_t i = 0, ptr_offset = kTinyPtrOffset; i < kBinNum; i++) {
         for (uint8_t j = 0; j < kBinSize - 1; j++) {
             byte_array[ptr_offset] = j + 2;
@@ -100,6 +102,7 @@ SkulkerHT::SkulkerHT(uint64_t size, uint8_t quotienting_tail_length,
         bin_cnt_head[i << 1] = 0;
         bin_cnt_head[(i << 1) | 1] = 1;
     }
+    */
 
     play_entry = new uint8_t[kEntryByteLength];
 }

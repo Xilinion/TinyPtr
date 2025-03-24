@@ -1,4 +1,5 @@
 #include "concurrent_skulker_ht.h"
+#include <sys/mman.h>
 #include <algorithm>
 #include <cassert>
 #include <cmath>
@@ -124,7 +125,10 @@ ConcurrentSkulkerHT::ConcurrentSkulkerHT(uint64_t size,
         bin_locks[i].clear();
     }
 
-    (void)posix_memalign(reinterpret_cast<void**>(&bush_tab), 64,
+    auto start = std::chrono::high_resolution_clock::now();
+
+    /*
+        (void)posix_memalign(reinterpret_cast<void**>(&bush_tab), 64,
                          kBushNum * kBushByteLength);
     memset(bush_tab, 0, kBushNum * kBushByteLength);
 
@@ -134,7 +138,96 @@ ConcurrentSkulkerHT::ConcurrentSkulkerHT(uint64_t size,
 
     (void)posix_memalign(reinterpret_cast<void**>(&bin_cnt_head), 64,
                          kBinNum << 1);
+    memset(bin_cnt_head, 0, kBinNum << 1);
+    */
 
+    // Calculate individual sizes
+    uint64_t bush_size = kBushNum * kBushByteLength;
+    uint64_t byte_array_size = kBinNum * kBinSize * kEntryByteLength;
+    uint64_t bin_cnt_size = kBinNum << 1;  // Assuming this is in bytes
+
+    // Align each section to 64 bytes
+    uint64_t bush_size_aligned = (bush_size + 63) & ~static_cast<uint64_t>(63);
+    uint64_t byte_array_size_aligned =
+        (byte_array_size + 63) & ~static_cast<uint64_t>(63);
+    uint64_t bin_cnt_size_aligned =
+        (bin_cnt_size + 63) & ~static_cast<uint64_t>(63);
+
+    // Total size for combined allocation
+    uint64_t total_size =
+        bush_size_aligned + byte_array_size_aligned + bin_cnt_size_aligned;
+
+    // Allocate a single aligned block
+    void* combined_mem;
+    // if (posix_memalign(&combined_mem, 64, total_size) != 0) {
+    //     // Handle allocation failure
+    //     abort();
+    // }
+    combined_mem = mmap(NULL, total_size, PROT_READ | PROT_WRITE,
+                        MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
+    // combined_mem = mmap(nullptr, total_size, PROT_READ | PROT_WRITE,
+    //                     MAP_PRIVATE | MAP_ANONYMOUS | MAP_HUGETLB, -1, 0);
+
+    // combined_mem = calloc(1, total_size);
+
+    // madvise(combined_mem, total_size, MADV_WILLNEED);
+    // Zero the entire block in one operation
+    // memset(combined_mem, 0, total_size);
+
+    // Assign pointers to their respective regions
+    uint8_t* base =
+        (uint8_t*)((uint64_t)(combined_mem + 63) & ~static_cast<uint64_t>(63));
+    bush_tab = base;
+    base += bush_size_aligned;
+
+    byte_array = base;
+    base += byte_array_size_aligned;
+
+    bin_cnt_head = base;
+
+    auto end = std::chrono::high_resolution_clock::now();
+
+    static auto initialization_time =
+        std::chrono::duration_cast<std::chrono::milliseconds>(end - end)
+            .count();
+
+    initialization_time +=
+        std::chrono::duration_cast<std::chrono::milliseconds>(end - start)
+            .count();
+
+    std::cerr << "Initialization time: " << initialization_time << "ms"
+              << std::endl;
+
+    /*
+    {
+        size_t total_bytes = kBushNum * kBushByteLength;
+        bush_tab = static_cast<uint8_t*>(calloc(1, total_bytes));
+        if (!bush_tab) {
+            perror("calloc(bush_tab)");
+            exit(EXIT_FAILURE);
+        }
+    }
+
+    {
+        size_t total_bytes = kBinNum * kBinSize * kEntryByteLength;
+        byte_array = static_cast<uint8_t*>(calloc(1, total_bytes));
+        if (!byte_array) {
+            perror("calloc(byte_array)");
+            exit(EXIT_FAILURE);
+        }
+    }
+
+    {
+        size_t cnt_bytes = kBinNum << 1;
+        bin_cnt_head = static_cast<uint8_t*>(calloc(1, cnt_bytes));
+        if (!bin_cnt_head) {
+            perror("calloc(bin_cnt_head)");
+            exit(EXIT_FAILURE);
+        }
+    }
+    */
+
+    /*
     for (uint64_t i = 0, ptr_offset = kTinyPtrOffset; i < kBinNum; i++) {
         for (uint8_t j = 0; j < kBinSize - 1; j++) {
             byte_array[ptr_offset] = j + 2;
@@ -147,6 +240,7 @@ ConcurrentSkulkerHT::ConcurrentSkulkerHT(uint64_t size,
         bin_cnt_head[i << 1] = 0;
         bin_cnt_head[(i << 1) | 1] = 1;
     }
+    */
 
     // freopen("lalala.txt", "w", stdout);
 }
@@ -708,6 +802,7 @@ void ConcurrentSkulkerHT::SetResizeStride(uint64_t stride_num) {
     resize_stride_size = ceil(1.0 * kBushNum / (stride_num));
 }
 
+/*
 bool ConcurrentSkulkerHT::ResizeMoveStride(uint64_t stride_id,
                                            ConcurrentSkulkerHT* new_ht) {
     uint64_t stride_id_start = stride_id * resize_stride_size;
@@ -715,6 +810,8 @@ bool ConcurrentSkulkerHT::ResizeMoveStride(uint64_t stride_id,
     if (stride_id_end > kBushNum) {
         stride_id_end = kBushNum;
     }
+
+    auto start_time = std::chrono::high_resolution_clock::now();
 
     for (uint64_t bush_id = stride_id_start; bush_id < stride_id_end;
          bush_id++) {
@@ -792,6 +889,146 @@ bool ConcurrentSkulkerHT::ResizeMoveStride(uint64_t stride_id,
             }
         }
     }
+
+    auto end_time = std::chrono::high_resolution_clock::now();
+
+    static auto resize_time =
+        std::chrono::duration_cast<std::chrono::milliseconds>(end_time -
+                                                              end_time)
+            .count();
+
+    resize_time += std::chrono::duration_cast<std::chrono::milliseconds>(
+                       end_time - start_time)
+                       .count();
+
+    std::cerr << "Resize time: " << resize_time << "ms" << std::endl;
+
+    return true;
+}
+*/
+
+bool ConcurrentSkulkerHT::ResizeMoveStride(uint64_t stride_id,
+                                           ConcurrentSkulkerHT* new_ht) {
+
+    // asfdasdfasdfad
+    // auto start_time = std::chrono::high_resolution_clock::now();
+
+    uint64_t stride_id_start = stride_id * resize_stride_size;
+    uint64_t stride_id_end = stride_id_start + resize_stride_size;
+    if (stride_id_end > kBushNum) {
+        stride_id_end = kBushNum;
+    }
+
+    std::queue<std::pair<uint64_t, uint64_t>> ins_queue;
+
+    for (uint64_t bush_id = stride_id_start; bush_id < stride_id_end;
+         bush_id++) {
+        uint8_t* bush = &bush_tab[(bush_id << kBushIdShiftOffset)];
+        uint16_t& control_info =
+            *reinterpret_cast<uint16_t*>(bush + kControlOffset);
+        uint8_t item_cnt = kBushLookup[control_info & kByteMask] +
+                           kBushLookup[(control_info >> kByteShift)];
+        uint8_t overflow_flag =
+            item_cnt > (kInitSkulkerNum + kInitExhibitorNum);
+
+        uint8_t exhibitor_num = kInitExhibitorNum - overflow_flag;
+
+        for (uint8_t in_bush_offset = 0, moved_cnt = 0;
+             in_bush_offset < kBushCapacity; in_bush_offset++) {
+            if ((control_info >> in_bush_offset) & 1) {
+
+                if (item_cnt - moved_cnt <= exhibitor_num) {
+                    uint64_t base_id = bush_id * kBushCapacity + in_bush_offset;
+
+                    uint8_t* entry =
+                        bush + (item_cnt - moved_cnt - 1) * kEntryByteLength;
+
+                    uint64_t ins_key = hash_key_rebuild(
+                        (*reinterpret_cast<uint64_t*>(entry + kKeyOffset)),
+                        base_id);
+                    ins_queue.push(std::make_pair(
+                        ins_key,
+                        *reinterpret_cast<uint64_t*>(entry + kValueOffset)));
+                    new_ht->prefetch_key(ins_key);
+
+                    uintptr_t pre_deref_key = base_id;
+                    uint8_t* pre_tiny_ptr = entry + kTinyPtrOffset;
+
+                    while (*pre_tiny_ptr != 0) {
+                        uint8_t* entry = ptab_query_entry_address(
+                            pre_deref_key, *pre_tiny_ptr);
+
+                        uint64_t ins_key = hash_key_rebuild(
+                            (*reinterpret_cast<uint64_t*>(entry + kKeyOffset)),
+                            base_id);
+                        ins_queue.push(std::make_pair(
+                            ins_key, *reinterpret_cast<uint64_t*>(
+                                         entry + kValueOffset)));
+                        new_ht->prefetch_key(ins_key);
+
+                        pre_tiny_ptr = entry + kTinyPtrOffset;
+                        pre_deref_key = reinterpret_cast<uintptr_t>(entry);
+                    }
+                } else {
+                    uint64_t base_id = bush_id * kBushCapacity + in_bush_offset;
+                    uintptr_t pre_deref_key = base_id;
+                    uint8_t* pre_tiny_ptr =
+                        bush + kSkulkerOffset -
+                        (item_cnt - exhibitor_num - moved_cnt - 1);
+
+                    while (*pre_tiny_ptr != 0) {
+                        uint8_t* entry = ptab_query_entry_address(
+                            pre_deref_key, *pre_tiny_ptr);
+
+                        uint64_t ins_key = hash_key_rebuild(
+                            (*reinterpret_cast<uint64_t*>(entry + kKeyOffset)),
+                            base_id);
+                        ins_queue.push(std::make_pair(
+                            ins_key, *reinterpret_cast<uint64_t*>(
+                                         entry + kValueOffset)));
+                        new_ht->prefetch_key(ins_key);
+
+                        pre_tiny_ptr = entry + kTinyPtrOffset;
+                        pre_deref_key = reinterpret_cast<uintptr_t>(entry);
+                    }
+                }
+                moved_cnt++;
+            }
+        }
+
+        if (ins_queue.size() >= 10) {
+            while (!ins_queue.empty()) {
+                auto ins_pair = ins_queue.front();
+                ins_queue.pop();
+                if (!new_ht->Insert(ins_pair.first, ins_pair.second)) {
+                    return false;
+                }
+            }
+        }
+    }
+
+    while (!ins_queue.empty()) {
+        auto ins_pair = ins_queue.front();
+        ins_queue.pop();
+        if (!new_ht->Insert(ins_pair.first, ins_pair.second)) {
+            return false;
+        }
+    }
+
+    // // asfasdfasdfasfasdfa
+    //     auto end_time = std::chrono::high_resolution_clock::now();
+
+    //     static auto resize_time =
+    //         std::chrono::duration_cast<std::chrono::milliseconds>(end_time -
+    //                                                               end_time)
+    //             .count();
+
+    //     resize_time += std::chrono::duration_cast<std::chrono::milliseconds>(
+    //                        end_time - start_time)
+    //                        .count();
+
+    //     std::cerr << "Resize time: " << resize_time << "ms" << std::endl;
+
     return true;
 }
 

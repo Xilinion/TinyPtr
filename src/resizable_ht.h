@@ -10,8 +10,9 @@
 #include <string>
 #include <thread>
 #include <vector>
+
+#include "concurrent_byte_array_chained_ht.h"
 #include "concurrent_skulker_ht.h"
-#include "emptyht.h"
 
 namespace tinyptr {
 
@@ -24,7 +25,7 @@ class ResizableHT {
    public:
     ResizableHT(uint32_t thread_num = 0, uint64_t part_num = 0,
                 uint64_t initial_size_per_part = 40000,
-                double resize_threshold = 1, double resize_factor = 2.0);
+                double resize_threshold = 0.75, double resize_factor = 2.0);
 
    protected:
     HTType** partitions;
@@ -34,6 +35,7 @@ class ResizableHT {
     double resize_threshold;
     double resize_factor;
     uint64_t thread_num;
+    uint64_t stride_num;
     uint64_t* part_size;
     int64_t* part_resize_threshold;
     std::atomic<int64_t>* part_cnt;
@@ -95,7 +97,7 @@ class ResizableHT {
 
                     uint64_t stage = part_resizing_stage[part_index].load();
 
-                    if (stage > 0 && stage < thread_num) {
+                    if (stage > 0 && stage < stride_num) {
                         if (part_resizing_stage[part_index]
                                 .compare_exchange_weak(stage, stage + 1)) {
 
@@ -103,7 +105,7 @@ class ResizableHT {
                                 stage, partitions_new[part_id]);
                             part_resizing_stride_done[part_index]++;
                         }
-                    } else if (stage >= thread_num) {
+                    } else if (stage >= stride_num) {
                         thread_working_lock[handle].store(part_id);
                         part_resizing_thread_num[part_index].fetch_sub(1);
                         while (part_resizing_thread_num[part_index].load() > 0)
@@ -120,20 +122,22 @@ class ResizableHT {
 
         uint64_t part_index = part_id * (kCacheLineSize / sizeof(uint64_t));
 
-        if (std::abs(thread_part_cnt[handle][part_id]) > thread_num) {
+        if (std::abs(thread_part_cnt[handle][part_id]) >
+            thread_num * thread_num) {
             part_cnt[part_index].fetch_add(thread_part_cnt[handle][part_id]);
             thread_part_cnt[handle][part_id] = 0;
         }
 
         if (part_cnt[part_index].load() > part_resize_threshold[part_id]) {
-
             uint64_t expected = 0;
+            std::cerr << "start resize" << std::endl;
+
             if (part_resizing_thread_num[part_index].compare_exchange_weak(
                     expected, uint64_t(1))) {
 
                 if (part_cnt[part_index].load() <=
                     part_resize_threshold[part_id]) {
-                    part_resizing_stage[part_index].store(thread_num);
+                    part_resizing_stage[part_index].store(stride_num);
 
                     uint64_t expected = 1;
                     while (!part_resizing_thread_num[part_index]
@@ -145,6 +149,9 @@ class ResizableHT {
                     return;
                 }
 
+                // afasfasdfasdfasdfadf
+                auto start_time = std::chrono::high_resolution_clock::now();
+
                 thread_working_lock[handle].store(uint64_t(-1));
 
                 for (uint64_t i = 0; i < thread_num; i++) {
@@ -154,14 +161,19 @@ class ResizableHT {
                         ;
                 }
 
+                std::chrono::high_resolution_clock::time_point my_time[10];
+                my_time[0] = std::chrono::high_resolution_clock::now();
+
                 partitions_new[part_id] =
                     new HTType(uint64_t(part_size[part_id] * resize_factor));
 
-                partitions[part_id]->SetResizeStride(thread_num);
+                partitions[part_id]->SetResizeStride(stride_num);
 
                 uint64_t stage = part_resizing_stage[part_index].load();
 
-                while (stage < thread_num) {
+                my_time[1] = std::chrono::high_resolution_clock::now();
+
+                while (stage < stride_num) {
                     if (part_resizing_stage[part_index].compare_exchange_weak(
                             stage, stage + 1)) {
                         partitions[part_id]->ResizeMoveStride(
@@ -170,8 +182,13 @@ class ResizableHT {
                     }
                 }
 
-                while (part_resizing_stride_done[part_index].load() < thread_num)
+                my_time[2] = std::chrono::high_resolution_clock::now();
+
+                while (part_resizing_stride_done[part_index].load() <
+                       stride_num)
                     ;
+
+                my_time[3] = std::chrono::high_resolution_clock::now();
 
                 delete partitions[part_id];
                 partitions[part_id] = partitions_new[part_id];
@@ -185,6 +202,8 @@ class ResizableHT {
 
                 thread_working_lock[handle].store(part_id);
 
+                my_time[4] = std::chrono::high_resolution_clock::now();
+
                 uint64_t expected = 1;
                 while (
                     !part_resizing_thread_num[part_index].compare_exchange_weak(
@@ -193,6 +212,18 @@ class ResizableHT {
                 }
 
                 part_resizing_stage[part_index].store(0);
+
+                my_time[5] = std::chrono::high_resolution_clock::now();
+
+                // asdfasdfasdfasdfasdfasdf
+                for (int i = 0; i < 5; i++) {
+                    std::cerr << "time " << i << ": "
+                              << std::chrono::duration_cast<
+                                     std::chrono::milliseconds>(my_time[i + 1] -
+                                                                my_time[i])
+                                     .count()
+                              << "ms" << std::endl;
+                }
             }
         }
     };
@@ -214,6 +245,9 @@ ResizableHT<HTType>::ResizableHT(uint32_t thread_num_, uint64_t part_num_,
         thread_num = std::max(uint32_t(4),
                               uint32_t(std::thread::hardware_concurrency()));
     }
+
+    stride_num = thread_num * thread_num;
+    // stride_num = thread_num;
 
     if (part_num == 0) {
         part_num = std::max(uint64_t(100), thread_num + 1);
@@ -249,11 +283,6 @@ ResizableHT<HTType>::ResizableHT(uint32_t thread_num_, uint64_t part_num_,
                                   sizeof(uint64_t)];
     thread_part_cnt =
         new int64_t*[thread_num * kCacheLineSize / sizeof(uint64_t)];
-
-    state_stacks = new std::vector<uint64_t>*[thread_num * kCacheLineSize /
-                                              sizeof(uint64_t)];
-    thread_num_stacks = new std::vector<uint64_t>*[thread_num * kCacheLineSize /
-                                                   sizeof(uint64_t)];
 
     for (uint64_t i = 0; i < part_num; i++) {
         part_cnt[i * (kCacheLineSize / sizeof(int64_t))] = 0;
@@ -326,6 +355,6 @@ void ResizableHT<HTType>::Erase(uint64_t handle, uint64_t key) {
 }
 
 using ResizableSkulkerHT = ResizableHT<ConcurrentSkulkerHT>;
-using ResizableEmptyHT = ResizableHT<EmptyHT>;
+using ResizableByteArrayChainedHT = ResizableHT<ConcurrentByteArrayChainedHT>;
 
 }  // namespace tinyptr

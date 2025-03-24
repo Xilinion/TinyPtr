@@ -53,8 +53,8 @@ void concurrent_query(ConcurrentByteArrayChainedHT& ht,
         uint64_t val = 0;
         // std::cout << i - start << std::endl;
         // ht.Query(data[i].first + 1000000000000000000ull, &val);
-        ht.Query(data[i].first, &val);
-        // ASSERT_TRUE(ht.Query(data[i].first, &val));
+        // ht.Query(data[i].first, &val);
+        ASSERT_TRUE(ht.Query(data[i].first, &val));
         // ASSERT_EQ(val, data[i].second);
     }
 }
@@ -63,7 +63,7 @@ TEST(ConcurrentByteArrayChainedHT_TESTSUITE, ParallelInsertQuery) {
     srand(233);
 
     // int num_threads = std::thread::hardware_concurrency();
-    int num_threads = 1;
+    int num_threads = 10;
     int num_operations = 1e8;  // Large number of operations
 
     // Declare start and end for timing
