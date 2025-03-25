@@ -20,7 +20,7 @@ uint64_t BenchmarkConcSkulkerHT::Query(uint64_t key, uint8_t ptr) {
     return value;
 }
 
-void BenchmarkConcSkulkerHT::Update(uint64_t key, uint8 ptr, uint64_t value) {
+void BenchmarkConcSkulkerHT::Update(uint64_t key, uint8_t ptr, uint64_t value) {
     tab->Update(key, value);
 }
 
@@ -28,8 +28,8 @@ void BenchmarkConcSkulkerHT::Erase(uint64_t key, uint8_t ptr) {
     tab->Free(key);
 }
 
-void BenchmarkConcSkulkerHT::Fill(std::vector<uint64_t>& keys,
-                                  int num_threads) {
+void BenchmarkConcSkulkerHT::YCSBFill(std::vector<uint64_t>& keys,
+                                      int num_threads) {
     std::vector<std::thread> threads;
     size_t chunk_size = keys.size() / num_threads;
 
@@ -40,7 +40,7 @@ void BenchmarkConcSkulkerHT::Fill(std::vector<uint64_t>& keys,
 
         threads.emplace_back([this, &keys, start_index, end_index]() {
             for (size_t j = start_index; j < end_index; ++j) {
-                Insert(keys[j], 0);
+                tab->Insert(keys[j], 0);
             }
         });
     }
@@ -50,12 +50,10 @@ void BenchmarkConcSkulkerHT::Fill(std::vector<uint64_t>& keys,
     }
 }
 
-void BenchmarkConcSkulkerHT::Run(
+void BenchmarkConcSkulkerHT::YCSBRun(
     std::vector<std::pair<uint64_t, uint64_t>>& ops, int num_threads) {
     std::vector<std::thread> threads;
     size_t chunk_size = ops.size() / num_threads;
-
-    uint64_t value;
 
     for (int i = 0; i < num_threads; ++i) {
         size_t start_index = i * chunk_size;
@@ -63,11 +61,12 @@ void BenchmarkConcSkulkerHT::Run(
             (i == num_threads - 1) ? ops.size() : start_index + chunk_size;
 
         threads.emplace_back([this, &ops, start_index, end_index]() {
+            uint64_t value;
             for (size_t j = start_index; j < end_index; ++j) {
                 if (ops[j].first == 1) {
-                    Insert(ops[j].second, 0);
+                    tab->Insert(ops[j].second, 0);
                 } else {
-                    Query(ops[j].second, &value);
+                    tab->Query(ops[j].second, &value);
                 }
             }
         });

@@ -73,6 +73,9 @@ class Benchmark {
     void erase_all();
     void alternating_insert_erase(int opt_cnt);
     void all_operation_rand(int opt_cnt);
+    void ycsb_load(std::vector<uint64_t>& ycsb_keys, std::string path);
+    void ycsb_exe_load(std::vector<std::pair<uint64_t, uint64_t>>& ycsb_exe_vec,
+                       std::string path);
 
    public:
     void Run();

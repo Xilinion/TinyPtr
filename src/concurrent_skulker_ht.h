@@ -3,6 +3,7 @@
 #include <emmintrin.h>
 #include <immintrin.h>
 #include <nmmintrin.h>
+#include <pthread.h>
 #include <sys/cdefs.h>
 #include <sys/types.h>
 #include <atomic>

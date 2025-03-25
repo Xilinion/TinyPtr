@@ -40,4 +40,52 @@ void BenchmarkIceberg::Erase(uint64_t key, uint8_t ptr) {
     iceberg_remove(&tab, key, tid);
 }
 
+void BenchmarkIceberg::YCSBFill(std::vector<uint64_t>& keys, int num_threads) {
+    std::vector<std::thread> threads;
+    size_t chunk_size = keys.size() / num_threads;
+
+    for (int i = 0; i < num_threads; ++i) {
+        size_t start_index = i * chunk_size;
+        size_t end_index =
+            (i == num_threads - 1) ? keys.size() : start_index + chunk_size;
+
+        threads.emplace_back([this, &keys, start_index, end_index, i]() {
+            for (size_t j = start_index; j < end_index; ++j) {
+                iceberg_insert(&tab, keys[j], 0, tid);
+            }
+        });
+    }
+
+    for (auto& thread : threads) {
+        thread.join();
+    }
+}
+
+void BenchmarkIceberg::YCSBRun(std::vector<std::pair<uint64_t, uint64_t>>& ops,
+                               int num_threads) {
+    std::vector<std::thread> threads;
+    size_t chunk_size = ops.size() / num_threads;
+
+    for (int i = 0; i < num_threads; ++i) {
+        size_t start_index = i * chunk_size;
+        size_t end_index =
+            (i == num_threads - 1) ? ops.size() : start_index + chunk_size;
+
+        threads.emplace_back([this, &ops, start_index, end_index, i]() {
+            uint64_t value;
+            for (size_t j = start_index; j < end_index; ++j) {
+                if (ops[j].first == 1) {
+                    iceberg_insert(&tab, ops[j].second, 0, tid);
+                } else {
+                    iceberg_get_value(&tab, ops[j].second, &value, i);
+                }
+            }
+        });
+    }
+
+    for (auto& thread : threads) {
+        thread.join();
+    }
+}
+
 }  // namespace tinyptr

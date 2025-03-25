@@ -125,7 +125,7 @@ ConcurrentSkulkerHT::ConcurrentSkulkerHT(uint64_t size,
         bin_locks[i].clear();
     }
 
-    auto start = std::chrono::high_resolution_clock::now();
+    // auto start = std::chrono::high_resolution_clock::now();
 
     /*
         (void)posix_memalign(reinterpret_cast<void**>(&bush_tab), 64,
@@ -185,18 +185,18 @@ ConcurrentSkulkerHT::ConcurrentSkulkerHT(uint64_t size,
 
     bin_cnt_head = base;
 
-    auto end = std::chrono::high_resolution_clock::now();
+    // auto end = std::chrono::high_resolution_clock::now();
 
-    static auto initialization_time =
-        std::chrono::duration_cast<std::chrono::milliseconds>(end - end)
-            .count();
+    // static auto initialization_time =
+    //     std::chrono::duration_cast<std::chrono::milliseconds>(end - end)
+    //         .count();
 
-    initialization_time +=
-        std::chrono::duration_cast<std::chrono::milliseconds>(end - start)
-            .count();
+    // initialization_time +=
+    //     std::chrono::duration_cast<std::chrono::milliseconds>(end - start)
+    //         .count();
 
-    std::cerr << "Initialization time: " << initialization_time << "ms"
-              << std::endl;
+    // std::cerr << "Initialization time: " << initialization_time << "ms"
+    //           << std::endl;
 
     /*
     {
