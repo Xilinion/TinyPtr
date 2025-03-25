@@ -1,6 +1,10 @@
 #!/bin/bash
 
-exp_dir="."
+# Source the config file to get shared variables
+source ./config.sh
+
+# Use exp_dir from config.sh
+echo "Experiment Directory: $exp_dir"
 
 # read arguments
 helpFunction() {

@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Source the config file to get shared variables
+source ../config.sh
+
 exp_dir="."
 
 # read arguments
@@ -25,9 +28,6 @@ if [ -z "$exp_dir" ]; then
     echo "Some or all of the parameters are empty"
     helpFunction
 fi
-
-# Begin script in case all parameters are correct
-echo "$exp_dir"
 
 function Init() {
     compile_option=1
@@ -94,13 +94,41 @@ function CompileWithOption() {
 function Run() {
     #####native execution
 
-    echo "== begin benchmarking: -o $object_id -c $case_id -e $entry_id -t $table_size -p  $opt_num -l $load_factor -h $hit_percent -b $bin_size -q $quotient_tail_length -f "$res_path""
+    args="-o $object_id -c $case_id -e $entry_id -t $table_size -p $opt_num -l $load_factor -h $hit_percent -b $bin_size -q $quotient_tail_length -n $thread_num $resize_op -f "$res_path""
 
-    output=$(../build/tinyptr -o $object_id -c $case_id -e $entry_id -t $table_size -p $opt_num -l $load_factor -h $hit_percent -b $bin_size -q $quotient_tail_length -f "$res_path" 2>&1)
+    echo "== begin benchmarking: $args"
+
+    output=$(../build/tinyptr $args 2>&1)
 
     echo "$output"
 
-    echo "== end benchmarking: -o $object_id -c $case_id -e $entry_id -t $table_size -p  $opt_num -l $load_factor -h $hit_percent -b $bin_size -q $quotient_tail_length -f "$res_path""
+    echo "== end benchmarking: $args"
+
+    echo "== file path: "$res_path/object_${object_id}_case_${case_id}_entry_${entry_id}_.txt""
+}
+
+function RunYCSB() {
+
+    if [ $case_id -eq 17 ]; then
+        ycsb_load_path=$ycsb_a_load_file
+        ycsb_exe_path=$ycsb_a_exe_file
+    elif [ $case_id -eq 18 ]; then
+        ycsb_load_path=$ycsb_b_load_file
+        ycsb_exe_path=$ycsb_b_exe_file
+    elif [ $case_id -eq 19 ]; then
+        ycsb_load_path=$ycsb_c_load_file
+        ycsb_exe_path=$ycsb_c_exe_file
+    fi
+
+    args="-o $object_id -c $case_id -e $entry_id -t $table_size -p $opt_num -l $load_factor -h $hit_percent -b $bin_size -q $quotient_tail_length -y $ycsb_load_path -s $ycsb_exe_path -n $thread_num $resize_op -f "$res_path""
+
+    echo "== begin benchmarking: $args"
+
+    output=$(../build/tinyptr $args 2>&1)
+
+    echo "$output"
+
+    echo "== end benchmarking: $args"
 
     echo "== file path: "$res_path/object_${object_id}_case_${case_id}_entry_${entry_id}_.txt""
 }
@@ -108,11 +136,11 @@ function Run() {
 function RunRandMemFree() {
     #####native execution
 
-    echo "== begin benchmarking: -o $object_id -c $case_id -e $entry_id -t $table_size -p  $opt_num -l $load_factor -h $hit_percent -b $bin_size -q $quotient_tail_length -m -f "$res_path""
+    args="-o $object_id -c $case_id -e $entry_id -t $table_size -p $opt_num -l $load_factor -h $hit_percent -b $bin_size -q $quotient_tail_length -n $thread_num $resize_op -m -f "$res_path""
 
-    ../build/tinyptr -o $object_id -c $case_id -e $entry_id -t $table_size -p $opt_num -l $load_factor -h $hit_percent -b $bin_size -q $quotient_tail_length -m -f "$res_path" &
+    echo "== begin benchmarking: $args"
 
-    # perf stat ../build/tinyptr -o $object_id -c $case_id -e $entry_id -t $table_size -p $opt_num -l $load_factor -h $hit_percent -b $bin_size -q $quotient_tail_length -m -f "$res_path"
+    ../build/tinyptr $args &
 
     # sleep 1
 
@@ -124,27 +152,33 @@ function RunRandMemFree() {
 
     wait $pid
 
-    echo "== end benchmarking: -o $object_id -c $case_id -e $entry_id -t $table_size -p  $opt_num -l $load_factor -h $hit_percent -b $bin_size -q $quotient_tail_length -m -f "$res_path""
+    echo "== end benchmarking: $args"
 
     echo "== file path: "$res_path/object_${object_id}_case_${case_id}_entry_${entry_id}_memuse.txt""
 }
 
 function RunPerf() {
     # warm up
-    ../build/tinyptr -o $object_id -c $case_id -e $entry_id -t $table_size -p $opt_num -l $load_factor -h $hit_percent -b $bin_size -q $quotient_tail_length -f "$res_path"
 
-    perf stat -a -e task-clock,context-switches,cpu-migrations,page-faults,cycles,stalled-cycles-frontend,stalled-cycles-backend,instructions,branches,branch-misses,L1-dcache-loads,L1-dcache-load-misses,L1-dcache-prefetches,L1-icache-loads,L1-icache-load-misses,branch-load-misses,branch-loads,LLC-loads,LLC-load-misses,dTLB-loads,dTLB-load-misses,cache-misses,cache-references -o "$res_path/object_${object_id}_case_${case_id}_entry_${entry_id}_perf.txt" -- ../build/tinyptr -o $object_id -c $case_id -e $entry_id -t $table_size -p $opt_num -l $load_factor -h $hit_percent -b $bin_size -q $quotient_tail_length -f "$res_path"
+    args="-o $object_id -c $case_id -e $entry_id -t $table_size -p $opt_num -l $load_factor -h $hit_percent -b $bin_size -q $quotient_tail_length -n $thread_num $resize_op -f "$res_path""
 
-    echo "== benchmark with perf: -o $object_id -c $case_id -e $entry_id -t $table_size -p  $opt_num -l $load_factor -h $hit_percent -b $bin_size -q $quotient_tail_length -f "$res_path""
+    ../build/tinyptr $args
+
+    perf stat -a -e task-clock,context-switches,cpu-migrations,page-faults,cycles,stalled-cycles-frontend,stalled-cycles-backend,instructions,branches,branch-misses,L1-dcache-loads,L1-dcache-load-misses,L1-dcache-prefetches,L1-icache-loads,L1-icache-load-misses,branch-load-misses,branch-loads,LLC-loads,LLC-load-misses,dTLB-loads,dTLB-load-misses,cache-misses,cache-references -o "$res_path/object_${object_id}_case_${case_id}_entry_${entry_id}_perf.txt" -- ../build/tinyptr $args
+
+    echo "== benchmark with perf: $args"
 
     echo "== file path: "$res_path/object_${object_id}_case_${case_id}_entry_${entry_id}_perf.txt""
 }
 
 function FlameGraph() {
     # warm up
-    ../build/tinyptr -o $object_id -c $case_id -e $entry_id -t $table_size -p $opt_num -l $load_factor -h $hit_percent -b $bin_size -q $quotient_tail_length -f "$res_path"
 
-    perf record -F 499 -a -g -- ../build/tinyptr -o $object_id -c $case_id -e $entry_id -t $table_size -p $opt_num -l $load_factor -h $hit_percent -b $bin_size -q $quotient_tail_length -f "$res_path"
+    args="-o $object_id -c $case_id -e $entry_id -t $table_size -p $opt_num -l $load_factor -h $hit_percent -b $bin_size -q $quotient_tail_length -n $thread_num $resize_op -f "$res_path""
+
+    ../build/tinyptr $args
+
+    perf record -F 499 -a -g -- ../build/tinyptr $args
 
     perf script >"$res_path/out.perf"
 
@@ -152,18 +186,20 @@ function FlameGraph() {
 
     ../scripts/FlameGraph/flamegraph.pl "$res_path/out.folded" >"$res_path/${object_id}_${case_id}_${entry_id}_kernel.svg"
 
-    echo "== benchmark with flamegraph: -o $object_id -c $case_id -e $entry_id -t $table_size -p  $opt_num -l $load_factor -h $hit_percent -b $bin_size -q $quotient_tail_length -f "$res_path""
+    echo "== benchmark with flamegraph: $args"
 
     echo "== file path: "$res_path/${object_id}_${case_id}_${entry_id}_kernel.svg""
 }
 
 function FlameGraphEntry() {
     # warm up
-    ../build/tinyptr -o $object_id -c $case_id -e $entry_id -t $table_size -p $opt_num -l $load_factor -h $hit_percent -b $bin_size -q $quotient_tail_length -f "$res_path"
+    args="-o $object_id -c $case_id -e $entry_id -t $table_size -p $opt_num -l $load_factor -h $hit_percent -b $bin_size -q $quotient_tail_length -n $thread_num $resize_op -f "$res_path""
 
-    echo "== benchmark with flamegraph: -o $object_id -c $case_id -e $entry_id -t $table_size -p  $opt_num -l $load_factor -h $hit_percent -b $bin_size -q $quotient_tail_length -f "$res_path""
+    ../build/tinyptr $args
 
-    perf record -F 499 --call-graph dwarf -e $flamegraph_entry -a -g -- ../build/tinyptr -o $object_id -c $case_id -e $entry_id -t $table_size -p $opt_num -l $load_factor -h $hit_percent -b $bin_size -q $quotient_tail_length -f "$res_path"
+    echo "== benchmark with flamegraph: $args"
+
+    perf record -F 499 --call-graph dwarf -e $flamegraph_entry -a -g -- ../build/tinyptr $args
 
     perf script -F comm,pid,tid,cpu,time,event,ip,sym,dso >"$res_path/out.perf"
 
@@ -176,17 +212,21 @@ function FlameGraphEntry() {
 
 function RunValgrind() {
     # warm up
-    ../build/tinyptr -o $object_id -c $case_id -e $entry_id -t $table_size -p $opt_num -l $load_factor -h $hit_percent -b $bin_size -q $quotient_tail_length -f "$res_path"
+    args="-o $object_id -c $case_id -e $entry_id -t $table_size -p $opt_num -l $load_factor -h $hit_percent -b $bin_size -q $quotient_tail_length -n $thread_num $resize_op -f "$res_path""
 
-    echo "== benchmark with valgrind: -o $object_id -c $case_id -e $entry_id -t $table_size -p  $opt_num -l $load_factor -h $hit_percent -b $bin_size -q $quotient_tail_length -f "$res_path""
+    ../build/tinyptr $args
 
-    sudo valgrind --tool=cachegrind --cachegrind-out-file="$res_path/object_${object_id}_case_${case_id}_entry_${entry_id}_cachegrind.out.txt" ../build/tinyptr -o $object_id -c $case_id -e $entry_id -t $table_size -p $opt_num -l $load_factor -h $hit_percent -b $bin_size -q $quotient_tail_length -f "$res_path" >"$res_path/object_${object_id}_case_${case_id}_entry_${entry_id}_cachegrind_stdout.txt"
+    echo "== benchmark with valgrind: $args"
 
-    sudo cg_annotate --show=Dr,DLmr,Dw,DLmw "$res_path/object_${object_id}_case_${case_id}_entry_${entry_id}_cachegrind.out.txt" --auto=yes >"$res_path/object_${object_id}_case_${case_id}_entry_${entry_id}_cachegrind_annotate.txt"
+    cachegrind_prefix="$res_path/object_${object_id}_case_${case_id}_entry_${entry_id}"
 
-    echo "== file path: "$res_path/object_${object_id}_case_${case_id}_entry_${entry_id}_cachegrind_stdout.txt""
-    echo "== file path: "$res_path/object_${object_id}_case_${case_id}_entry_${entry_id}_cachegrind.out.txt""
-    echo "== file path: "$res_path/object_${object_id}_case_${case_id}_entry_${entry_id}_cachegrind_annotate.txt""
+    sudo valgrind --tool=cachegrind --cachegrind-out-file="${cachegrind_prefix}_cachegrind.out.txt" ../build/tinyptr $args >"${cachegrind_prefix}_cachegrind_stdout.txt"
+
+    sudo cg_annotate --show=Dr,DLmr,Dw,DLmw "${cachegrind_prefix}_cachegrind.out.txt" --auto=yes >"${cachegrind_prefix}_cachegrind_annotate.txt"
+
+    echo "== file path: "${cachegrind_prefix}_cachegrind_stdout.txt""
+    echo "== file path: "${cachegrind_prefix}_cachegrind.out.txt""
+    echo "== file path: "${cachegrind_prefix}_cachegrind_annotate.txt""
 }
 
 function RunCTest() {
@@ -202,9 +242,11 @@ Init
 compile_option=1
 CompileWithOption
 
+thread_num=0
+resize_op=""
+
 table_size=1
 opt_num=0
-thread_num=0
 load_factor=0
 hit_percent=0
 quotient_tail_length=0
@@ -235,6 +277,21 @@ bin_size=127
 
 # exit
 
+thread_num=16
+for case_id in 17 18 19; do
+    for object_id in 7; do
+        entry_id=0
+        for table_size in 134217728; do
+            output=$(RunYCSB)
+            echo "$output"
+            let "entry_id++"
+        done
+    done
+done
+thread_num=0
+
+exit
+
 # load factor with deletion
 
 for case_id in 1; do
@@ -262,8 +319,6 @@ for case_id in 1; do
         done
     done
 done
-
-exit
 
 for case_id in 0; do
     for object_id in 4; do

@@ -1,4 +1,3 @@
-
 #include "benchmark.h"
 #include <unistd.h>
 #include <algorithm>
@@ -21,6 +20,7 @@
 #include "benchmark_chainedht64.h"
 #include "benchmark_clht.h"
 #include "benchmark_cli_para.h"
+#include "benchmark_conc_skulkerht.h"
 #include "benchmark_cuckoo.h"
 #include "benchmark_dereftab64.h"
 #include "benchmark_growt.h"
@@ -31,6 +31,7 @@
 #include "benchmark_skulkerht.h"
 #include "benchmark_std_unordered_map_64.h"
 #include "benchmark_yarded_tp_ht.h"
+#include <chrono>
 
 namespace tinyptr {
 
@@ -376,6 +377,7 @@ void Benchmark::ycsb_load(std::vector<uint64_t>& ycsb_keys, std::string path) {
     if (file) {
         char buffer[256];
         while (fgets(buffer, sizeof(buffer), file)) {
+            uint64_t key;
             sscanf(buffer + 7, "%llu", &key);
             ycsb_keys.push_back(key);
         }
@@ -482,18 +484,17 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
                     obj =
                         new BenchmarkSameBinChained(table_size, para.bin_size);
                 }
-                std::clock_t start = std::clock();
+                auto start = std::chrono::high_resolution_clock::now();
 
                 int load_cnt = insert_cnt_to_overflow();
 
-                auto end = std::clock();
-                auto duration = end - start;
+                auto end = std::chrono::high_resolution_clock::now();
+                auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 
                 output_stream << "Table Size: " << table_size << std::endl;
                 output_stream << "Load Capacity: " << load_cnt << std::endl;
                 output_stream
-                    << "CPU Time: "
-                    << int(1000.0 * (std::clock() - start) / CLOCKS_PER_SEC)
+                    << "CPU Time: " << duration
                     << " ms" << std::endl;
 
                 output_stream << "Load Factor: "
@@ -502,13 +503,12 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
 
                 output_stream
                     << "Throughput: "
-                    << int(double(load_cnt) / double(duration) * CLOCKS_PER_SEC)
+                    << int(double(load_cnt) / (duration / 1000.0))
                     << " ops/s" << std::endl;
 
                 output_stream
                     << "Latency: "
-                    << int(double(duration) / double(load_cnt) /
-                           CLOCKS_PER_SEC * (1ll * 1000 * 1000 * 1000))
+                    << int(duration * 1000000.0 / double(load_cnt))
                     << " ns/op" << std::endl;
 
                 if (para.object_id == BenchmarkObjectType::BYTEARRAYCHAINEDHT ||
@@ -562,27 +562,25 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
             break;
         case BenchmarkCaseType::INSERT_ONLY:
             run = [this]() {
-                std::clock_t start = std::clock();
+                auto start = std::chrono::high_resolution_clock::now();
 
                 obj_fill(opt_num);
 
-                auto end = std::clock();
-                auto duration = end - start;
+                auto end = std::chrono::high_resolution_clock::now();
+                auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 
                 output_stream
-                    << "CPU Time: "
-                    << int(1000.0 * (std::clock() - start) / CLOCKS_PER_SEC)
-                    << std::endl;
+                    << "CPU Time: " << duration
+                    << " ms" << std::endl;
 
                 output_stream
                     << "Throughput: "
-                    << int(double(opt_num) / double(duration) * CLOCKS_PER_SEC)
+                    << int(double(opt_num) / (duration / 1000.0))
                     << " ops/s" << std::endl;
 
                 output_stream
                     << "Latency: "
-                    << int(double(duration) / double(opt_num) / CLOCKS_PER_SEC *
-                           (1ll * 1000 * 1000 * 1000))
+                    << int(duration * 1000000.0 / double(opt_num))
                     << " ns/op" << std::endl;
             };
             break;
@@ -590,27 +588,25 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
             run = [this]() {
                 obj_fill(table_size);
 
-                std::clock_t start = std::clock();
+                auto start = std::chrono::high_resolution_clock::now();
 
                 batch_update(opt_num);
 
-                auto end = std::clock();
-                auto duration = end - start;
+                auto end = std::chrono::high_resolution_clock::now();
+                auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 
                 output_stream
-                    << "CPU Time: "
-                    << int(1000.0 * (std::clock() - start) / CLOCKS_PER_SEC)
-                    << std::endl;
+                    << "CPU Time: " << duration
+                    << " ms" << std::endl;
 
                 output_stream
                     << "Throughput: "
-                    << int(double(opt_num) / double(duration) * CLOCKS_PER_SEC)
+                    << int(double(opt_num) / (duration / 1000.0))
                     << " ops/s" << std::endl;
 
                 output_stream
                     << "Latency: "
-                    << int(double(duration) / double(opt_num) / CLOCKS_PER_SEC *
-                           (1ll * 1000 * 1000 * 1000))
+                    << int(duration * 1000000.0 / double(opt_num))
                     << " ns/op" << std::endl;
             };
             break;
@@ -619,53 +615,49 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
                 obj_fill(table_size);
                 gen_erase_order(table_size);
 
-                std::clock_t start = std::clock();
+                auto start = std::chrono::high_resolution_clock::now();
 
                 erase_all();
 
-                auto end = std::clock();
-                auto duration = end - start;
+                auto end = std::chrono::high_resolution_clock::now();
+                auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 
                 output_stream
-                    << "CPU Time: "
-                    << int(1000.0 * (std::clock() - start) / CLOCKS_PER_SEC)
-                    << std::endl;
+                    << "CPU Time: " << duration
+                    << " ms" << std::endl;
 
                 output_stream
                     << "Throughput: "
-                    << int(double(opt_num) / double(duration) * CLOCKS_PER_SEC)
+                    << int(double(opt_num) / (duration / 1000.0))
                     << " ops/s" << std::endl;
 
                 output_stream
                     << "Latency: "
-                    << int(double(duration) / double(opt_num) / CLOCKS_PER_SEC *
-                           (1ll * 1000 * 1000 * 1000))
+                    << int(duration * 1000000.0 / double(opt_num))
                     << " ns/op" << std::endl;
             };
             break;
         case BenchmarkCaseType::ALTERNATING_INSERT_ERASE:
             run = [this]() {
-                std::clock_t start = std::clock();
+                auto start = std::chrono::high_resolution_clock::now();
 
                 alternating_insert_erase(opt_num);
 
-                auto end = std::clock();
-                auto duration = end - start;
+                auto end = std::chrono::high_resolution_clock::now();
+                auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 
                 output_stream
-                    << "CPU Time: "
-                    << int(1000.0 * (std::clock() - start) / CLOCKS_PER_SEC)
-                    << std::endl;
+                    << "CPU Time: " << duration
+                    << " ms" << std::endl;
 
                 output_stream
                     << "Throughput: "
-                    << int(double(opt_num) / double(duration) * CLOCKS_PER_SEC)
+                    << int(double(opt_num) / (duration / 1000.0))
                     << " ops/s" << std::endl;
 
                 output_stream
                     << "Latency: "
-                    << int(double(duration) / double(opt_num) / CLOCKS_PER_SEC *
-                           (1ll * 1000 * 1000 * 1000))
+                    << int(duration * 1000000.0 / double(opt_num))
                     << " ns/op" << std::endl;
             };
             break;
@@ -678,27 +670,25 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
                 batch_query_vec_prepare(query_key_vec, query_ptr_vec, opt_num,
                                         1);
 
-                std::clock_t start = std::clock();
+                auto start = std::chrono::high_resolution_clock::now();
 
                 batch_query(query_key_vec, query_ptr_vec, opt_num);
 
-                auto end = std::clock();
-                auto duration = end - start;
+                auto end = std::chrono::high_resolution_clock::now();
+                auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 
                 output_stream
-                    << "CPU Time: "
-                    << int(1000.0 * (std::clock() - start) / CLOCKS_PER_SEC)
-                    << std::endl;
+                    << "CPU Time: " << duration
+                    << " ms" << std::endl;
 
                 output_stream
                     << "Throughput: "
-                    << int(double(opt_num) / double(duration) * CLOCKS_PER_SEC)
+                    << int(double(opt_num) / (duration / 1000.0))
                     << " ops/s" << std::endl;
 
                 output_stream
                     << "Latency: "
-                    << int(double(duration) / double(opt_num) / CLOCKS_PER_SEC *
-                           (1ll * 1000 * 1000 * 1000))
+                    << int(duration * 1000000.0 / double(opt_num))
                     << " ns/op" << std::endl;
 
                 if (para.object_id == BenchmarkObjectType::BYTEARRAYCHAINEDHT) {
@@ -725,27 +715,25 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
                 batch_query_vec_prepare(query_key_vec, query_ptr_vec, opt_num,
                                         0);
 
-                std::clock_t start = std::clock();
+                auto start = std::chrono::high_resolution_clock::now();
 
                 batch_query(query_key_vec, query_ptr_vec, opt_num);
 
-                auto end = std::clock();
-                auto duration = end - start;
+                auto end = std::chrono::high_resolution_clock::now();
+                auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 
                 output_stream
-                    << "CPU Time: "
-                    << int(1000.0 * (std::clock() - start) / CLOCKS_PER_SEC)
-                    << std::endl;
+                    << "CPU Time: " << duration
+                    << " ms" << std::endl;
 
                 output_stream
                     << "Throughput: "
-                    << int(double(opt_num) / double(duration) * CLOCKS_PER_SEC)
+                    << int(double(opt_num) / (duration / 1000.0))
                     << " ops/s" << std::endl;
 
                 output_stream
                     << "Latency: "
-                    << int(double(duration) / double(opt_num) / CLOCKS_PER_SEC *
-                           (1ll * 1000 * 1000 * 1000))
+                    << int(duration * 1000000.0 / double(opt_num))
                     << " ns/op" << std::endl;
             };
             break;
@@ -758,27 +746,25 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
                 batch_query_vec_prepare(query_key_vec, query_ptr_vec, opt_num,
                                         hit_ratio);
 
-                std::clock_t start = std::clock();
+                auto start = std::chrono::high_resolution_clock::now();
 
                 batch_query(query_key_vec, query_ptr_vec, opt_num);
 
-                auto end = std::clock();
-                auto duration = end - start;
+                auto end = std::chrono::high_resolution_clock::now();
+                auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 
                 output_stream
-                    << "CPU Time: "
-                    << int(1000.0 * (std::clock() - start) / CLOCKS_PER_SEC)
-                    << std::endl;
+                    << "CPU Time: " << duration
+                    << " ms" << std::endl;
 
                 output_stream
                     << "Throughput: "
-                    << int(double(opt_num) / double(duration) * CLOCKS_PER_SEC)
+                    << int(double(opt_num) / (duration / 1000.0))
                     << " ops/s" << std::endl;
 
                 output_stream
                     << "Latency: "
-                    << int(double(duration) / double(opt_num) / CLOCKS_PER_SEC *
-                           (1ll * 1000 * 1000 * 1000))
+                    << int(duration * 1000000.0 / double(opt_num))
                     << " ns/op" << std::endl;
             };
             break;
@@ -791,27 +777,25 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
                 batch_query_vec_prepare(query_key_vec, query_ptr_vec, opt_num,
                                         1);
 
-                std::clock_t start = std::clock();
+                auto start = std::chrono::high_resolution_clock::now();
 
                 batch_query(query_key_vec, query_ptr_vec, opt_num);
 
-                auto end = std::clock();
-                auto duration = end - start;
+                auto end = std::chrono::high_resolution_clock::now();
+                auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 
                 output_stream
-                    << "CPU Time: "
-                    << int(1000.0 * (std::clock() - start) / CLOCKS_PER_SEC)
-                    << std::endl;
+                    << "CPU Time: " << duration
+                    << " ms" << std::endl;
 
                 output_stream
                     << "Throughput: "
-                    << int(double(opt_num) / double(duration) * CLOCKS_PER_SEC)
+                    << int(double(opt_num) / (duration / 1000.0))
                     << " ops/s" << std::endl;
 
                 output_stream
                     << "Latency: "
-                    << int(double(duration) / double(opt_num) / CLOCKS_PER_SEC *
-                           (1ll * 1000 * 1000 * 1000))
+                    << int(duration * 1000000.0 / double(opt_num))
                     << " ns/op" << std::endl;
             };
             break;
@@ -824,27 +808,25 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
                 batch_query_vec_prepare(query_key_vec, query_ptr_vec, opt_num,
                                         0);
 
-                std::clock_t start = std::clock();
+                auto start = std::chrono::high_resolution_clock::now();
 
                 batch_query(query_key_vec, query_ptr_vec, opt_num);
 
-                auto end = std::clock();
-                auto duration = end - start;
+                auto end = std::chrono::high_resolution_clock::now();
+                auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 
                 output_stream
-                    << "CPU Time: "
-                    << int(1000.0 * (std::clock() - start) / CLOCKS_PER_SEC)
-                    << std::endl;
+                    << "CPU Time: " << duration
+                    << " ms" << std::endl;
 
                 output_stream
                     << "Throughput: "
-                    << int(double(opt_num) / double(duration) * CLOCKS_PER_SEC)
+                    << int(double(opt_num) / (duration / 1000.0))
                     << " ops/s" << std::endl;
 
                 output_stream
                     << "Latency: "
-                    << int(double(duration) / double(opt_num) / CLOCKS_PER_SEC *
-                           (1ll * 1000 * 1000 * 1000))
+                    << int(duration * 1000000.0 / double(opt_num))
                     << " ns/op" << std::endl;
             };
             break;
@@ -857,60 +839,56 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
                 batch_query_vec_prepare(query_key_vec, query_ptr_vec, opt_num,
                                         hit_ratio);
 
-                std::clock_t start = std::clock();
+                auto start = std::chrono::high_resolution_clock::now();
 
                 batch_query(query_key_vec, query_ptr_vec, opt_num);
 
-                auto end = std::clock();
-                auto duration = end - start;
+                auto end = std::chrono::high_resolution_clock::now();
+                auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 
                 output_stream
-                    << "CPU Time: "
-                    << int(1000.0 * (std::clock() - start) / CLOCKS_PER_SEC)
-                    << std::endl;
+                    << "CPU Time: " << duration
+                    << " ms" << std::endl;
 
                 output_stream
                     << "Throughput: "
-                    << int(double(opt_num) / double(duration) * CLOCKS_PER_SEC)
+                    << int(double(opt_num) / (duration / 1000.0))
                     << " ops/s" << std::endl;
 
                 output_stream
                     << "Latency: "
-                    << int(double(duration) / double(opt_num) / CLOCKS_PER_SEC *
-                           (1ll * 1000 * 1000 * 1000))
+                    << int(duration * 1000000.0 / double(opt_num))
                     << " ns/op" << std::endl;
             };
             break;
         case BenchmarkCaseType::ALL_OPERATION_RAND:
             run = [this]() {
-                std::clock_t start = std::clock();
+                auto start = std::chrono::high_resolution_clock::now();
 
                 all_operation_rand(opt_num);
 
-                auto end = std::clock();
-                auto duration = end - start;
+                auto end = std::chrono::high_resolution_clock::now();
+                auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 
                 output_stream
-                    << "CPU Time: "
-                    << int(1000.0 * (std::clock() - start) / CLOCKS_PER_SEC)
-                    << std::endl;
+                    << "CPU Time: " << duration
+                    << " ms" << std::endl;
 
                 output_stream
                     << "Throughput: "
-                    << int(double(opt_num) / double(duration) * CLOCKS_PER_SEC)
+                    << int(double(opt_num) / (duration / 1000.0))
                     << " ops/s" << std::endl;
 
                 output_stream
                     << "Latency: "
-                    << int(double(duration) / double(opt_num) / CLOCKS_PER_SEC *
-                           (1ll * 1000 * 1000 * 1000))
+                    << int(duration * 1000000.0 / double(opt_num))
                     << " ns/op" << std::endl;
             };
             break;
         case BenchmarkCaseType::XXHASH64_THROUGHPUT:
             obj = new BenchmarkIntArray64(1);
             run = [this]() {
-                std::clock_t start = std::clock();
+                auto start = std::chrono::high_resolution_clock::now();
 
                 auto tmp = rgen64();
                 for (int i = 0; i < opt_num; ++i) {
@@ -918,53 +896,49 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
                     XXH64(&tmp, sizeof(uint64_t), 233);
                 }
 
-                auto end = std::clock();
-                auto duration = end - start;
+                auto end = std::chrono::high_resolution_clock::now();
+                auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 
                 output_stream
-                    << "CPU Time: "
-                    << int(1000.0 * (std::clock() - start) / CLOCKS_PER_SEC)
-                    << std::endl;
+                    << "CPU Time: " << duration
+                    << " ms" << std::endl;
 
                 output_stream
                     << "Throughput: "
-                    << int(double(opt_num) / double(duration) * CLOCKS_PER_SEC)
+                    << int(double(opt_num) / (duration / 1000.0))
                     << " ops/s" << std::endl;
 
                 output_stream
                     << "Latency: "
-                    << int(double(duration) / double(opt_num) / CLOCKS_PER_SEC *
-                           (1ll * 1000 * 1000 * 1000))
+                    << int(duration * 1000000.0 / double(opt_num))
                     << " ns/op" << std::endl;
             };
             break;
         case BenchmarkCaseType::PRNG_THROUGHPUT:
             obj = new BenchmarkIntArray64(1);
             run = [this]() {
-                std::clock_t start = std::clock();
+                auto start = std::chrono::high_resolution_clock::now();
 
                 auto tmp = rgen64();
                 for (int i = 0; i < opt_num; ++i) {
                     tmp = rgen64();
                 }
 
-                auto end = std::clock();
-                auto duration = end - start;
+                auto end = std::chrono::high_resolution_clock::now();
+                auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 
                 output_stream
-                    << "CPU Time: "
-                    << int(1000.0 * (std::clock() - start) / CLOCKS_PER_SEC)
-                    << std::endl;
+                    << "CPU Time: " << duration
+                    << " ms" << std::endl;
 
                 output_stream
                     << "Throughput: "
-                    << int(double(opt_num) / double(duration) * CLOCKS_PER_SEC)
+                    << int(double(opt_num) / (duration / 1000.0))
                     << " ops/s" << std::endl;
 
                 output_stream
                     << "Latency: "
-                    << int(double(duration) / double(opt_num) / CLOCKS_PER_SEC *
-                           (1ll * 1000 * 1000 * 1000))
+                    << int(duration * 1000000.0 / double(opt_num))
                     << " ns/op" << std::endl;
             };
             break;
@@ -993,12 +967,12 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
                     batch_query_vec_prepare(query_key_vec, query_ptr_vec,
                                             opt_num, 0);
 
-                    std::clock_t start = std::clock();
+                    auto start = std::chrono::high_resolution_clock::now();
 
                     batch_query(query_key_vec, query_ptr_vec, opt_num);
 
-                    auto end = std::clock();
-                    auto duration = end - start;
+                    auto end = std::chrono::high_resolution_clock::now();
+                    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 
                     output_stream << "Table Size: " << case_table_size
                                   << std::endl;
@@ -1006,19 +980,16 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
                                   << std::endl;
 
                     output_stream
-                        << "CPU Time: "
-                        << int(1000.0 * (std::clock() - start) / CLOCKS_PER_SEC)
-                        << std::endl;
+                        << "CPU Time: " << duration
+                        << " ms" << std::endl;
 
                     output_stream << "Throughput: "
-                                  << int(double(opt_num) / double(duration) *
-                                         CLOCKS_PER_SEC)
+                                  << int(double(opt_num) / (duration / 1000.0))
                                   << " ops/s" << std::endl;
 
                     output_stream
                         << "Latency: "
-                        << int(double(duration) / double(opt_num) /
-                               CLOCKS_PER_SEC * (1ll * 1000 * 1000 * 1000))
+                        << int(duration * 1000000.0 / double(opt_num))
                         << " ns/op" << std::endl;
 
                     output_stream << std::endl;
@@ -1048,13 +1019,13 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
 
                     gen_rand_vector(case_table_size);
 
-                    std::clock_t start = std::clock();
+                    auto start = std::chrono::high_resolution_clock::now();
 
                     batch_query_no_mem(opt_num, 1);
                     // batch_query_no_mem(opt_num, 0);
 
-                    auto end = std::clock();
-                    auto duration = end - start;
+                    auto end = std::chrono::high_resolution_clock::now();
+                    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 
                     output_stream << "Query No Mem" << std::endl;
                     output_stream << "Table Size: " << case_table_size
@@ -1063,19 +1034,16 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
                                   << std::endl;
 
                     output_stream
-                        << "CPU Time: "
-                        << int(1000.0 * (std::clock() - start) / CLOCKS_PER_SEC)
-                        << std::endl;
+                        << "CPU Time: " << duration
+                        << " ms" << std::endl;
 
                     output_stream << "Throughput: "
-                                  << int(double(opt_num) / double(duration) *
-                                         CLOCKS_PER_SEC)
+                                  << int(double(opt_num) / (duration / 1000.0))
                                   << " ops/s" << std::endl;
 
                     output_stream
                         << "Latency: "
-                        << int(double(duration) / double(opt_num) /
-                               CLOCKS_PER_SEC * (1ll * 1000 * 1000 * 1000))
+                        << int(duration * 1000000.0 / double(opt_num))
                         << " ns/op" << std::endl;
 
                     output_stream << std::endl;
@@ -1097,15 +1065,15 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
                     obj =
                         new BenchmarkSameBinChained(table_size, para.bin_size);
                 }
-                std::clock_t start = std::clock();
+                auto start = std::chrono::high_resolution_clock::now();
 
                 double op_ratio = 0.000001;
 
                 uint64_t opt_cnt = insert_delete_opt_to_overflow(
                     table_size, para.bin_size, op_ratio, load_factor);
 
-                auto end = std::clock();
-                auto duration = end - start;
+                auto end = std::chrono::high_resolution_clock::now();
+                auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 
                 output_stream << "Table Size: " << table_size << std::endl;
                 output_stream << "Bin Size: " << para.bin_size << std::endl;
@@ -1115,19 +1083,17 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
                 output_stream << "Op/Size Ratio: " << 1.0 * opt_cnt / table_size
                               << std::endl;
                 output_stream
-                    << "CPU Time: "
-                    << int(1000.0 * (std::clock() - start) / CLOCKS_PER_SEC)
+                    << "CPU Time: " << duration
                     << " ms" << std::endl;
 
                 output_stream
                     << "Throughput: "
-                    << int(double(opt_cnt) / double(duration) * CLOCKS_PER_SEC)
+                    << int(double(opt_cnt) / (duration / 1000.0))
                     << " ops/s" << std::endl;
 
                 output_stream
                     << "Latency: "
-                    << int(double(duration) / double(opt_cnt) / CLOCKS_PER_SEC *
-                           (1ll * 1000 * 1000 * 1000))
+                    << int(duration * 1000000.0 / double(opt_cnt))
                     << " ns/op" << std::endl;
 
                 if (para.object_id == BenchmarkObjectType::BYTEARRAYCHAINEDHT ||
@@ -1164,52 +1130,48 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
                 std::vector<uint64_t> ycsb_keys;
                 ycsb_load(ycsb_keys, para.ycsb_load_path);
                 std::vector<std::pair<uint64_t, uint64_t>> ycsb_exe_vec;
-                ycsb_exe_load(ycsb_exe_vec, para.ycsb_exe_path);
+                ycsb_exe_load(ycsb_exe_vec, para.ycsb_run_path);
 
-                std::clock_t start = std::clock();
+                auto start = std::chrono::high_resolution_clock::now();
 
                 obj->YCSBFill(ycsb_keys, para.thread_num);
 
-                auto start_fill = std::clock();
-                auto fill_duration = start_fill - start;
+                auto start_fill = std::chrono::high_resolution_clock::now();
+                auto fill_duration = std::chrono::duration_cast<std::chrono::milliseconds>(start_fill - start).count();
 
                 obj->YCSBRun(ycsb_exe_vec, para.thread_num);
 
-                auto start_run = std::clock();
-                auto run_duration = start_run - start_fill;
+                auto start_run = std::chrono::high_resolution_clock::now();
+                auto run_duration = std::chrono::duration_cast<std::chrono::milliseconds>(start_run - start_fill).count();
 
-                auto end = std::clock();
-                auto duration = end - start;
+                auto end = std::chrono::high_resolution_clock::now();
+                auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 
                 int fill_op_cnt = ycsb_keys.size();
                 int run_op_cnt = ycsb_exe_vec.size();
 
                 output_stream
-                    << "CPU Time: " << int(1000.0 * (duration) / CLOCKS_PER_SEC)
+                    << "CPU Time: " << duration
                     << " ms" << std::endl;
                 output_stream << "Fill Time: "
-                              << int(1000.0 * (fill_duration) / CLOCKS_PER_SEC)
+                              << fill_duration
                               << " ms" << std::endl;
                 output_stream << "Run Time: "
-                              << int(1000.0 * (run_duration) / CLOCKS_PER_SEC)
+                              << run_duration
                               << " ms" << std::endl;
                 output_stream
                     << "Fill Latency: "
-                    << int(double(fill_duration) / double(fill_op_cnt) /
-                           CLOCKS_PER_SEC * (1ll * 1000 * 1000 * 1000))
+                    << int(fill_duration * 1000000.0 / double(fill_op_cnt))
                     << " ns/op" << std::endl;
                 output_stream
                     << "Run Latency: "
-                    << int(double(run_duration) / double(run_op_cnt) /
-                           CLOCKS_PER_SEC * (1ll * 1000 * 1000 * 1000))
+                    << int(run_duration * 1000000.0 / double(run_op_cnt))
                     << " ns/op" << std::endl;
                 output_stream << "Fill Throughput: "
-                              << int(double(fill_op_cnt) /
-                                     double(fill_duration) * CLOCKS_PER_SEC)
+                              << int(double(fill_op_cnt) / (fill_duration / 1000.0))
                               << " ops/s" << std::endl;
                 output_stream << "Run Throughput: "
-                              << int(double(run_op_cnt) / double(run_duration) *
-                                     CLOCKS_PER_SEC)
+                              << int(double(run_op_cnt) / (run_duration / 1000.0))
                               << " ops/s" << std::endl;
             };
             break;
