@@ -22,7 +22,11 @@ struct BenchmarkObjectType {
         SKULKERHT = 12,
         GROWT = 13,
         CONCURRENT_SKULKERHT = 14,
-        COUNT = 15
+        JUNCTION = 15,
+        RESIZABLE_SKULKERHT = 16,
+        CONCURRENT_BYTEARRAYCHAINEDHT = 17,
+        RESIZABLE_BYTEARRAYCHAINEDHT = 18,
+        COUNT = 19
     };
 
     BenchmarkObjectType(const BenchmarkObjectType& b) = default;

@@ -277,6 +277,7 @@ bin_size=127
 
 # exit
 
+
 thread_num=16
 for case_id in 17 18 19; do
     for object_id in 7; do

@@ -52,11 +52,15 @@ build_iceberg()
 add_dependencies(tinyptr_lib iceberg)
 target_link_libraries(tinyptr_lib PUBLIC iceberg_lib ssl crypto pthread)
 
-
 include(growt)
 build_growt()
 add_dependencies(tinyptr_lib growt)
 target_link_libraries(tinyptr_lib PUBLIC growt_lib pthread)
+
+include(junction)
+build_junction()
+add_dependencies(tinyptr_lib junction)
+target_link_libraries(tinyptr_lib PUBLIC junction_lib)
 
 # Add test support
 include(FetchContent)
