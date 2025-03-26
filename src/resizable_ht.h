@@ -23,9 +23,9 @@ class ResizableHT {
     const uint64_t kCacheLineSize = 64;
 
    public:
-    ResizableHT(uint32_t thread_num = 0, uint64_t part_num = 0,
-                uint64_t initial_size_per_part = 40000,
-                double resize_threshold = 0.75, double resize_factor = 2.0);
+    ResizableHT(uint64_t initial_size_per_part = 40000, uint64_t part_num = 0,
+                uint32_t thread_num = 0, double resize_threshold = 0.75,
+                double resize_factor = 2.0);
 
    protected:
     HTType** partitions;
@@ -230,13 +230,13 @@ class ResizableHT {
 };
 
 template <typename HTType>
-ResizableHT<HTType>::ResizableHT(uint32_t thread_num_, uint64_t part_num_,
-                                 uint64_t initial_size_per_part_,
+ResizableHT<HTType>::ResizableHT(uint64_t initial_size_per_part_,
+                                 uint64_t part_num_, uint32_t thread_num_,
                                  double resize_threshold_,
                                  double resize_factor_)
-    : thread_num(thread_num_),
+    : initial_size_per_part(initial_size_per_part_),
       part_num(part_num_),
-      initial_size_per_part(initial_size_per_part_),
+      thread_num(thread_num_),
       resize_threshold(resize_threshold_),
       resize_factor(resize_factor_),
       kHashSeed(rand() & ((1 << 16) - 1)) {

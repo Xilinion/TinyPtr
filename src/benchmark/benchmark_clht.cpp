@@ -31,4 +31,57 @@ void BenchmarkCLHT::Erase(uint64_t key, uint8_t ptr) {
     clht_remove(tab, key);
 }
 
+void BenchmarkCLHT::YCSBFill(std::vector<uint64_t>& keys, int num_threads) {
+    std::vector<std::thread> threads;
+    size_t chunk_size = keys.size() / num_threads;
+
+    for (int i = 0; i < num_threads; ++i) {
+        size_t start_index = i * chunk_size;
+        size_t end_index =
+            (i == num_threads - 1) ? keys.size() : start_index + chunk_size;
+
+        threads.emplace_back([this, &keys, start_index, end_index, i]() {
+            clht_gc_thread_init(tab, i);
+            for (size_t j = start_index; j < end_index; ++j) {
+                clht_put(tab, keys[j], 0);
+            }
+        });
+    }
+
+    for (auto& thread : threads) {
+        thread.join();
+    }
+
+    clht_gc_destroy(tab);
+}
+
+void BenchmarkCLHT::YCSBRun(std::vector<std::pair<uint64_t, uint64_t>>& ops,
+                            int num_threads) {
+    std::vector<std::thread> threads;
+    size_t chunk_size = ops.size() / num_threads;
+
+    for (int i = 0; i < num_threads; ++i) {
+        size_t start_index = i * chunk_size;
+        size_t end_index =
+            (i == num_threads - 1) ? ops.size() : start_index + chunk_size;
+
+        threads.emplace_back([this, &ops, start_index, end_index, i]() {
+            clht_gc_thread_init(tab, i);
+            for (size_t j = start_index; j < end_index; ++j) {
+                if (ops[j].first == 1) {
+                    clht_put(tab, ops[j].second, 0);
+                } else {
+                    clht_get(tab->ht, ops[j].second);
+                }
+            }
+        });
+    }
+
+    for (auto& thread : threads) {
+        thread.join();
+    }
+
+    clht_gc_destroy(tab);
+}
+
 }  // namespace tinyptr

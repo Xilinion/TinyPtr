@@ -1,25 +1,19 @@
 #pragma once
 
-#include <emmintrin.h>
-#include <cmath>
-#include <cstdint>
-#include <iostream>
-#include <thread>
 #include <vector>
 #include "benchmark_object_64.h"
-#include "benchmark_object_type.h"
-#include "clht.h"
+#include "concurrent_byte_array_chained_ht.h"
 
 namespace tinyptr {
 
-class BenchmarkCLHT : public BenchmarkObject64 {
+class BenchmarkConcByteArrayChainedHT : public BenchmarkObject64 {
    public:
     static const BenchmarkObjectType TYPE;
 
    public:
-    BenchmarkCLHT(int n);
+    BenchmarkConcByteArrayChainedHT(uint64_t size, uint16_t bin_size);
 
-    ~BenchmarkCLHT();
+    ~BenchmarkConcByteArrayChainedHT() = default;
 
     uint8_t Insert(uint64_t key, uint64_t value);
     uint64_t Query(uint64_t key, uint8_t ptr);
@@ -31,7 +25,7 @@ class BenchmarkCLHT : public BenchmarkObject64 {
                  int num_threads);
 
    private:
-    clht_t* tab;
+    ConcurrentByteArrayChainedHT* tab;
 };
 
 }  // namespace tinyptr

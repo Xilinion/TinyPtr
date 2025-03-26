@@ -277,10 +277,9 @@ bin_size=127
 
 # exit
 
-
 thread_num=16
-for case_id in 17 18 19; do
-    for object_id in 7; do
+for case_id in 17; do
+    for object_id in 5; do
         entry_id=0
         for table_size in 134217728; do
             output=$(RunYCSB)
@@ -295,8 +294,8 @@ exit
 
 # load factor with deletion
 
-for case_id in 1; do
-    for object_id in 12; do
+for case_id in 1 2 3 6 7; do
+    for object_id in 4 7 12 15; do
         # for object_id in 3 4 6 7 10 12; do
         entry_id=0
         # for table_size in 1000000 2000000 4000000 8000000 16000000 32000000 64000000 128000000; do
@@ -308,8 +307,8 @@ for case_id in 1; do
             # FlameGraph
             # RunRandMemFree
             # sleep 3
-            # output=$(Run)
-            output=$(RunRandMemFree)
+            output=$(Run)
+            # output=$(RunRandMemFree)
             echo "$output"
 
             let "entry_id++"
@@ -320,6 +319,8 @@ for case_id in 1; do
         done
     done
 done
+
+exit
 
 for case_id in 0; do
     for object_id in 4; do

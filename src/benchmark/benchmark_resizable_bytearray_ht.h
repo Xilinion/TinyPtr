@@ -1,25 +1,29 @@
 #pragma once
 
 #include <emmintrin.h>
+#include <pthread.h>
 #include <cmath>
 #include <cstdint>
 #include <iostream>
 #include <thread>
-#include <vector>
 #include "benchmark_object_64.h"
 #include "benchmark_object_type.h"
-#include "clht.h"
+#include "resizable_ht.h"
 
 namespace tinyptr {
 
-class BenchmarkCLHT : public BenchmarkObject64 {
+class BenchmarkResizableByteArrayChainedHT : public BenchmarkObject64 {
    public:
     static const BenchmarkObjectType TYPE;
 
    public:
-    BenchmarkCLHT(int n);
+    BenchmarkResizableByteArrayChainedHT(uint64_t initial_size_per_part_,
+                                         uint64_t part_num_,
+                                         uint32_t thread_num_ = 0,
+                                         double resize_threshold_ = 0.75,
+                                         double resize_factor_ = 2.0);
 
-    ~BenchmarkCLHT();
+    ~BenchmarkResizableByteArrayChainedHT() = default;
 
     uint8_t Insert(uint64_t key, uint64_t value);
     uint64_t Query(uint64_t key, uint8_t ptr);
@@ -31,7 +35,7 @@ class BenchmarkCLHT : public BenchmarkObject64 {
                  int num_threads);
 
    private:
-    clht_t* tab;
+    ResizableByteArrayChainedHT* tab;
 };
 
 }  // namespace tinyptr

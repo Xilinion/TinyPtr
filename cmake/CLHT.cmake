@@ -60,7 +60,8 @@ function(build_CLHT)
         # COMMAND ${CMAKE_MAKE_PROGRAM} libclht_lb_res.a
         # COMMAND ${CMAKE_MAKE_PROGRAM} dependencies
         # COMMAND ${CMAKE_MAKE_PROGRAM} all
-        COMMAND ${CMAKE_MAKE_PROGRAM} libclht_lb_res.a
+        # COMMAND ${CMAKE_MAKE_PROGRAM} libclht_lb_res.a
+        COMMAND ${CMAKE_MAKE_PROGRAM} clht_lf_res
         INSTALL_COMMAND ""
         CONFIGURE_COMMAND ""
     )
@@ -73,6 +74,7 @@ function(build_CLHT)
 
     set_target_properties(CLHT_lib PROPERTIES
         IMPORTED_LOCATION "${BINARY_DIR}/libclht.a"
+        # IMPORTED_LOCATION "${BINARY_DIR}/libclht_lf_res.a"
         INTERFACE_INCLUDE_DIRECTORIES ${SOURCE_DIR}
     )
 
