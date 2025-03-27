@@ -21,6 +21,7 @@
 #include "benchmark_chainedht64.h"
 #include "benchmark_clht.h"
 #include "benchmark_cli_para.h"
+#include "benchmark_conc_bytearray_ht.h"
 #include "benchmark_conc_skulkerht.h"
 #include "benchmark_cuckoo.h"
 #include "benchmark_dereftab64.h"
@@ -29,6 +30,8 @@
 #include "benchmark_intarray64.h"
 #include "benchmark_junction.h"
 #include "benchmark_object_64.h"
+#include "benchmark_resizable_bytearray_ht.h"
+#include "benchmark_resizable_skulkerht.h"
 #include "benchmark_same_bin_chainedht.h"
 #include "benchmark_skulkerht.h"
 #include "benchmark_std_unordered_map_64.h"
@@ -463,9 +466,23 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
         case BenchmarkObjectType::CONCURRENT_SKULKERHT:
             obj = new BenchmarkConcSkulkerHT(table_size, para.bin_size);
             break;
+        case BenchmarkObjectType::CONCURRENT_BYTEARRAYCHAINEDHT:
+            obj =
+                new BenchmarkConcByteArrayChainedHT(table_size, para.bin_size);
+            break;
         case BenchmarkObjectType::JUNCTION:
             obj = new BenchmarkJunction(table_size);
             break;
+        case BenchmarkObjectType::RESIZABLE_SKULKERHT: {
+            uint64_t part_num = 100;
+            obj = new BenchmarkResizableSkulkerHT(table_size / part_num,
+                                                  part_num);
+        } break;
+        case BenchmarkObjectType::RESIZABLE_BYTEARRAYCHAINEDHT: {
+            uint64_t part_num = 100;
+            obj = new BenchmarkResizableByteArrayChainedHT(
+                table_size / part_num, part_num);
+        } break;
         default:
             abort();
     }

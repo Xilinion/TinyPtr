@@ -279,7 +279,7 @@ bin_size=127
 
 thread_num=16
 for case_id in 17; do
-    for object_id in 5; do
+    for object_id in 16 18; do
         entry_id=0
         for table_size in 134217728; do
             output=$(RunYCSB)

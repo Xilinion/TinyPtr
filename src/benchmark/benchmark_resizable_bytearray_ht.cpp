@@ -86,4 +86,40 @@ void BenchmarkResizableByteArrayChainedHT::YCSBRun(
     }
 }
 
+void BenchmarkResizableByteArrayChainedHT::ConcurrentRun(
+    std::vector<std::tuple<uint64_t, uint64_t, uint64_t>>& ops,
+    int num_threads) {
+    std::vector<std::thread> threads;
+    size_t chunk_size = ops.size() / num_threads;
+
+    for (int i = 0; i < num_threads; ++i) {
+        size_t start_index = i * chunk_size;
+        size_t end_index =
+            (i == num_threads - 1) ? ops.size() : start_index + chunk_size;
+
+        threads.emplace_back([this, &ops, start_index, end_index, i]() {
+            uint64_t value;
+            uint64_t handle = tab->GetHandle();
+            for (size_t j = start_index; j < end_index; ++j) {
+                if (std::get<0>(ops[j]) == 0) {
+                    tab->Insert(handle, std::get<1>(ops[j]),
+                                std::get<2>(ops[j]));
+                } else if (std::get<0>(ops[j]) == 1) {
+                    tab->Query(handle, std::get<1>(ops[j]), &value);
+                } else if (std::get<0>(ops[j]) == 2) {
+                    tab->Update(handle, std::get<1>(ops[j]),
+                                std::get<2>(ops[j]));
+                } else if (std::get<0>(ops[j]) == 3) {
+                    tab->Erase(handle, std::get<1>(ops[j]));
+                }
+            }
+            tab->FreeHandle(handle);
+        });
+    }
+
+    for (auto& thread : threads) {
+        thread.join();
+    }
+}
+
 }  // namespace tinyptr

@@ -24,6 +24,10 @@ class BenchmarkConcByteArrayChainedHT : public BenchmarkObject64 {
     void YCSBRun(std::vector<std::pair<uint64_t, uint64_t>>& ops,
                  int num_threads);
 
+    void ConcurrentRun(
+        std::vector<std::tuple<uint64_t, uint64_t, uint64_t>>& ops,
+        int num_threads);
+
    private:
     ConcurrentByteArrayChainedHT* tab;
 };

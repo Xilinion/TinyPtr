@@ -130,7 +130,7 @@ class ResizableHT {
 
         if (part_cnt[part_index].load() > part_resize_threshold[part_id]) {
             uint64_t expected = 0;
-            std::cerr << "start resize" << std::endl;
+            // std::cerr << "start resize" << std::endl;
 
             if (part_resizing_thread_num[part_index].compare_exchange_weak(
                     expected, uint64_t(1))) {
@@ -149,8 +149,7 @@ class ResizableHT {
                     return;
                 }
 
-                // afasfasdfasdfasdfadf
-                auto start_time = std::chrono::high_resolution_clock::now();
+                // auto start_time = std::chrono::high_resolution_clock::now();
 
                 thread_working_lock[handle].store(uint64_t(-1));
 
@@ -161,8 +160,8 @@ class ResizableHT {
                         ;
                 }
 
-                std::chrono::high_resolution_clock::time_point my_time[10];
-                my_time[0] = std::chrono::high_resolution_clock::now();
+                // std::chrono::high_resolution_clock::time_point my_time[10];
+                // my_time[0] = std::chrono::high_resolution_clock::now();
 
                 partitions_new[part_id] =
                     new HTType(uint64_t(part_size[part_id] * resize_factor));
@@ -171,7 +170,7 @@ class ResizableHT {
 
                 uint64_t stage = part_resizing_stage[part_index].load();
 
-                my_time[1] = std::chrono::high_resolution_clock::now();
+                // my_time[1] = std::chrono::high_resolution_clock::now();
 
                 while (stage < stride_num) {
                     if (part_resizing_stage[part_index].compare_exchange_weak(
@@ -182,13 +181,13 @@ class ResizableHT {
                     }
                 }
 
-                my_time[2] = std::chrono::high_resolution_clock::now();
+                // my_time[2] = std::chrono::high_resolution_clock::now();
 
                 while (part_resizing_stride_done[part_index].load() <
                        stride_num)
                     ;
 
-                my_time[3] = std::chrono::high_resolution_clock::now();
+                // my_time[3] = std::chrono::high_resolution_clock::now();
 
                 delete partitions[part_id];
                 partitions[part_id] = partitions_new[part_id];
@@ -202,7 +201,7 @@ class ResizableHT {
 
                 thread_working_lock[handle].store(part_id);
 
-                my_time[4] = std::chrono::high_resolution_clock::now();
+                // my_time[4] = std::chrono::high_resolution_clock::now();
 
                 uint64_t expected = 1;
                 while (
@@ -213,17 +212,16 @@ class ResizableHT {
 
                 part_resizing_stage[part_index].store(0);
 
-                my_time[5] = std::chrono::high_resolution_clock::now();
+                // my_time[5] = std::chrono::high_resolution_clock::now();
 
-                // asdfasdfasdfasdfasdfasdf
-                for (int i = 0; i < 5; i++) {
-                    std::cerr << "time " << i << ": "
-                              << std::chrono::duration_cast<
-                                     std::chrono::milliseconds>(my_time[i + 1] -
-                                                                my_time[i])
-                                     .count()
-                              << "ms" << std::endl;
-                }
+                // for (int i = 0; i < 5; i++) {
+                //     std::cerr << "time " << i << ": "
+                //               << std::chrono::duration_cast<
+                //                      std::chrono::milliseconds>(my_time[i + 1] -
+                //                                                 my_time[i])
+                //                      .count()
+                //               << "ms" << std::endl;
+                // }
             }
         }
     };
@@ -349,7 +347,7 @@ void ResizableHT<HTType>::Erase(uint64_t handle, uint64_t key) {
 
     check_join_resize(handle, part_id);
 
-    partitions[part_id]->Erase(key);
+    partitions[part_id]->Free(key);
     thread_part_cnt[handle][part_id]--;
     thread_working_lock[handle].store(uint64_t(-1));
 }

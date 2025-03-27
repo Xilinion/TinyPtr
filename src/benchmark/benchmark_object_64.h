@@ -1,6 +1,9 @@
 #pragma once
 
 #include <cstdint>
+#include <mutex>
+#include <thread>
+#include <tuple>
 #include <vector>
 #include "benchmark_object_type.h"
 
@@ -24,6 +27,10 @@ class BenchmarkObject64 {
 
     virtual void YCSBRun(std::vector<std::pair<uint64_t, uint64_t>>& ops,
                          int num_threads) {}
+
+    virtual void ConcurrentRun(
+        std::vector<std::tuple<uint64_t, uint64_t, uint64_t>>& ops,
+        int num_threads) {}
 
    public:
     BenchmarkObjectType type;
