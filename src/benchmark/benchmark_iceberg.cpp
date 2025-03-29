@@ -102,15 +102,15 @@ void BenchmarkIceberg::ConcurrentRun(
         threads.emplace_back([this, &ops, start_index, end_index, i]() {
             uint64_t value;
             for (size_t j = start_index; j < end_index; ++j) {
-                if (std::get<0>(ops[j]) == 0) {
+                if (std::get<0>(ops[j]) == ConcOptType::INSERT) {
                     iceberg_insert(&tab, std::get<1>(ops[j]),
                                    std::get<2>(ops[j]), i);
-                } else if (std::get<0>(ops[j]) == 1) {
+                } else if (std::get<0>(ops[j]) == ConcOptType::QUERY) {
                     iceberg_get_value(&tab, std::get<1>(ops[j]), &value, i);
-                } else if (std::get<0>(ops[j]) == 2) {
+                } else if (std::get<0>(ops[j]) == ConcOptType::UPDATE) {
                     iceberg_insert(&tab, std::get<1>(ops[j]),
                                    std::get<2>(ops[j]), i);
-                } else if (std::get<0>(ops[j]) == 3) {
+                } else if (std::get<0>(ops[j]) == ConcOptType::ERASE) {
                     iceberg_remove(&tab, std::get<1>(ops[j]), i);
                 }
             }

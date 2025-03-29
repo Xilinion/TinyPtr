@@ -239,7 +239,7 @@ Init
 # DebugCompile
 # ValgrindCompile
 
-compile_option=2
+compile_option=1
 CompileWithOption
 
 thread_num=0
@@ -247,7 +247,7 @@ resize_op=""
 
 table_size=1
 opt_num=0
-load_factor=0
+load_factor=1
 hit_percent=0
 quotient_tail_length=0
 bin_size=127
@@ -275,10 +275,10 @@ bin_size=127
 #     done
 # done
 
-for case_id in 15; do
+for case_id in 9 10; do
     for object_id in 14; do
         entry_id=0
-        for table_size in 1000000; do
+        for table_size in 10000000; do
             opt_num=$table_size
             Run
             let "entry_id++"

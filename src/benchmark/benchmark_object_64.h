@@ -6,6 +6,7 @@
 #include <tuple>
 #include <vector>
 #include "benchmark_object_type.h"
+#include "conc_opt_type.h"
 
 namespace tinyptr {
 

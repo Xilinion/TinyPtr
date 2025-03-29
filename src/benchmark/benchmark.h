@@ -68,6 +68,15 @@ class Benchmark {
     void ycsb_exe_load(std::vector<std::pair<uint64_t, uint64_t>>& ycsb_exe_vec,
                        std::string path);
 
+    void vec_to_ops(std::vector<uint64_t>& key_vec,
+                    std::vector<std::tuple<uint64_t, uint64_t, uint64_t>>& ops,
+                    uint64_t opt_type);
+
+    void vec_to_ops(std::vector<uint64_t>& key_vec,
+                    std::vector<uint64_t>& value_vec,
+                    std::vector<std::tuple<uint64_t, uint64_t, uint64_t>>& ops,
+                    uint64_t opt_type);
+
    public:
     void Run();
 

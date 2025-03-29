@@ -101,15 +101,15 @@ void BenchmarkResizableByteArrayChainedHT::ConcurrentRun(
             uint64_t value;
             uint64_t handle = tab->GetHandle();
             for (size_t j = start_index; j < end_index; ++j) {
-                if (std::get<0>(ops[j]) == 0) {
+                if (std::get<0>(ops[j]) == ConcOptType::INSERT) {
                     tab->Insert(handle, std::get<1>(ops[j]),
                                 std::get<2>(ops[j]));
-                } else if (std::get<0>(ops[j]) == 1) {
+                } else if (std::get<0>(ops[j]) == ConcOptType::QUERY) {
                     tab->Query(handle, std::get<1>(ops[j]), &value);
-                } else if (std::get<0>(ops[j]) == 2) {
+                } else if (std::get<0>(ops[j]) == ConcOptType::UPDATE) {
                     tab->Update(handle, std::get<1>(ops[j]),
                                 std::get<2>(ops[j]));
-                } else if (std::get<0>(ops[j]) == 3) {
+                } else if (std::get<0>(ops[j]) == ConcOptType::ERASE) {
                     tab->Erase(handle, std::get<1>(ops[j]));
                 }
             }

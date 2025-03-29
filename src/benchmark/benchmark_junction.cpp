@@ -111,13 +111,13 @@ void BenchmarkJunction::ConcurrentRun(
         threads.emplace_back(
             [this, &ops, start_index, end_index, i, context]() {
                 for (size_t j = start_index; j < end_index; ++j) {
-                    if (std::get<0>(ops[j]) == 0) {
+                    if (std::get<0>(ops[j]) == ConcOptType::INSERT) {
                         tab->assign(std::get<1>(ops[j]), std::get<2>(ops[j]));
-                    } else if (std::get<0>(ops[j]) == 1) {
+                    } else if (std::get<0>(ops[j]) == ConcOptType::QUERY) {
                         tab->get(std::get<1>(ops[j]));
-                    } else if (std::get<0>(ops[j]) == 2) {
+                    } else if (std::get<0>(ops[j]) == ConcOptType::UPDATE) {
                         tab->exchange(std::get<1>(ops[j]), std::get<2>(ops[j]));
-                    } else if (std::get<0>(ops[j]) == 3) {
+                    } else if (std::get<0>(ops[j]) == ConcOptType::ERASE) {
                         tab->erase(std::get<1>(ops[j]));
                     }
 

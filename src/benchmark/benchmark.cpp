@@ -471,6 +471,26 @@ void Benchmark::ycsb_exe_load(
     fclose(file);
 }
 
+void Benchmark::vec_to_ops(
+    std::vector<uint64_t>& key_vec,
+    std::vector<std::tuple<uint64_t, uint64_t, uint64_t>>& ops,
+    uint64_t opt_type) {
+    ops.clear();
+    for (uint64_t i = 0; i < key_vec.size(); ++i) {
+        ops.push_back(std::make_tuple(opt_type, key_vec[i], 0));
+    }
+}
+
+void Benchmark::vec_to_ops(
+    std::vector<uint64_t>& key_vec, std::vector<uint64_t>& value_vec,
+    std::vector<std::tuple<uint64_t, uint64_t, uint64_t>>& ops,
+    uint64_t opt_type) {
+    ops.clear();
+    for (uint64_t i = 0; i < key_vec.size(); ++i) {
+        ops.push_back(std::make_tuple(opt_type, key_vec[i], value_vec[i]));
+    }
+}
+
 Benchmark::Benchmark(BenchmarkCLIPara& para)
     : output_stream(para.GetOuputFileName()),
       table_size(para.table_size),
@@ -648,9 +668,19 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
                 std::vector<uint64_t> key_vec, value_vec;
                 obj_fill_vec_prepare(key_vec, value_vec, opt_num);
 
+                std::vector<std::tuple<uint64_t, uint64_t, uint64_t>> ops;
+
+                if (thread_num) {
+                    vec_to_ops(key_vec, value_vec, ops, ConcOptType::INSERT);
+                }
+
                 auto start = std::chrono::high_resolution_clock::now();
 
-                obj_fill(key_vec, value_vec);
+                if (thread_num) {
+                    obj->ConcurrentRun(ops, thread_num);
+                } else {
+                    obj_fill(key_vec, value_vec);
+                }
 
                 auto end = std::chrono::high_resolution_clock::now();
                 auto duration =
@@ -674,16 +704,34 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
                 std::vector<uint64_t> key_vec, value_vec;
                 obj_fill_vec_prepare(key_vec, value_vec, opt_num);
 
-                obj_fill(key_vec, value_vec);
+                std::vector<std::tuple<uint64_t, uint64_t, uint64_t>> ops;
+                if (thread_num) {
+                    vec_to_ops(key_vec, value_vec, ops, ConcOptType::INSERT);
+                }
+
+                if (thread_num) {
+                    obj->ConcurrentRun(ops, thread_num);
+                } else {
+                    obj_fill(key_vec, value_vec);
+                }
 
                 std::vector<uint64_t> update_key_vec;
                 std::vector<uint64_t> update_value_vec;
                 batch_update_vec_prepare(key_vec, update_key_vec,
                                          update_value_vec, opt_num);
 
+                if (thread_num) {
+                    vec_to_ops(update_key_vec, update_value_vec, ops,
+                               ConcOptType::UPDATE);
+                }
+
                 auto start = std::chrono::high_resolution_clock::now();
 
-                batch_update(update_key_vec, update_value_vec);
+                if (thread_num) {
+                    obj->ConcurrentRun(ops, thread_num);
+                } else {
+                    batch_update(update_key_vec, update_value_vec);
+                }
 
                 auto end = std::chrono::high_resolution_clock::now();
                 auto duration =
@@ -707,14 +755,31 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
                 std::vector<uint64_t> key_vec, value_vec;
                 obj_fill_vec_prepare(key_vec, value_vec, opt_num);
 
-                obj_fill(key_vec, value_vec);
+                std::vector<std::tuple<uint64_t, uint64_t, uint64_t>> ops;
+                if (thread_num) {
+                    vec_to_ops(key_vec, value_vec, ops, ConcOptType::INSERT);
+                }
+
+                if (thread_num) {
+                    obj->ConcurrentRun(ops, thread_num);
+                } else {
+                    obj_fill(key_vec, value_vec);
+                }
 
                 std::vector<uint64_t> erase_key_vec;
                 erase_vec_prepare(key_vec, erase_key_vec);
 
+                if (thread_num) {
+                    vec_to_ops(erase_key_vec, ops, ConcOptType::ERASE);
+                }
+
                 auto start = std::chrono::high_resolution_clock::now();
 
-                erase_all(erase_key_vec);
+                if (thread_num) {
+                    obj->ConcurrentRun(ops, thread_num);
+                } else {
+                    erase_all(erase_key_vec);
+                }
 
                 auto end = std::chrono::high_resolution_clock::now();
                 auto duration =
@@ -761,15 +826,32 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
                 std::vector<uint64_t> key_vec, value_vec;
                 obj_fill_vec_prepare(key_vec, value_vec, table_size);
 
-                obj_fill(key_vec, value_vec);
+                std::vector<std::tuple<uint64_t, uint64_t, uint64_t>> ops;
+                if (thread_num) {
+                    vec_to_ops(key_vec, value_vec, ops, ConcOptType::INSERT);
+                }
+
+                if (thread_num) {
+                    obj->ConcurrentRun(ops, thread_num);
+                } else {
+                    obj_fill(key_vec, value_vec);
+                }
 
                 std::vector<uint64_t> query_key_vec;
                 std::vector<uint8_t> query_ptr_vec;
                 batch_query_vec_prepare(key_vec, query_key_vec, opt_num, 1);
 
+                if (thread_num) {
+                    vec_to_ops(query_key_vec, ops, ConcOptType::QUERY);
+                }
+
                 auto start = std::chrono::high_resolution_clock::now();
 
-                batch_query(query_key_vec);
+                if (thread_num) {
+                    obj->ConcurrentRun(ops, thread_num);
+                } else {
+                    batch_query(query_key_vec);
+                }
 
                 auto end = std::chrono::high_resolution_clock::now();
                 auto duration =
@@ -803,52 +885,39 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
             };
             break;
         case BenchmarkCaseType::QUERY_MISS_ONLY:
-            run = [this]() {
-                std::vector<uint64_t> key_vec, value_vec;
-                obj_fill_vec_prepare(key_vec, value_vec, table_size);
-
-                obj_fill(key_vec, value_vec);
-
-                std::vector<uint64_t> query_key_vec;
-                std::vector<uint8_t> query_ptr_vec;
-                batch_query_vec_prepare(key_vec, query_key_vec, opt_num, 0);
-
-                auto start = std::chrono::high_resolution_clock::now();
-
-                batch_query(query_key_vec);
-
-                auto end = std::chrono::high_resolution_clock::now();
-                auto duration =
-                    std::chrono::duration_cast<std::chrono::milliseconds>(end -
-                                                                          start)
-                        .count();
-
-                output_stream << "CPU Time: " << duration << " ms" << std::endl;
-
-                output_stream << "Throughput: "
-                              << int(double(opt_num) / (duration / 1000.0))
-                              << " ops/s" << std::endl;
-
-                output_stream << "Latency: "
-                              << int(duration * 1000000.0 / double(opt_num))
-                              << " ns/op" << std::endl;
-            };
-            break;
+            hit_ratio = 0;
         case BenchmarkCaseType::QUERY_HIT_PERCENT:
             run = [this]() {
                 std::vector<uint64_t> key_vec, value_vec;
                 obj_fill_vec_prepare(key_vec, value_vec, table_size);
 
-                obj_fill(key_vec, value_vec);
+                std::vector<std::tuple<uint64_t, uint64_t, uint64_t>> ops;
+                if (thread_num) {
+                    vec_to_ops(key_vec, value_vec, ops, ConcOptType::INSERT);
+                }
+
+                if (thread_num) {
+                    obj->ConcurrentRun(ops, thread_num);
+                } else {
+                    obj_fill(key_vec, value_vec);
+                }
 
                 std::vector<uint64_t> query_key_vec;
                 std::vector<uint8_t> query_ptr_vec;
                 batch_query_vec_prepare(key_vec, query_key_vec, opt_num,
                                         hit_ratio);
 
+                if (thread_num) {
+                    vec_to_ops(query_key_vec, ops, ConcOptType::QUERY);
+                }
+
                 auto start = std::chrono::high_resolution_clock::now();
 
-                batch_query(query_key_vec);
+                if (thread_num) {
+                    obj->ConcurrentRun(ops, thread_num);
+                } else {
+                    batch_query(query_key_vec);
+                }
 
                 auto end = std::chrono::high_resolution_clock::now();
                 auto duration =
@@ -868,87 +937,44 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
             };
             break;
         case BenchmarkCaseType::QUERY_HIT_ONLY_CUSTOM_LOAD_FACTOR:
-            run = [this]() {
-                std::vector<uint64_t> key_vec, value_vec;
-                obj_fill_vec_prepare(key_vec, value_vec,
-                                     int(floor(table_size * load_factor)));
-
-                obj_fill(key_vec, value_vec);
-
-                std::vector<uint64_t> query_key_vec;
-                std::vector<uint8_t> query_ptr_vec;
-                batch_query_vec_prepare(key_vec, query_key_vec, opt_num, 1);
-
-                auto start = std::chrono::high_resolution_clock::now();
-
-                batch_query(query_key_vec);
-
-                auto end = std::chrono::high_resolution_clock::now();
-                auto duration =
-                    std::chrono::duration_cast<std::chrono::milliseconds>(end -
-                                                                          start)
-                        .count();
-
-                output_stream << "CPU Time: " << duration << " ms" << std::endl;
-
-                output_stream << "Throughput: "
-                              << int(double(opt_num) / (duration / 1000.0))
-                              << " ops/s" << std::endl;
-
-                output_stream << "Latency: "
-                              << int(duration * 1000000.0 / double(opt_num))
-                              << " ns/op" << std::endl;
-            };
-            break;
+            hit_ratio = 1;
+            goto query_load_factor;
         case BenchmarkCaseType::QUERY_MISS_ONLY_CUSTOM_LOAD_FACTOR:
-            run = [this]() {
-                std::vector<uint64_t> key_vec, value_vec;
-                obj_fill_vec_prepare(key_vec, value_vec,
-                                     int(floor(table_size * load_factor)));
-
-                obj_fill(key_vec, value_vec);
-
-                std::vector<uint64_t> query_key_vec;
-                std::vector<uint8_t> query_ptr_vec;
-                batch_query_vec_prepare(key_vec, query_key_vec, opt_num, 0);
-
-                auto start = std::chrono::high_resolution_clock::now();
-
-                batch_query(query_key_vec);
-
-                auto end = std::chrono::high_resolution_clock::now();
-                auto duration =
-                    std::chrono::duration_cast<std::chrono::milliseconds>(end -
-                                                                          start)
-                        .count();
-
-                output_stream << "CPU Time: " << duration << " ms" << std::endl;
-
-                output_stream << "Throughput: "
-                              << int(double(opt_num) / (duration / 1000.0))
-                              << " ops/s" << std::endl;
-
-                output_stream << "Latency: "
-                              << int(duration * 1000000.0 / double(opt_num))
-                              << " ns/op" << std::endl;
-            };
-            break;
+            hit_ratio = 0;
         case BenchmarkCaseType::QUERY_HIT_PERCENT_CUSTOM_LOAD_FACTOR:
+        query_load_factor:
             run = [this]() {
                 std::vector<uint64_t> key_vec, value_vec;
                 obj_fill_vec_prepare(key_vec, value_vec,
                                      int(floor(table_size * load_factor)));
 
-                obj_fill(key_vec, value_vec);
+                std::vector<std::tuple<uint64_t, uint64_t, uint64_t>> ops;
+                if (thread_num) {
+                    vec_to_ops(key_vec, value_vec, ops, ConcOptType::INSERT);
+                }
+
+                if (thread_num) {
+                    obj->ConcurrentRun(ops, thread_num);
+                } else {
+                    obj_fill(key_vec, value_vec);
+                }
 
                 std::vector<uint64_t> query_key_vec;
                 std::vector<uint8_t> query_ptr_vec;
                 batch_query_vec_prepare(key_vec, query_key_vec, opt_num,
                                         hit_ratio);
 
+                if (thread_num) {
+                    vec_to_ops(query_key_vec, ops, ConcOptType::QUERY);
+                }
+
                 auto start = std::chrono::high_resolution_clock::now();
 
-                batch_query(query_key_vec);
+                if (thread_num) {
+                    obj->ConcurrentRun(ops, thread_num);
+                } else {
+                    batch_query(query_key_vec);
+                }
 
                 auto end = std::chrono::high_resolution_clock::now();
                 auto duration =
