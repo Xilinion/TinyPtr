@@ -31,8 +31,8 @@ ByteArrayChainedHT::ByteArrayChainedHT(uint64_t size,
       kQuotientingTailLength(quotienting_tail_length
                                  ? quotienting_tail_length
                                  : AutoQuotTailLength(size)),
-      kQuotientingTailMask((1ll << kQuotientingTailLength) - 1),
-      kBaseTabSize(1 << kQuotientingTailLength),
+      kQuotientingTailMask((1ULL << kQuotientingTailLength) - 1),
+      kBaseTabSize(1ULL << kQuotientingTailLength),
       kBinSize(bin_size),
       kBinNum((size + kBinSize - 1) / kBinSize),
       kTinyPtrOffset((64 + 7 - kQuotientingTailLength) >> 3),

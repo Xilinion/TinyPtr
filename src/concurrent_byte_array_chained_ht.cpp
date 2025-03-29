@@ -31,8 +31,8 @@ ConcurrentByteArrayChainedHT::ConcurrentByteArrayChainedHT(
       kQuotientingTailLength(quotienting_tail_length
                                  ? quotienting_tail_length
                                  : AutoQuotTailLength(size)),
-      kQuotientingTailMask((1ll << kQuotientingTailLength) - 1),
-      kBaseTabSize(1 << kQuotientingTailLength),
+      kQuotientingTailMask((1ULL << kQuotientingTailLength) - 1),
+      kBaseTabSize(1ULL << kQuotientingTailLength),
       kBinSize(bin_size),
       kBinNum((size + kBinSize - 1) / kBinSize),
       kTinyPtrOffset((64 + 7 - kQuotientingTailLength) >> 3),
@@ -64,19 +64,40 @@ ConcurrentByteArrayChainedHT::ConcurrentByteArrayChainedHT(
         base_tab_concurrent_version[i].clear();
     }
 
+    uint64_t base_tab_size = kBaseTabSize;
+    uint64_t byte_array_size = kBinNum * kBinSize * kEntryByteLength;
+    uint64_t bin_cnt_size = kBinNum << 1;  // Assuming this is in bytes
+
+    // Align each section to 64 bytes
+    uint64_t base_tab_size_aligned =
+        (base_tab_size + 63) & ~static_cast<uint64_t>(63);
+    uint64_t byte_array_size_aligned =
+        (byte_array_size + 63) & ~static_cast<uint64_t>(63);
+    uint64_t bin_cnt_size_aligned =
+        (bin_cnt_size + 63) & ~static_cast<uint64_t>(63);
+
+    // Total size for combined allocation
+    uint64_t total_size =
+        base_tab_size_aligned + byte_array_size_aligned + bin_cnt_size_aligned;
+
+    // Allocate a single aligned block
+    void* combined_mem;
+    combined_mem = mmap(NULL, total_size, PROT_READ | PROT_WRITE,
+                        MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
+
+    // Assign pointers to their respective regions
+    uint8_t* base =
+        (uint8_t*)((uint64_t)(combined_mem + 63) & ~static_cast<uint64_t>(63));
+
+    byte_array = base;
+    base += byte_array_size_aligned;
+
+    bin_cnt_head = base;
+    base += bin_cnt_size_aligned;
+
+    base_tab = base;
+
     /*
-    (void)posix_memalign(reinterpret_cast<void**>(&byte_array), 64,
-                         kBinNum * kBinSize * kEntryByteLength);
-    memset(byte_array, 0, kBinNum * kBinSize * kEntryByteLength);
-
-    (void)posix_memalign(reinterpret_cast<void**>(&base_tab), 64, kBaseTabSize);
-    memset(base_tab, 0, kBaseTabSize);
-
-    (void)posix_memalign(reinterpret_cast<void**>(&bin_cnt_head), 64,
-                         kBinNum << 1);
-    memset(bin_cnt_head, 0, kBinNum << 1);
-*/
-
     {
         size_t total_bytes = kBinNum * kBinSize * kEntryByteLength;
         byte_array = static_cast<uint8_t*>(calloc(1, total_bytes));
@@ -102,6 +123,7 @@ ConcurrentByteArrayChainedHT::ConcurrentByteArrayChainedHT(
             exit(EXIT_FAILURE);
         }
     }
+    */
 
     /*
     for (uint64_t i = 0, ptr_offset = kTinyPtrOffset; i < kBinNum; i++) {

@@ -72,9 +72,9 @@ TEST(ResizableByteArrayChainedHT_TESTSUITE, ParallelInsertQuery) {
     srand(233);
 
     // int num_threads = std::thread::hardware_concurrency();
-    int num_threads = 10;
-    int num_operations = 1e8;  // Large number of operations
-    int part_num = 5;
+    int num_threads = 16;
+    int num_operations = 1e6;  // Large number of operations
+    int part_num = 16;
     // Declare start and end for timing
     chrono::time_point<chrono::high_resolution_clock> start, end;
 
@@ -82,7 +82,7 @@ TEST(ResizableByteArrayChainedHT_TESTSUITE, ParallelInsertQuery) {
     vector<pair<uint64_t, uint64_t>> data(num_operations);
     for (int i = 0; i < num_operations; ++i) {
         // cout << i << endl;
-        data[i] = {static_cast<uint64_t>(i * 233), my_value_rand()};
+        data[i] = {static_cast<uint64_t>(i * rand() * 233), my_value_rand()};
     }
 
     // Ensure SlowXXHash64 is defined or included
@@ -93,7 +93,7 @@ TEST(ResizableByteArrayChainedHT_TESTSUITE, ParallelInsertQuery) {
 
     start = chrono::high_resolution_clock::now();
 
-    ResizableByteArrayChainedHT ht(num_threads, part_num, 1000000 / part_num);
+    ResizableByteArrayChainedHT ht(1000000 / part_num, part_num);
     // ResizableEmptyHT ht(num_threads, part_num, 1000000/part_num);
 
     end = chrono::high_resolution_clock::now();

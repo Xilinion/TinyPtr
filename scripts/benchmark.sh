@@ -278,10 +278,24 @@ bin_size=127
 # exit
 
 thread_num=16
-for case_id in 17; do
-    for object_id in 16 18; do
+for case_id in 17 18 19; do
+    for object_id in 6 7 14 15 17; do
         entry_id=0
-        for table_size in 134217728; do
+        for table_size in 268435456; do
+            RunYCSB
+            # output=$(RunYCSB)
+            # echo "$output"
+            let "entry_id++"
+        done
+    done
+done
+thread_num=0
+
+thread_num=16
+for case_id in 17 18 19; do
+    for object_id in 6 7 16 15 18; do
+        entry_id=0
+        for table_size in 16777216; do
             output=$(RunYCSB)
             echo "$output"
             let "entry_id++"

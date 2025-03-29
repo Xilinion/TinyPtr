@@ -74,7 +74,7 @@ TEST(ResizableSkulkerHT_TESTSUITE, ParallelInsertQuery) {
     // int num_threads = std::thread::hardware_concurrency();
     int num_threads = 10;
     int num_operations = 134217728;  // Large number of operations
-    int part_num = 1;
+    int part_num = 10;
     // Declare start and end for timing
     chrono::time_point<chrono::high_resolution_clock> start, end;
 
@@ -93,9 +93,9 @@ TEST(ResizableSkulkerHT_TESTSUITE, ParallelInsertQuery) {
 
     start = chrono::high_resolution_clock::now();
 
-    ResizableSkulkerHT ht(num_threads, part_num, 1*1*16777216/part_num);
+    ResizableSkulkerHT ht(1 * 1 * 16777216 / part_num, part_num, num_threads);
     // ResizableEmptyHT ht(num_threads, part_num, 1000000/part_num);
-    
+
     end = chrono::high_resolution_clock::now();
     std::cout
         << "init time: "

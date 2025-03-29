@@ -61,10 +61,17 @@ class ResizableHT {
         free_handle.erase(handle);
         thread_part_cnt[handle] =
             new int64_t[part_num + kCacheLineSize / sizeof(int64_t)];
+        memset(thread_part_cnt[handle], 0, (part_num + kCacheLineSize));
         return handle;
     }
 
     __attribute__((always_inline)) inline void FreeHandle(uint64_t handle) {
+
+        for (uint64_t part_id = 0; part_id < part_num; part_id++) {
+            uint64_t part_index = part_id * (kCacheLineSize / sizeof(uint64_t));
+            part_cnt[part_index].fetch_add(thread_part_cnt[handle][part_id]);
+        }
+
         delete[] thread_part_cnt[handle];
         thread_part_cnt[handle] = nullptr;
         std::lock_guard<std::mutex> lock(handle_mutex);
@@ -160,7 +167,7 @@ class ResizableHT {
                         ;
                 }
 
-                // std::chrono::high_resolution_clock::time_point my_time[10];
+                std::chrono::high_resolution_clock::time_point my_time[10];
                 // my_time[0] = std::chrono::high_resolution_clock::now();
 
                 partitions_new[part_id] =

@@ -377,36 +377,161 @@ void Benchmark::all_operation_rand(int opt_cnt) {
 }
 
 void Benchmark::ycsb_load(std::vector<uint64_t>& ycsb_keys, std::string path) {
+    // Use a larger buffer size for better performance
+    const size_t BUFFER_SIZE = 1 << 20;  // 1MB buffer
+
     FILE* file = fopen(path.c_str(), "r");
-    if (file) {
-        char buffer[256];
-        while (fgets(buffer, sizeof(buffer), file)) {
-            uint64_t key;
-            sscanf(buffer + 7, "%llu", &key);
-            ycsb_keys.push_back(key);
+    if (!file)
+        return;
+
+    fseek(file, 0, SEEK_END);
+    long fileSize = ftell(file);
+    fseek(file, 0, SEEK_SET);
+
+    char* buffer = new char[BUFFER_SIZE];
+
+    std::string partialLine;
+
+    while (!feof(file)) {
+        size_t bytesRead = fread(buffer, 1, BUFFER_SIZE - 1, file);
+        if (bytesRead == 0)
+            break;
+
+        buffer[bytesRead] = '\0';
+
+        // Process each line in the buffer
+        char* pos = buffer;
+        char* end = buffer + bytesRead;
+
+        while (pos < end) {
+            char* lineEnd = strchr(pos, '\n');
+
+            if (!lineEnd) {
+                if (feof(file)) {
+                    uint64_t key = strtoull(pos + 7, nullptr, 10);
+                    ycsb_keys.push_back(key);
+                } else {
+                    partialLine += pos;
+                }
+                break;
+            }
+
+            *lineEnd = '\0';  // Terminate the line
+
+            if (!partialLine.empty()) {
+                partialLine += pos;
+                uint64_t key = strtoull(partialLine.c_str() + 7, nullptr, 10);
+                ycsb_keys.push_back(key);
+                partialLine.clear();
+            } else {
+                uint64_t key = strtoull(pos + 7, nullptr, 10);
+                ycsb_keys.push_back(key);
+            }
+
+            pos = lineEnd + 1;
         }
-        fclose(file);
     }
+
+    // Process any remaining partial line from the last buffer
+    if (!partialLine.empty() && partialLine.length() > 7) {
+        uint64_t key = strtoull(partialLine.c_str() + 7, nullptr, 10);
+        ycsb_keys.push_back(key);
+    }
+
+    delete[] buffer;
+    fclose(file);
 }
 
 void Benchmark::ycsb_exe_load(
     std::vector<std::pair<uint64_t, uint64_t>>& ycsb_exe_vec,
     std::string path) {
+    // Use a larger buffer size for better performance
+    const size_t BUFFER_SIZE = 1 << 20;  // 1MB buffer
+
     FILE* file = fopen(path.c_str(), "r");
-    if (file) {
-        char buffer[256];
-        while (fgets(buffer, sizeof(buffer), file)) {
-            uint64_t key;
-            if (strncmp(buffer, "INSERT", 6) == 0) {
-                sscanf(buffer + 7, "%llu", &key);
-                ycsb_exe_vec.emplace_back(1, key);
-            } else if (strncmp(buffer, "READ", 4) == 0) {
-                sscanf(buffer + 5, "%llu", &key);
-                ycsb_exe_vec.emplace_back(0, key);
+    if (!file)
+        return;
+
+    fseek(file, 0, SEEK_END);
+    long fileSize = ftell(file);
+    fseek(file, 0, SEEK_SET);
+
+    char* buffer = new char[BUFFER_SIZE];
+
+    std::string partialLine;
+
+    while (!feof(file)) {
+        size_t bytesRead = fread(buffer, 1, BUFFER_SIZE - 1, file);
+        if (bytesRead == 0)
+            break;
+
+        buffer[bytesRead] = '\0';
+
+        // Process each line in the buffer
+        char* pos = buffer;
+        char* end = buffer + bytesRead;
+
+        while (pos < end) {
+            char* lineEnd = strchr(pos, '\n');
+
+            if (!lineEnd) {
+                if (feof(file)) {
+                    uint64_t key;
+                    if (strncmp(pos, "INSERT", 6) == 0) {
+                        key = strtoull(pos + 7, nullptr, 10);
+                        ycsb_exe_vec.emplace_back(1, key);
+                    } else if (strncmp(pos, "READ", 4) == 0) {
+                        key = strtoull(pos + 5, nullptr, 10);
+                        ycsb_exe_vec.emplace_back(0, key);
+                    }
+                } else {
+                    partialLine += pos;
+                }
+                break;
             }
+
+            *lineEnd = '\0';  // Terminate the line
+
+            if (!partialLine.empty()) {
+                partialLine += pos;
+                uint64_t key;
+                if (strncmp(partialLine.c_str(), "INSERT", 6) == 0) {
+                    key = strtoull(partialLine.c_str() + 7, nullptr, 10);
+                    ycsb_exe_vec.emplace_back(1, key);
+                } else if (strncmp(partialLine.c_str(), "READ", 4) == 0) {
+                    key = strtoull(partialLine.c_str() + 5, nullptr, 10);
+                    ycsb_exe_vec.emplace_back(0, key);
+                }
+                partialLine.clear();
+            } else {
+                uint64_t key;
+                if (strncmp(pos, "INSERT", 6) == 0) {
+                    key = strtoull(pos + 7, nullptr, 10);
+                    ycsb_exe_vec.emplace_back(1, key);
+                } else if (strncmp(pos, "READ", 4) == 0) {
+                    key = strtoull(pos + 5, nullptr, 10);
+                    ycsb_exe_vec.emplace_back(0, key);
+                }
+            }
+
+            pos = lineEnd + 1;
         }
-        fclose(file);
     }
+
+    // Process any remaining partial line from the last buffer
+    if (!partialLine.empty()) {
+        uint64_t key;
+        if (strncmp(partialLine.c_str(), "INSERT", 6) == 0) {
+            key = strtoull(partialLine.c_str() + 7, nullptr, 10);
+            ycsb_exe_vec.emplace_back(1, key);
+        } else if (strncmp(partialLine.c_str(), "READ", 4) == 0) {
+            key = strtoull(partialLine.c_str() + 5, nullptr, 10);
+            ycsb_exe_vec.emplace_back(0, key);
+        }
+    }
+
+    delete[] buffer;
+    fclose(file);
 }
 
 Benchmark::Benchmark(BenchmarkCLIPara& para)
@@ -474,12 +599,12 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
             obj = new BenchmarkJunction(table_size);
             break;
         case BenchmarkObjectType::RESIZABLE_SKULKERHT: {
-            uint64_t part_num = 100;
+            uint64_t part_num = 10;
             obj = new BenchmarkResizableSkulkerHT(table_size / part_num,
                                                   part_num);
         } break;
         case BenchmarkObjectType::RESIZABLE_BYTEARRAYCHAINEDHT: {
-            uint64_t part_num = 100;
+            uint64_t part_num = 10;
             obj = new BenchmarkResizableByteArrayChainedHT(
                 table_size / part_num, part_num);
         } break;
@@ -1137,6 +1262,7 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
             run = [this, para]() {
                 std::vector<uint64_t> ycsb_keys;
                 ycsb_load(ycsb_keys, para.ycsb_load_path);
+
                 std::vector<std::pair<uint64_t, uint64_t>> ycsb_exe_vec;
                 ycsb_exe_load(ycsb_exe_vec, para.ycsb_run_path);
 
