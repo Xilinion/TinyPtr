@@ -51,7 +51,7 @@ function Compile() {
 
 function DebugCompile() {
     cd ..
-    rm -rf ./build
+    # rm -rf ./build
     cmake -B build -DCMAKE_BUILD_TYPE=Debug | tail -n 90
     cmake --build build --config Debug -j8 | tail -n 90
     cd scripts
@@ -239,7 +239,7 @@ Init
 # DebugCompile
 # ValgrindCompile
 
-compile_option=1
+compile_option=2
 CompileWithOption
 
 thread_num=0
@@ -275,7 +275,18 @@ bin_size=127
 #     done
 # done
 
-# exit
+for case_id in 15; do
+    for object_id in 14; do
+        entry_id=0
+        for table_size in 1000000; do
+            opt_num=$table_size
+            Run
+            let "entry_id++"
+        done
+    done
+done
+
+exit
 
 thread_num=16
 for case_id in 17 18 19; do
