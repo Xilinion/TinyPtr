@@ -1,0 +1,91 @@
+import os
+import re
+import csv
+
+
+def extract_throughput(file_path):
+    """Extract Fill Throughput and Run Throughput from a result file."""
+    with open(file_path, 'r') as f:
+        content = f.read()
+
+        fill_throughput_match = re.search(
+            r'Fill Throughput: (\d+) ops/s', content)
+        run_throughput_match = re.search(
+            r'Run Throughput: (\d+) ops/s', content)
+
+        fill_throughput = int(fill_throughput_match.group(
+            1)) if fill_throughput_match else None
+        run_throughput = int(run_throughput_match.group(1)
+                             ) if run_throughput_match else None
+
+        return fill_throughput, run_throughput
+
+
+def main():
+    # Base directory for results
+    base_dir = "/home/xt253/TinyPtr/results"
+    output_dir = os.path.join(base_dir, "csv")
+
+    print(f"Processing results from {base_dir}")
+    print(f"Output will be saved to {output_dir}")
+
+    # Create output directory if it doesn't exist
+    os.makedirs(output_dir, exist_ok=True)
+
+    # Dictionary to store data for each case_id and entry_id
+    data = {}
+
+    # Define valid IDs based on the bash script
+    valid_ids = {
+        0: [6, 7, 14, 15, 17],  # entry_id = 0
+        1: [6, 7, 16, 15, 18]   # entry_id = 1
+    }
+    valid_case_ids = [17, 18, 19]
+
+    # Process only the valid result files
+    for entry_id, object_ids in valid_ids.items():
+        for case_id in valid_case_ids:
+            for object_id in object_ids:
+                filename = f"object_{object_id}_case_{case_id}_entry_{entry_id}_.txt"
+                file_path = os.path.join(base_dir, filename)
+
+                if os.path.exists(file_path):
+                    # Read throughput data
+                    fill_throughput, run_throughput = extract_throughput(
+                        file_path)
+
+                    # Skip if we couldn't extract the data
+                    if fill_throughput is None or run_throughput is None:
+                        print(
+                            f"Warning: Could not extract throughput data from {filename}")
+                        continue
+
+                    # Store the data
+                    key = (case_id, entry_id)
+                    if key not in data:
+                        data[key] = []
+                    data[key].append(
+                        (object_id, fill_throughput, run_throughput))
+
+    # Write CSV files
+    for (case_id, entry_id), entries in data.items():
+        # Sort by object_id
+        entries.sort(key=lambda x: x[0])
+
+        # Create CSV file
+        csv_filename = f"case_{case_id}_entry_{entry_id}.csv"
+        csv_path = os.path.join(output_dir, csv_filename)
+
+        with open(csv_path, 'w', newline='') as csvfile:
+            writer = csv.writer(csvfile)
+            # Write header
+            writer.writerow(['object_id', 'fill_throughput', 'run_throughput'])
+            # Write data
+            for entry in entries:
+                writer.writerow(entry)
+
+        print(f"Created {csv_filename}")
+
+
+if __name__ == "__main__":
+    main()
