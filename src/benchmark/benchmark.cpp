@@ -197,19 +197,38 @@ void Benchmark::batch_query_vec_prepare(std::vector<uint64_t>& key_vec,
     // and nothing happens after that
     int key_ind_range = key_vec.size();
 
-    while (op_cnt--) {
-        uint64_t key;
+    if (zipfian_skew > kEps) {
+        ZipfianGenerator zipfian_generator(key_ind_range, zipfian_skew);
+        while (op_cnt--) {
+            uint64_t key;
 
-        if (hit_bar >= (gen_key_hittable() & (~(uint32_t(0))))) {
-            int key_ind = rgen64() % key_ind_range;
-            key = key_vec[key_ind];
-            // TODO: consider ptr here
-        } else {
-            key = gen_key_miss();
-            // TODO: consider ptr here
+            if (hit_bar >= (gen_key_hittable() & (~(uint32_t(0))))) {
+                int key_ind = zipfian_generator.next();
+                key = key_vec[key_ind];
+                // TODO: consider ptr here
+            } else {
+                key = gen_key_miss();
+                // TODO: consider ptr here
+            }
+
+            query_key_vec.push_back(key);
         }
+    } else {
 
-        query_key_vec.push_back(key);
+        while (op_cnt--) {
+            uint64_t key;
+
+            if (hit_bar >= (gen_key_hittable() & (~(uint32_t(0))))) {
+                int key_ind = rgen64() % key_ind_range;
+                key = key_vec[key_ind];
+                // TODO: consider ptr here
+            } else {
+                key = gen_key_miss();
+                // TODO: consider ptr here
+            }
+
+            query_key_vec.push_back(key);
+        }
     }
 }
 
@@ -496,9 +515,9 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
       table_size(para.table_size),
       opt_num(para.opt_num),
       thread_num(para.thread_num),
-      if_resize(para.if_resize),
       load_factor(para.load_factor),
       hit_ratio(para.hit_percent),
+      zipfian_skew(para.zipfian_skew),
       rand_mem_free(para.rand_mem_free),
       rgen64(rng::random_device_seed{}()),
       rgen128(rng::random_device_seed{}()) {
@@ -560,12 +579,12 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
         case BenchmarkObjectType::RESIZABLE_SKULKERHT: {
             uint64_t part_num = 10;
             obj = new BenchmarkResizableSkulkerHT(table_size / part_num,
-                                                  part_num);
+                                                  part_num, thread_num);
         } break;
         case BenchmarkObjectType::RESIZABLE_BYTEARRAYCHAINEDHT: {
-            uint64_t part_num = 10;
+            uint64_t part_num = 1;
             obj = new BenchmarkResizableByteArrayChainedHT(
-                table_size / part_num, part_num);
+                table_size / part_num, part_num, thread_num);
         } break;
         default:
             abort();
@@ -953,11 +972,19 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
                     vec_to_ops(key_vec, value_vec, ops, ConcOptType::INSERT);
                 }
 
+                auto start = std::chrono::high_resolution_clock::now();
+
                 if (thread_num) {
                     obj->ConcurrentRun(ops, thread_num);
                 } else {
                     obj_fill(key_vec, value_vec);
                 }
+
+                auto end = std::chrono::high_resolution_clock::now();
+                auto duration =
+                    std::chrono::duration_cast<std::chrono::milliseconds>(end -
+                                                                          start)
+                        .count();
 
                 std::vector<uint64_t> query_key_vec;
                 std::vector<uint8_t> query_ptr_vec;
@@ -968,7 +995,18 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
                     vec_to_ops(query_key_vec, ops, ConcOptType::QUERY);
                 }
 
-                auto start = std::chrono::high_resolution_clock::now();
+                output_stream << "Insert CPU Time: " << duration << " ms"
+                              << std::endl;
+
+                output_stream << "Insert Throughput: "
+                              << int(double(opt_num) / (duration / 1000.0))
+                              << " ops/s" << std::endl;
+
+                output_stream << "Insert Latency: "
+                              << int(duration * 1000000.0 / double(opt_num))
+                              << " ns/op" << std::endl;
+
+                start = std::chrono::high_resolution_clock::now();
 
                 if (thread_num) {
                     obj->ConcurrentRun(ops, thread_num);
@@ -976,19 +1014,20 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
                     batch_query(query_key_vec);
                 }
 
-                auto end = std::chrono::high_resolution_clock::now();
-                auto duration =
+                end = std::chrono::high_resolution_clock::now();
+                duration =
                     std::chrono::duration_cast<std::chrono::milliseconds>(end -
                                                                           start)
                         .count();
 
-                output_stream << "CPU Time: " << duration << " ms" << std::endl;
+                output_stream << "Query CPU Time: " << duration << " ms"
+                              << std::endl;
 
-                output_stream << "Throughput: "
+                output_stream << "Query Throughput: "
                               << int(double(opt_num) / (duration / 1000.0))
                               << " ops/s" << std::endl;
 
-                output_stream << "Latency: "
+                output_stream << "Query Latency: "
                               << int(duration * 1000000.0 / double(opt_num))
                               << " ns/op" << std::endl;
             };

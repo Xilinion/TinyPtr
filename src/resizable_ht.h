@@ -204,6 +204,12 @@ class ResizableHT {
                 part_resize_threshold[part_id] =
                     uint64_t(part_size[part_id] * resize_threshold);
 
+                // std::cerr << "part_cnt: " << part_cnt[part_index].load()
+                //           << std::endl;
+                // std::cerr << "part_size: " << part_size[part_id] << std::endl;
+                // std::cerr << "part_resize_threshold: "
+                //           << part_resize_threshold[part_id] << std::endl;
+
                 part_resizing_stride_done[part_index].store(0);
 
                 thread_working_lock[handle].store(part_id);

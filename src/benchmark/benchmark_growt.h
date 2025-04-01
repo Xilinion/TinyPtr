@@ -17,10 +17,9 @@ using allocator_type = growt::AlignedAllocator<>;
 
 #include "data-structures/table_config.hpp"
 
-using table_type = typename growt::table_config<uint64_t, uint64_t, hasher_type,
-                                                allocator_type, hmod::growable,
-                                                hmod::deletion>::table_type;
-
+using table_type =
+    typename growt::table_config<uint64_t, uint64_t, hasher_type,
+                                 allocator_type, hmod::growable>::table_type;
 
 namespace tinyptr {
 

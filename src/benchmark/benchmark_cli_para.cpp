@@ -20,7 +20,7 @@ std::string BenchmarkCLIPara::GetOuputFileName() {
 void BenchmarkCLIPara::Parse(int argc, char** argv) {
     this->configuring_getopt();
     for (int c;
-         (c = getopt(argc, argv, "o:c:e:t:p:l:h:f:q:b:m:y:s:n:r")) != -1;) {
+         (c = getopt(argc, argv, "o:c:e:t:p:l:h:f:q:b:m:y:s:n:z:")) != -1;) {
         switch (c) {
             // TODO: add validity check of parameters
             case 'o':
@@ -67,8 +67,8 @@ void BenchmarkCLIPara::Parse(int argc, char** argv) {
             case 'n':
                 thread_num = std::stoi(optarg);
                 break;
-            case 'r':
-                if_resize = 1;
+            case 'z':
+                zipfian_skew = std::stod(optarg);
                 break;
             case '?':
                 // if (optopt == 'f')

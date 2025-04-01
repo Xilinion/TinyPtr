@@ -43,6 +43,8 @@ class ConcurrentByteArrayChainedHT {
     ConcurrentByteArrayChainedHT(uint64_t size, uint16_t bin_size);
     ConcurrentByteArrayChainedHT(uint64_t size);
 
+    ~ConcurrentByteArrayChainedHT();
+
    protected:
     __attribute__((always_inline)) inline uint64_t hash_1(uint64_t key) {
         return XXH64(&key, sizeof(uint64_t), kHashSeed1);

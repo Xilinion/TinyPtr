@@ -96,6 +96,8 @@ class ConcurrentSkulkerHT {
     ConcurrentSkulkerHT(uint64_t size, uint16_t bin_size);
     ConcurrentSkulkerHT(uint64_t size);
 
+    ~ConcurrentSkulkerHT();
+
     bool Insert(uint64_t key, uint64_t value);
     bool Query(uint64_t key, uint64_t* value_ptr);
     bool Update(uint64_t key, uint64_t value);
@@ -110,10 +112,8 @@ class ConcurrentSkulkerHT {
     uint8_t* base_tab;
     uint8_t* bin_cnt_head;
 
-    std::unique_ptr<std::atomic_flag[]> bush_locks;
     std::unique_ptr<std::atomic_flag[]> bin_locks;
 
-    size_t bush_locks_size;
     size_t bin_locks_size;
 
     uint64_t resize_stride_size;
@@ -381,10 +381,17 @@ class ConcurrentSkulkerHT {
         uint8_t exhibitor_num, uint8_t item_cnt) {
 
         thread_local static uint8_t* play_entry = new uint8_t[kEntryByteLength];
+        thread_local static uint64_t* play_1 =
+            reinterpret_cast<uint64_t*>(play_entry);
+        thread_local static uint64_t* play_2 =
+            reinterpret_cast<uint64_t*>(play_entry + kValueOffset);
 
         // convert the last exhibitor to the first skulker
         memcpy(play_entry, bush + (exhibitor_num - 1) * kEntryByteLength,
                kEntryByteLength);
+        // *play_1 = *(uint64_t*)(bush + (exhibitor_num - 1) * kEntryByteLength);
+        // *play_2 = *(uint64_t*)(bush + (exhibitor_num - 1) * kEntryByteLength +
+        //                        kValueOffset);
 
         // exhibitor spills and converts the last exhibitor to the first skulker
         for (uint8_t* i = bush + kSkulkerOffset - (item_cnt - exhibitor_num);
@@ -393,6 +400,11 @@ class ConcurrentSkulkerHT {
         }
 
         // get the base_id of the last exhibitor
+
+        uint32_t hide_in_bush_offset = _tzcnt_u32(
+            _pdep_u32(1u << (item_cnt - exhibitor_num), control_info));
+
+        /*
         uint8_t hide_in_bush_offset = 0;
         uint16_t control_info_before_spilled =
             control_info >> (hide_in_bush_offset + 1);
@@ -404,6 +416,7 @@ class ConcurrentSkulkerHT {
             control_info_before_spilled =
                 control_info >> (hide_in_bush_offset + 1);
         }
+        */
 
         uintptr_t spilled_base_id = bush_offset + hide_in_bush_offset;
 
@@ -422,6 +435,10 @@ class ConcurrentSkulkerHT {
 
             memcpy(bush + (exhibitor_num - 1) * kEntryByteLength, play_entry,
                    kEntryByteLength);
+            // *(uint64_t*)(bush + (exhibitor_num - 1) * kEntryByteLength) =
+            //     *play_1;
+            // *(uint64_t*)(bush + (exhibitor_num - 1) * kEntryByteLength +
+            //              kValueOffset) = *play_2;
 
             return false;
         }
@@ -442,6 +459,11 @@ class ConcurrentSkulkerHT {
         }
 
         // get the base_id of the first skulker
+
+        uint32_t raid_in_bush_offset = _tzcnt_u32(
+            _pdep_u32(1u << (item_cnt - exhibitor_num - 1), control_info));
+
+        /*
         uint8_t raid_in_bush_offset = 0;
         uint16_t control_info_before_spilled =
             control_info >> (raid_in_bush_offset + 1);
@@ -453,6 +475,7 @@ class ConcurrentSkulkerHT {
             control_info_before_spilled =
                 control_info >> (raid_in_bush_offset + 1);
         }
+        */
 
         uint8_t* pre_tiny_ptr = exhibitor_ptr + kTinyPtrOffset;
         uintptr_t pre_deref_key = bush_offset + raid_in_bush_offset;

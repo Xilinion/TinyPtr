@@ -1,4 +1,5 @@
 #include "skulker_ht.h"
+#include <sys/mman.h>
 #include <cstdint>
 #include <cstring>
 
@@ -77,6 +78,39 @@ SkulkerHT::SkulkerHT(uint64_t size, uint8_t quotienting_tail_length,
     assert(4 * size >= (1ULL << (kQuotientingTailLength)));
     assert(bin_size < 128);
 
+    // Calculate individual sizes
+    uint64_t bush_size = kBushNum * kBushByteLength;
+    uint64_t byte_array_size = kBinNum * kBinSize * kEntryByteLength;
+    uint64_t bin_cnt_size = kBinNum << 1;
+
+    // Align each section to 64 bytes
+    uint64_t bush_size_aligned = (bush_size + 63) & ~static_cast<uint64_t>(63);
+    uint64_t byte_array_size_aligned =
+        (byte_array_size + 63) & ~static_cast<uint64_t>(63);
+    uint64_t bin_cnt_size_aligned =
+        (bin_cnt_size + 63) & ~static_cast<uint64_t>(63);
+
+    // Total size for combined allocation
+    uint64_t total_size =
+        bush_size_aligned + byte_array_size_aligned + bin_cnt_size_aligned;
+
+    // Allocate a single aligned block
+    void* combined_mem;
+
+    combined_mem = mmap(NULL, total_size, PROT_READ | PROT_WRITE,
+                        MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
+
+    uint8_t* base =
+        (uint8_t*)((uint64_t)(combined_mem + 63) & ~static_cast<uint64_t>(63));
+    bush_tab = base;
+    base += bush_size_aligned;
+
+    byte_array = base;
+    base += byte_array_size_aligned;
+
+    bin_cnt_head = base;
+
+    /*
     (void)posix_memalign(reinterpret_cast<void**>(&bush_tab), 64,
                          kBushNum * kBushByteLength);
     memset(bush_tab, 0, kBushNum * kBushByteLength);
@@ -88,7 +122,7 @@ SkulkerHT::SkulkerHT(uint64_t size, uint8_t quotienting_tail_length,
     (void)posix_memalign(reinterpret_cast<void**>(&bin_cnt_head), 64,
                          kBinNum << 1);
     memset(bin_cnt_head, 0, kBinNum << 1);
-
+*/
     /*
     for (uint64_t i = 0, ptr_offset = kTinyPtrOffset; i < kBinNum; i++) {
         for (uint8_t j = 0; j < kBinSize - 1; j++) {

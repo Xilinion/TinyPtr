@@ -26,13 +26,13 @@ class BenchmarkCLIPara {
 
     int thread_num = 0;
 
-    int if_resize = 0;
-
     int table_size;
     uint64_t opt_num;
 
     double load_factor;
     double hit_percent;
+
+    double zipfian_skew = 0.0;
 
     int quotienting_tail_length;
     int bin_size;

@@ -50,7 +50,7 @@ ConcurrentByteArrayChainedHT::ConcurrentByteArrayChainedHT(
 
     bin_locks_size = kBinNum;
     // currently use the sqaure of number of threads, can modify later
-    base_tab_concurrent_version_size = num_threads * num_threads;
+    base_tab_concurrent_version_size = num_threads * num_threads * num_threads;
 
     bin_locks = std::make_unique<std::atomic_flag[]>(bin_locks_size);
     base_tab_concurrent_version =
@@ -66,7 +66,7 @@ ConcurrentByteArrayChainedHT::ConcurrentByteArrayChainedHT(
 
     uint64_t base_tab_size = kBaseTabSize;
     uint64_t byte_array_size = kBinNum * kBinSize * kEntryByteLength;
-    uint64_t bin_cnt_size = kBinNum << 1;  // Assuming this is in bytes
+    uint64_t bin_cnt_size = kBinNum << 1;
 
     // Align each section to 64 bytes
     uint64_t base_tab_size_aligned =
@@ -149,6 +149,12 @@ ConcurrentByteArrayChainedHT::ConcurrentByteArrayChainedHT(uint64_t size,
 
 ConcurrentByteArrayChainedHT::ConcurrentByteArrayChainedHT(uint64_t size)
     : ConcurrentByteArrayChainedHT(size, 0, 127) {}
+
+ConcurrentByteArrayChainedHT::~ConcurrentByteArrayChainedHT() {
+    munmap(byte_array, kBinNum * kBinSize * kEntryByteLength);
+    munmap(base_tab, kBaseTabSize);
+    munmap(bin_cnt_head, kBinNum << 1);
+}
 
 uint64_t ConcurrentByteArrayChainedHT::limited_base_id(uint64_t key) {
     if (limited_base_cnt < limited_base_entry_num) {

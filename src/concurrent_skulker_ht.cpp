@@ -111,16 +111,10 @@ ConcurrentSkulkerHT::ConcurrentSkulkerHT(uint64_t size,
             4;  // Fallback to a default value if hardware_concurrency is not available
     }
 
-    bush_locks_size = num_threads * num_threads * 10;
     bin_locks_size = kBinNum;
 
-    bush_locks = std::make_unique<std::atomic_flag[]>(bush_locks_size);
     bin_locks = std::make_unique<std::atomic_flag[]>(bin_locks_size);
 
-    // Initialize all atomic flags to clear
-    for (size_t i = 0; i < bush_locks_size; ++i) {
-        bush_locks[i].clear();
-    }
     for (size_t i = 0; i < bin_locks_size; ++i) {
         bin_locks[i].clear();
     }
@@ -144,7 +138,7 @@ ConcurrentSkulkerHT::ConcurrentSkulkerHT(uint64_t size,
     // Calculate individual sizes
     uint64_t bush_size = kBushNum * kBushByteLength;
     uint64_t byte_array_size = kBinNum * kBinSize * kEntryByteLength;
-    uint64_t bin_cnt_size = kBinNum << 1;  // Assuming this is in bytes
+    uint64_t bin_cnt_size = kBinNum << 1;
 
     // Align each section to 64 bytes
     uint64_t bush_size_aligned = (bush_size + 63) & ~static_cast<uint64_t>(63);
@@ -251,6 +245,12 @@ ConcurrentSkulkerHT::ConcurrentSkulkerHT(uint64_t size, uint16_t bin_size)
 ConcurrentSkulkerHT::ConcurrentSkulkerHT(uint64_t size)
     : ConcurrentSkulkerHT(size, 0, 127) {}
 
+ConcurrentSkulkerHT::~ConcurrentSkulkerHT() {
+    munmap(bush_tab, kBushNum * kBushByteLength);
+    munmap(byte_array, kBinNum * kBinSize * kEntryByteLength);
+    munmap(bin_cnt_head, kBinNum << 1);
+}
+
 bool ConcurrentSkulkerHT::Insert(uint64_t key, uint64_t value) {
     uint64_t base_id = hash_base_id(key);
 
@@ -287,12 +287,17 @@ bool ConcurrentSkulkerHT::Insert(uint64_t key, uint64_t value) {
 
     uint16_t& control_info = *reinterpret_cast<uint16_t*>(
         bush_tab + (bush_id << kBushIdShiftOffset) + kControlOffset);
-    uint8_t item_cnt = kBushLookup[control_info & kByteMask] +
-                       kBushLookup[(control_info >> kByteShift)];
     uint16_t control_info_before_item = control_info >> in_bush_offset;
-    uint8_t before_item_cnt =
-        kBushLookup[control_info_before_item & kByteMask] +
-        kBushLookup[(control_info_before_item >> kByteShift)];
+
+    uint8_t item_cnt = uint8_t(_popcnt32(control_info));
+    uint8_t before_item_cnt = uint8_t(_popcnt32(control_info_before_item));
+
+    // uint8_t before_item_cnt =
+    //     kBushLookup[control_info_before_item & kByteMask] +
+    //     kBushLookup[(control_info_before_item >> kByteShift)];
+
+    // uint8_t item_cnt = kBushLookup[control_info & kByteMask] +
+    //                    kBushLookup[(control_info >> kByteShift)];
 
     if ((control_info >> in_bush_offset) & 1) {
 
@@ -389,6 +394,25 @@ bool ConcurrentSkulkerHT::Insert(uint64_t key, uint64_t value) {
                     bush + before_item_cnt * kEntryByteLength,
                     kEntryByteLength * (exhibitor_num - before_item_cnt - 1));
 
+            // if (exhibitor_num - before_item_cnt < 5) {
+            //     uint64_t* src = reinterpret_cast<uint64_t*>(
+            //         bush + before_item_cnt * kEntryByteLength);
+            //     src--;
+            //     uint64_t* src_ind = reinterpret_cast<uint64_t*>(
+            //         bush + before_item_cnt * kEntryByteLength +
+            //         kEntryByteLength * (exhibitor_num - before_item_cnt - 1));
+            //     src_ind--;
+            //     uint64_t* dst_ind = reinterpret_cast<uint64_t*>(
+            //         bush + (before_item_cnt + 1) * kEntryByteLength +
+            //         kEntryByteLength * (exhibitor_num - before_item_cnt - 1));
+            //     dst_ind--;
+            //     while (src < src_ind) {
+            //         *dst_ind = *src_ind;
+            //         dst_ind--;
+            //         src_ind--;
+            //     }
+            // }
+
             uint8_t* new_entry = bush + before_item_cnt * kEntryByteLength;
             new_entry[kTinyPtrOffset] = 0;
             *(uint64_t*)(new_entry + kKeyOffset) =
@@ -403,7 +427,7 @@ bool ConcurrentSkulkerHT::Insert(uint64_t key, uint64_t value) {
 }
 
 bool ConcurrentSkulkerHT::Query(uint64_t key, uint64_t* value_ptr) {
-#ifdef USE_CONCURRENT_VERSION_QUERY
+#ifdef USE_LOCK_BASED_VERSION_QUERY
     uint64_t base_id = hash_base_id(key);
 
     // do fast division
@@ -519,12 +543,16 @@ query_again:
 
     uint16_t& control_info = *reinterpret_cast<uint16_t*>(
         bush_tab + (bush_id << kBushIdShiftOffset) + kControlOffset);
-    uint8_t item_cnt = kBushLookup[control_info & kByteMask] +
-                       kBushLookup[(control_info >> kByteShift)];
     uint16_t control_info_before_item = control_info >> in_bush_offset;
-    uint8_t before_item_cnt =
-        kBushLookup[control_info_before_item & kByteMask] +
-        kBushLookup[(control_info_before_item >> kByteShift)];
+
+    uint8_t item_cnt = uint8_t(_popcnt32(control_info));
+    uint8_t before_item_cnt = uint8_t(_popcnt32(control_info_before_item));
+
+    // uint8_t item_cnt = kBushLookup[control_info & kByteMask] +
+    //                    kBushLookup[(control_info >> kByteShift)];
+    // uint8_t before_item_cnt =
+    //     kBushLookup[control_info_before_item & kByteMask] +
+    //     kBushLookup[(control_info_before_item >> kByteShift)];
 
     uint8_t overload_flag = item_cnt > (kInitSkulkerNum + kInitExhibitorNum);
 
@@ -618,12 +646,16 @@ bool ConcurrentSkulkerHT::Update(uint64_t key, uint64_t value) {
 
     uint16_t& control_info = *reinterpret_cast<uint16_t*>(
         bush_tab + (bush_id << kBushIdShiftOffset) + kControlOffset);
-    uint8_t item_cnt = kBushLookup[control_info & kByteMask] +
-                       kBushLookup[(control_info >> kByteShift)];
     uint16_t control_info_before_item = control_info >> in_bush_offset;
-    uint8_t before_item_cnt =
-        kBushLookup[control_info_before_item & kByteMask] +
-        kBushLookup[(control_info_before_item >> kByteShift)];
+
+    uint8_t item_cnt = uint8_t(_popcnt32(control_info));
+    uint8_t before_item_cnt = uint8_t(_popcnt32(control_info_before_item));
+
+    // uint8_t item_cnt = kBushLookup[control_info & kByteMask] +
+    //                    kBushLookup[(control_info >> kByteShift)];
+    // uint8_t before_item_cnt =
+    //     kBushLookup[control_info_before_item & kByteMask] +
+    //     kBushLookup[(control_info_before_item >> kByteShift)];
 
     uint8_t overload_flag = item_cnt > (kInitSkulkerNum + kInitExhibitorNum);
 
@@ -703,12 +735,16 @@ void ConcurrentSkulkerHT::Free(uint64_t key) {
 
     uint16_t& control_info = *reinterpret_cast<uint16_t*>(
         bush_tab + (bush_id << kBushIdShiftOffset) + kControlOffset);
-    uint8_t item_cnt = kBushLookup[control_info & kByteMask] +
-                       kBushLookup[(control_info >> kByteShift)];
     uint16_t control_info_before_item = control_info >> in_bush_offset;
-    uint8_t before_item_cnt =
-        kBushLookup[control_info_before_item & kByteMask] +
-        kBushLookup[(control_info_before_item >> kByteShift)];
+
+    uint8_t item_cnt = uint8_t(_popcnt32(control_info));
+    uint8_t before_item_cnt = uint8_t(_popcnt32(control_info_before_item));
+
+    // uint8_t item_cnt = kBushLookup[control_info & kByteMask] +
+    //                    kBushLookup[(control_info >> kByteShift)];
+    // uint8_t before_item_cnt =
+    //     kBushLookup[control_info_before_item & kByteMask] +
+    //     kBushLookup[(control_info_before_item >> kByteShift)];
 
     uint8_t overload_flag = item_cnt > (kInitSkulkerNum + kInitExhibitorNum);
 
@@ -731,6 +767,22 @@ void ConcurrentSkulkerHT::Free(uint64_t key) {
                         bush + (before_item_cnt - 1) * kEntryByteLength,
                         bush + before_item_cnt * kEntryByteLength,
                         kEntryByteLength * (exhibitor_num - before_item_cnt));
+
+                    // if (before_item_cnt < 5) {
+                    //     uint64_t* src_end = reinterpret_cast<uint64_t*>(
+                    //         bush + before_item_cnt * kEntryByteLength +
+                    //         kEntryByteLength *
+                    //             (exhibitor_num - before_item_cnt));
+                    //     uint64_t* src_ind = reinterpret_cast<uint64_t*>(
+                    //         bush + before_item_cnt * kEntryByteLength);
+                    //     uint64_t* dst_ind = reinterpret_cast<uint64_t*>(
+                    //         bush + (before_item_cnt - 1) * kEntryByteLength);
+                    //     while (src_ind < src_end) {
+                    //         *dst_ind = *src_ind;
+                    //         dst_ind++;
+                    //         src_ind++;
+                    //     }
+                    // }
 
                     control_info &= ~(1u << in_bush_offset);
                     item_cnt--;

@@ -91,14 +91,25 @@ function CompileWithOption() {
     fi
 }
 
+function CommonArgs() {
+    echo "-o $object_id -c $case_id -e $entry_id -t $table_size -p $opt_num -l $load_factor -h $hit_percent -b $bin_size -q $quotient_tail_length -n $thread_num -z $zipfian_skew -f "$res_path""
+}
+
+function WarmUp() {
+    echo "== begin warming up: $args"
+    numactl --cpunodebind=1 --membind=1 ../build/tinyptr $args
+}
+
 function Run() {
     #####native execution
 
-    args="-o $object_id -c $case_id -e $entry_id -t $table_size -p $opt_num -l $load_factor -h $hit_percent -b $bin_size -q $quotient_tail_length -n $thread_num $resize_op -f "$res_path""
+    args=$(CommonArgs)
+
+    WarmUp
 
     echo "== begin benchmarking: $args"
 
-    output=$(../build/tinyptr $args 2>&1)
+    output=$(numactl --cpunodebind=1 --membind=1 ../build/tinyptr $args 2>&1)
 
     echo "$output"
 
@@ -120,11 +131,13 @@ function RunYCSB() {
         ycsb_exe_path=$ycsb_c_exe_file
     fi
 
-    args="-o $object_id -c $case_id -e $entry_id -t $table_size -p $opt_num -l $load_factor -h $hit_percent -b $bin_size -q $quotient_tail_length -y $ycsb_load_path -s $ycsb_exe_path -n $thread_num $resize_op -f "$res_path""
+    args="-o $object_id -c $case_id -e $entry_id -t $table_size -p $opt_num -l $load_factor -h $hit_percent -b $bin_size -q $quotient_tail_length -y $ycsb_load_path -s $ycsb_exe_path -n $thread_num -f "$res_path""
+
+    WarmUp
 
     echo "== begin benchmarking: $args"
 
-    output=$(../build/tinyptr $args 2>&1)
+    output=$(numactl --cpunodebind=1 --membind=1 ../build/tinyptr $args 2>&1)
 
     echo "$output"
 
@@ -136,11 +149,13 @@ function RunYCSB() {
 function RunRandMemFree() {
     #####native execution
 
-    args="-o $object_id -c $case_id -e $entry_id -t $table_size -p $opt_num -l $load_factor -h $hit_percent -b $bin_size -q $quotient_tail_length -n $thread_num $resize_op -m -f "$res_path""
+    args="-o $object_id -c $case_id -e $entry_id -t $table_size -p $opt_num -l $load_factor -h $hit_percent -b $bin_size -q $quotient_tail_length -n $thread_num -m -f "$res_path""
+
+    WarmUp
 
     echo "== begin benchmarking: $args"
 
-    ../build/tinyptr $args &
+    numactl --cpunodebind=1 --membind=1 ../build/tinyptr $args &
 
     # sleep 1
 
@@ -148,7 +163,9 @@ function RunRandMemFree() {
 
     echo "pid: $pid"
 
-    psrecord $pid --interval 0.1 --log activity.log --plot plot.png
+    log_file="$res_path/object_${object_id}_case_${case_id}_entry_${entry_id}_memuse.txt"
+
+    psrecord $pid --interval 0.1 --log $log_file --plot plot.png
 
     wait $pid
 
@@ -158,11 +175,8 @@ function RunRandMemFree() {
 }
 
 function RunPerf() {
-    # warm up
 
-    args="-o $object_id -c $case_id -e $entry_id -t $table_size -p $opt_num -l $load_factor -h $hit_percent -b $bin_size -q $quotient_tail_length -n $thread_num $resize_op -f "$res_path""
-
-    ../build/tinyptr $args
+    args=$(CommonArgs)
 
     perf stat -a -e task-clock,context-switches,cpu-migrations,page-faults,cycles,stalled-cycles-frontend,stalled-cycles-backend,instructions,branches,branch-misses,L1-dcache-loads,L1-dcache-load-misses,L1-dcache-prefetches,L1-icache-loads,L1-icache-load-misses,branch-load-misses,branch-loads,LLC-loads,LLC-load-misses,dTLB-loads,dTLB-load-misses,cache-misses,cache-references -o "$res_path/object_${object_id}_case_${case_id}_entry_${entry_id}_perf.txt" -- ../build/tinyptr $args
 
@@ -172,11 +186,8 @@ function RunPerf() {
 }
 
 function FlameGraph() {
-    # warm up
 
-    args="-o $object_id -c $case_id -e $entry_id -t $table_size -p $opt_num -l $load_factor -h $hit_percent -b $bin_size -q $quotient_tail_length -n $thread_num $resize_op -f "$res_path""
-
-    ../build/tinyptr $args
+    args=$(CommonArgs)
 
     perf record -F 499 -a -g -- ../build/tinyptr $args
 
@@ -193,9 +204,7 @@ function FlameGraph() {
 
 function FlameGraphEntry() {
     # warm up
-    args="-o $object_id -c $case_id -e $entry_id -t $table_size -p $opt_num -l $load_factor -h $hit_percent -b $bin_size -q $quotient_tail_length -n $thread_num $resize_op -f "$res_path""
-
-    ../build/tinyptr $args
+    args=$(CommonArgs)
 
     echo "== benchmark with flamegraph: $args"
 
@@ -211,10 +220,7 @@ function FlameGraphEntry() {
 }
 
 function RunValgrind() {
-    # warm up
-    args="-o $object_id -c $case_id -e $entry_id -t $table_size -p $opt_num -l $load_factor -h $hit_percent -b $bin_size -q $quotient_tail_length -n $thread_num $resize_op -f "$res_path""
-
-    ../build/tinyptr $args
+    args=$(CommonArgs)
 
     echo "== benchmark with valgrind: $args"
 
@@ -227,6 +233,14 @@ function RunValgrind() {
     echo "== file path: "${cachegrind_prefix}_cachegrind_stdout.txt""
     echo "== file path: "${cachegrind_prefix}_cachegrind.out.txt""
     echo "== file path: "${cachegrind_prefix}_cachegrind_annotate.txt""
+}
+
+function RunValgrindCheckLeak() {
+    args=$(CommonArgs)
+
+    echo "== benchmark with valgrind: $args"
+
+    sudo valgrind --tool=memcheck --leak-check=full --show-reachable=yes --track-origins=yes ../build/tinyptr $args
 }
 
 function RunCTest() {
@@ -243,7 +257,7 @@ compile_option=1
 CompileWithOption
 
 thread_num=0
-resize_op=""
+zipfian_skew=0
 
 table_size=1
 opt_num=0
@@ -253,16 +267,6 @@ quotient_tail_length=0
 bin_size=127
 
 # RunCTest
-
-# ../build/concurrent_skulker_ht_test
-# ../build/concurrent_growt_ht_test
-# ../build/resizable_empty_ht_test
-# ../build/resizable_byte_array_ht_test
-# ../build/resizable_skulker_ht_test
-# ../build/concurrent_byte_array_chained_ht_test
-# ../build/skulker_ht_test
-
-# ../build/byte_array_chainedht_test
 
 # for case_id in 1; do
 #     for object_id in 7; do
@@ -275,37 +279,64 @@ bin_size=127
 #     done
 # done
 
-for case_id in 9 10; do
-    for object_id in 14; do
-        entry_id=0
-        for table_size in 10000000; do
-            opt_num=$table_size
-            Run
+# thread_num=1
+# for case_id in 1 6 7; do
+#     for object_id in 14 15; do
+#         # for object_id in 13; do
+#         entry_id=0
+#         for table_size in 17108864; do
+#             opt_num=5753420
+#             Run
+#             # output=$(Run)
+#             # echo "$output"
+#             let "entry_id++"
+#         done
+#     done
+# done
+# thread_num=0
+
+# exit
+
+thread_num=16
+for case_id in 17 18 19; do
+    for object_id in 16 15; do
+        entry_id=1000
+        for table_size in 268435456; do
+        # for table_size in 161061273; do
+        # for table_size in 67108864; do
+            # for asdf in 1 2; do
+            output=$(RunYCSB)
+            echo "$output"
             let "entry_id++"
+            # done
         done
     done
 done
+thread_num=0
 
 exit
+
+# YCSB without resize
 
 thread_num=16
 for case_id in 17 18 19; do
     for object_id in 6 7 14 15 17; do
         entry_id=0
         for table_size in 268435456; do
-            RunYCSB
-            # output=$(RunYCSB)
-            # echo "$output"
+            output=$(RunYCSB)
+            echo "$output"
             let "entry_id++"
         done
     done
 done
 thread_num=0
 
+# YCSB with resize
+
 thread_num=16
 for case_id in 17 18 19; do
     for object_id in 6 7 16 15 18; do
-        entry_id=0
+        entry_id=1
         for table_size in 16777216; do
             output=$(RunYCSB)
             echo "$output"
@@ -315,31 +346,109 @@ for case_id in 17 18 19; do
 done
 thread_num=0
 
+# micro benchmark
+
+thread_num=16
+for case_id in 1 3 6 7; do
+    for object_id in 6 7 14 15 17; do
+        entry_id=0
+        for table_size in 67108864; do
+            opt_num=63753420
+            output=$(Run)
+            echo "$output"
+            let "entry_id++"
+        done
+    done
+done
+thread_num=0
+
+# scaling
+
+for case_id in 1 3 6 7; do
+    for object_id in 6 7 14 15 17; do
+        entry_id=10
+        for table_size in 67108864; do
+            opt_num=63753420
+            for thread_num in 1 2 4 8 16 32; do
+                output=$(Run)
+                echo "$output"
+                let "entry_id++"
+            done
+        done
+    done
+done
+thread_num=0
+
+# progressive latency
+
+for case_id in 9 10; do
+    for object_id in 4 6 7 12 15; do
+        entry_id=0
+        for table_size in 67108864; do
+            for load_factor in 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 0.95; do
+                opt_num=$table_size
+                output=$(Run)
+                echo "$output"
+                let "entry_id++"
+            done
+        done
+    done
+done
+
+# load factor support
+
+for case_id in 0; do
+    for object_id in 4; do
+        entry_id=0
+        for table_size in 67108864; do
+            for bin_size in 3 7 15 31 63 127; do
+                opt_num=$table_size
+                output=$(Run)
+                echo "$output"
+                let "entry_id++"
+            done
+        done
+    done
+done
+
+# Throughput / Space Efficiency
+
+for case_id in 1; do
+    for object_id in 4 6 7 12 15; do
+        entry_id=100
+        for table_size in 67108864; do
+            for load_factor in 0.05 0.1 0.15 0.2 0.25 0.3 0.35 0.4 0.45 0.5 0.55 0.6 0.65 0.7 0.75 0.8 0.85 0.9 0.95; do
+                opt_num=$(printf "%.0f" $(echo "$table_size * $load_factor" | bc -l))
+                output=$(RunRandMemFree)
+                echo "$output"
+                output=$(Run)
+                echo "$output"
+                let "entry_id++"
+            done
+        done
+    done
+done
+
 exit
 
 # load factor with deletion
 
-for case_id in 1 2 3 6 7; do
-    for object_id in 4 7 12 15; do
-        # for object_id in 3 4 6 7 10 12; do
+for case_id in 16; do
+    for object_id in 4; do
         entry_id=0
-        # for table_size in 1000000 2000000 4000000 8000000 16000000 32000000 64000000 128000000; do
-        for table_size in 100000000; do
+        for table_size in 67108864; do
             opt_num=$table_size
+            for bin_size in 3 7 15 31 63 127; do
+                for load_factor in 0.99 0.98 0.97 0.96 0.95 0.94 0.93 0.92 0.91 0.90 0.89 0.88 0.87 0.86 0.85 0.84 0.83 0.82 0.81 0.80 0.79 0.78 0.77 0.76 0.75 0.74 0.73 0.72 0.71 0.70 0.69 0.68 0.67 0.66 0.65 0.64 0.63 0.62 0.61 0.60 0.59 0.58 0.57 0.56 0.55 0.54 0.53 0.52 0.51 0.50 0.49 0.48 0.47 0.46 0.; do
+                    output=$(Run)
+                    echo "$output"
 
-            # RunValgrind
-            # RunPerf
-            # FlameGraph
-            # RunRandMemFree
-            # sleep 3
-            output=$(Run)
-            # output=$(RunRandMemFree)
-            echo "$output"
-
-            let "entry_id++"
-            if echo "$output" | grep -q "good"; then
-                break
-            fi
+                    let "entry_id++"
+                    if echo "$output" | grep -q "good"; then
+                        break
+                    fi
+                done
+            done
 
         done
     done

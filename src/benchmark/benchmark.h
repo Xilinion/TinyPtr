@@ -20,6 +20,40 @@ class Benchmark {
    public:
     static constexpr double kEps = 1e-6;
 
+   private:
+    class ZipfianGenerator {
+       public:
+        ZipfianGenerator(int n, double skew)
+            : n_(n), gen_(std::random_device{}()) {
+            lookup_.resize(n_);
+
+            double sum = 0.0;
+            for (int i = 1; i <= n_; i++) {
+                sum += 1.0 / std::pow(i, skew);
+            }
+
+            double cumulative = 0.0;
+            for (int i = 1; i <= n_; i++) {
+                double p = (1.0 / std::pow(i, skew)) / sum;
+                cumulative += p;
+                int idx_end = static_cast<int>(cumulative * n_);
+                for (int j =
+                         (i == 1 ? 0 : static_cast<int>((cumulative - p) * n_));
+                     j < idx_end; j++) {
+                    lookup_[j] = i - 1;
+                }
+            }
+            lookup_[n_ - 1] = n_ - 1;
+        }
+
+        int next() { return lookup_[gen_() % n_]; }
+
+       private:
+        int n_;
+        std::mt19937 gen_;
+        std::vector<int> lookup_;
+    };
+
    public:
     Benchmark(BenchmarkCLIPara& para);
     ~Benchmark() = default;
@@ -90,9 +124,9 @@ class Benchmark {
     uint64_t table_size;
     uint64_t opt_num;
     uint64_t thread_num;
-    int if_resize;
     double load_factor;
     double hit_ratio;
+    double zipfian_skew;
 
     BenchmarkObject64* obj;
 
