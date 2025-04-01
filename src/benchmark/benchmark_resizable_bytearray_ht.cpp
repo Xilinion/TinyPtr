@@ -12,25 +12,38 @@ BenchmarkResizableByteArrayChainedHT::BenchmarkResizableByteArrayChainedHT(
     tab = new ResizableByteArrayChainedHT(initial_size_per_part_, part_num_,
                                           thread_num_, resize_threshold_,
                                           resize_factor_);
+    if (!thread_num_) {
+        single_handle = tab->GetHandle();
+    }
+    thread_num = thread_num_;
+}
+
+BenchmarkResizableByteArrayChainedHT::~BenchmarkResizableByteArrayChainedHT() {
+    if (!thread_num) {
+        tab->FreeHandle(single_handle);
+    }
+    delete tab;
 }
 
 uint8_t BenchmarkResizableByteArrayChainedHT::Insert(uint64_t key,
                                                      uint64_t value) {
-    return 0;
+    return tab->Insert(single_handle, key, value);
 }
 
 uint64_t BenchmarkResizableByteArrayChainedHT::Query(uint64_t key,
                                                      uint8_t ptr) {
-    return 0;
+    uint64_t value;
+    tab->Query(single_handle, key, &value);
+    return value;
 }
 
 void BenchmarkResizableByteArrayChainedHT::Update(uint64_t key, uint8_t ptr,
                                                   uint64_t value) {
-    return;
+    tab->Update(single_handle, key, value);
 }
 
 void BenchmarkResizableByteArrayChainedHT::Erase(uint64_t key, uint8_t ptr) {
-    return;
+    tab->Erase(single_handle, key);
 }
 
 void BenchmarkResizableByteArrayChainedHT::YCSBFill(std::vector<uint64_t>& keys,

@@ -22,7 +22,7 @@ class BenchmarkResizableSkulkerHT : public BenchmarkObject64 {
                                 double resize_threshold_ = 0.75,
                                 double resize_factor_ = 2.0);
 
-    ~BenchmarkResizableSkulkerHT() = default;
+    ~BenchmarkResizableSkulkerHT();
 
     uint8_t Insert(uint64_t key, uint64_t value);
     uint64_t Query(uint64_t key, uint8_t ptr);
@@ -39,6 +39,8 @@ class BenchmarkResizableSkulkerHT : public BenchmarkObject64 {
 
    private:
     ResizableSkulkerHT* tab;
+    uint64_t single_handle;
+    int thread_num;
 };
 
 }  // namespace tinyptr
