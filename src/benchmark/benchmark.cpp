@@ -685,7 +685,9 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
         case BenchmarkCaseType::INSERT_ONLY:
             run = [this]() {
                 std::vector<uint64_t> key_vec, value_vec;
-                obj_fill_vec_prepare(key_vec, value_vec, opt_num);
+                if (!rand_mem_free) {
+                    obj_fill_vec_prepare(key_vec, value_vec, opt_num);
+                }
 
                 std::vector<std::tuple<uint64_t, uint64_t, uint64_t>> ops;
 
@@ -698,7 +700,11 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
                 if (thread_num) {
                     obj->ConcurrentRun(ops, thread_num);
                 } else {
-                    obj_fill(key_vec, value_vec);
+                    if (!rand_mem_free) {
+                        obj_fill(key_vec, value_vec);
+                    } else {
+                        obj_fill_mem_free(opt_num);
+                    }
                 }
 
                 auto end = std::chrono::high_resolution_clock::now();
@@ -986,6 +992,19 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
                                                                           start)
                         .count();
 
+                output_stream << "Insert CPU Time: " << duration << " ms"
+                              << std::endl;
+
+                output_stream << "Insert Throughput: "
+                              << int(double(table_size * load_factor) /
+                                     (duration / 1000.0))
+                              << " ops/s" << std::endl;
+
+                output_stream << "Insert Latency: "
+                              << int(duration * 1000000.0 /
+                                     double(table_size * load_factor))
+                              << " ns/op" << std::endl;
+
                 std::vector<uint64_t> query_key_vec;
                 std::vector<uint8_t> query_ptr_vec;
                 batch_query_vec_prepare(key_vec, query_key_vec, opt_num,
@@ -994,17 +1013,6 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
                 if (thread_num) {
                     vec_to_ops(query_key_vec, ops, ConcOptType::QUERY);
                 }
-
-                output_stream << "Insert CPU Time: " << duration << " ms"
-                              << std::endl;
-
-                output_stream << "Insert Throughput: "
-                              << int(double(opt_num) / (duration / 1000.0))
-                              << " ops/s" << std::endl;
-
-                output_stream << "Insert Latency: "
-                              << int(duration * 1000000.0 / double(opt_num))
-                              << " ns/op" << std::endl;
 
                 start = std::chrono::high_resolution_clock::now();
 

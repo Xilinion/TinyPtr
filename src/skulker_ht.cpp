@@ -161,12 +161,16 @@ bool SkulkerHT::Insert(uint64_t key, uint64_t value) {
 
     uint16_t& control_info = *reinterpret_cast<uint16_t*>(
         bush_tab + (bush_id << kBushIdShiftOffset) + kControlOffset);
-    uint8_t item_cnt = kBushLookup[control_info & kByteMask] +
-                       kBushLookup[(control_info >> kByteShift)];
     uint16_t control_info_before_item = control_info >> in_bush_offset;
-    uint8_t before_item_cnt =
-        kBushLookup[control_info_before_item & kByteMask] +
-        kBushLookup[(control_info_before_item >> kByteShift)];
+
+    uint8_t item_cnt = uint8_t(_popcnt32(control_info));
+    uint8_t before_item_cnt = uint8_t(_popcnt32(control_info_before_item));
+
+    // uint8_t item_cnt = kBushLookup[control_info & kByteMask] +
+    //                    kBushLookup[(control_info >> kByteShift)];
+    // uint8_t before_item_cnt =
+    //     kBushLookup[control_info_before_item & kByteMask] +
+    //     kBushLookup[(control_info_before_item >> kByteShift)];
 
     if ((control_info >> in_bush_offset) & 1) {
 
@@ -285,12 +289,16 @@ bool SkulkerHT::Query(uint64_t key, uint64_t* value_ptr) {
 
     uint16_t& control_info = *reinterpret_cast<uint16_t*>(
         bush_tab + (bush_id << kBushIdShiftOffset) + kControlOffset);
-    uint8_t item_cnt = kBushLookup[control_info & kByteMask] +
-                       kBushLookup[(control_info >> kByteShift)];
     uint16_t control_info_before_item = control_info >> in_bush_offset;
-    uint8_t before_item_cnt =
-        kBushLookup[control_info_before_item & kByteMask] +
-        kBushLookup[(control_info_before_item >> kByteShift)];
+
+    uint8_t item_cnt = uint8_t(_popcnt32(control_info));
+    uint8_t before_item_cnt = uint8_t(_popcnt32(control_info_before_item));
+
+    // uint8_t item_cnt = kBushLookup[control_info & kByteMask] +
+    //                    kBushLookup[(control_info >> kByteShift)];
+    // uint8_t before_item_cnt =
+    //     kBushLookup[control_info_before_item & kByteMask] +
+    //     kBushLookup[(control_info_before_item >> kByteShift)];
 
     uint8_t overload_flag = item_cnt > (kInitSkulkerNum + kInitExhibitorNum);
 
@@ -358,12 +366,16 @@ bool SkulkerHT::Update(uint64_t key, uint64_t value) {
 
     uint16_t& control_info = *reinterpret_cast<uint16_t*>(
         bush_tab + (bush_id << kBushIdShiftOffset) + kControlOffset);
-    uint8_t item_cnt = kBushLookup[control_info & kByteMask] +
-                       kBushLookup[(control_info >> kByteShift)];
     uint16_t control_info_before_item = control_info >> in_bush_offset;
-    uint8_t before_item_cnt =
-        kBushLookup[control_info_before_item & kByteMask] +
-        kBushLookup[(control_info_before_item >> kByteShift)];
+
+    uint8_t item_cnt = uint8_t(_popcnt32(control_info));
+    uint8_t before_item_cnt = uint8_t(_popcnt32(control_info_before_item));
+
+    // uint8_t item_cnt = kBushLookup[control_info & kByteMask] +
+    //                    kBushLookup[(control_info >> kByteShift)];
+    // uint8_t before_item_cnt =
+    //     kBushLookup[control_info_before_item & kByteMask] +
+    //     kBushLookup[(control_info_before_item >> kByteShift)];
 
     uint8_t overload_flag = item_cnt > (kInitSkulkerNum + kInitExhibitorNum);
 
@@ -426,12 +438,16 @@ void SkulkerHT::Free(uint64_t key) {
 
     uint16_t& control_info = *reinterpret_cast<uint16_t*>(
         bush_tab + (bush_id << kBushIdShiftOffset) + kControlOffset);
-    uint8_t item_cnt = kBushLookup[control_info & kByteMask] +
-                       kBushLookup[(control_info >> kByteShift)];
     uint16_t control_info_before_item = control_info >> in_bush_offset;
-    uint8_t before_item_cnt =
-        kBushLookup[control_info_before_item & kByteMask] +
-        kBushLookup[(control_info_before_item >> kByteShift)];
+
+    uint8_t item_cnt = uint8_t(_popcnt32(control_info));
+    uint8_t before_item_cnt = uint8_t(_popcnt32(control_info_before_item));
+
+    // uint8_t item_cnt = kBushLookup[control_info & kByteMask] +
+    //                    kBushLookup[(control_info >> kByteShift)];
+    // uint8_t before_item_cnt =
+    //     kBushLookup[control_info_before_item & kByteMask] +
+    //     kBushLookup[(control_info_before_item >> kByteShift)];
 
     uint8_t overload_flag = item_cnt > (kInitSkulkerNum + kInitExhibitorNum);
 

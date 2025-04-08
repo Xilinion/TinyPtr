@@ -263,11 +263,14 @@ bool ConcurrentSkulkerHT::Insert(uint64_t key, uint64_t value) {
             (1ULL * base_id * kFastDivisionReciprocal) >> kFastDivisionShift;
     }
 
+    uint64_t in_bush_offset = base_id - bush_id * kBushCapacity;
+
+    uint8_t* bush = &bush_tab[(bush_id << kBushIdShiftOffset)];
+
     // Use std::atomic for concurrent_version
     std::atomic<uint8_t>& concurrent_version =
         *reinterpret_cast<std::atomic<uint8_t>*>(
-            &bush_tab[(bush_id << kBushIdShiftOffset) +
-                      kConcurrentVersionOffset]);
+            &bush[kConcurrentVersionOffset]);
 
     uint8_t expected_version;
     do {
@@ -281,12 +284,8 @@ bool ConcurrentSkulkerHT::Insert(uint64_t key, uint64_t value) {
     // std::cout << "thread_id: " << std::this_thread::get_id() << " bush_id: " << bush_id <<   " concurrent_version before: " << (int)concurrent_version << std::endl;
     // }
 
-    uint64_t in_bush_offset = base_id - bush_id * kBushCapacity;
-
-    uint8_t* bush = &bush_tab[(bush_id << kBushIdShiftOffset)];
-
-    uint16_t& control_info = *reinterpret_cast<uint16_t*>(
-        bush_tab + (bush_id << kBushIdShiftOffset) + kControlOffset);
+    uint16_t& control_info =
+        *reinterpret_cast<uint16_t*>(bush + kControlOffset);
     uint16_t control_info_before_item = control_info >> in_bush_offset;
 
     uint8_t item_cnt = uint8_t(_popcnt32(control_info));
@@ -304,12 +303,10 @@ bool ConcurrentSkulkerHT::Insert(uint64_t key, uint64_t value) {
         uint8_t overload_flag =
             item_cnt > (kInitSkulkerNum + kInitExhibitorNum);
         uint8_t* pre_tiny_ptr =
-            &bush_tab[(bush_id << kBushIdShiftOffset) +
-                      (before_item_cnt > kInitExhibitorNum - overload_flag
-                           ? kSkulkerOffset -
-                                 (before_item_cnt - 1 -
-                                  (kInitExhibitorNum - overload_flag))
-                           : (before_item_cnt - 1) * kEntryByteLength)];
+            bush + (before_item_cnt > kInitExhibitorNum - overload_flag
+                        ? kSkulkerOffset - (before_item_cnt - 1 -
+                                            (kInitExhibitorNum - overload_flag))
+                        : (before_item_cnt - 1) * kEntryByteLength);
 
         uintptr_t pre_deref_key = base_id;
 
@@ -512,6 +509,7 @@ bool ConcurrentSkulkerHT::Query(uint64_t key, uint64_t* value_ptr) {
     concurrent_version.fetch_add(1);
     return false;
 #else
+    // 2-3 ns
     // Current version without locking
     uint64_t base_id = hash_base_id(key);
 
@@ -524,25 +522,29 @@ bool ConcurrentSkulkerHT::Query(uint64_t key, uint64_t* value_ptr) {
             (1ULL * base_id * kFastDivisionReciprocal) >> kFastDivisionShift;
     }
 
+    // 1 ns
+    uint8_t* bush = &bush_tab[(bush_id << kBushIdShiftOffset)];
+    uint64_t in_bush_offset = base_id - bush_id * kBushCapacity;
+
+    // 31 ns
+
     // Use std::atomic for concurrent_version
     std::atomic<uint8_t>& concurrent_version =
         *reinterpret_cast<std::atomic<uint8_t>*>(
-            &bush_tab[(bush_id << kBushIdShiftOffset) +
-                      kConcurrentVersionOffset]);
+            &bush[kConcurrentVersionOffset]);
 
 query_again:
 
+    // 3-4 ns
     uint8_t expected_version;
     do {
         expected_version = concurrent_version.load();
     } while ((expected_version & 1));
 
-    uint64_t in_bush_offset = base_id - bush_id * kBushCapacity;
+    // 3 ns
 
-    uint8_t* bush = &bush_tab[(bush_id << kBushIdShiftOffset)];
-
-    uint16_t& control_info = *reinterpret_cast<uint16_t*>(
-        bush_tab + (bush_id << kBushIdShiftOffset) + kControlOffset);
+    uint16_t& control_info =
+        *reinterpret_cast<uint16_t*>(bush + kControlOffset);
     uint16_t control_info_before_item = control_info >> in_bush_offset;
 
     uint8_t item_cnt = uint8_t(_popcnt32(control_info));
@@ -557,6 +559,9 @@ query_again:
     uint8_t overload_flag = item_cnt > (kInitSkulkerNum + kInitExhibitorNum);
 
     uint8_t exhibitor_num = kInitExhibitorNum - overload_flag;
+
+    // *value_ptr = concurrent_version;
+    // return true;
 
     if ((control_info >> in_bush_offset) & 1) {
 
@@ -578,11 +583,9 @@ query_again:
         }
 
         uint8_t* pre_tiny_ptr =
-            &bush_tab[(bush_id << kBushIdShiftOffset) +
-                      (before_item_cnt > exhibitor_num
-                           ? kSkulkerOffset -
-                                 (before_item_cnt - 1 - exhibitor_num)
-                           : (before_item_cnt - 1) * kEntryByteLength)];
+            bush + (before_item_cnt > exhibitor_num
+                        ? kSkulkerOffset - (before_item_cnt - 1 - exhibitor_num)
+                        : (before_item_cnt - 1) * kEntryByteLength);
 
         uintptr_t pre_deref_key = base_id;
 
@@ -626,12 +629,14 @@ bool ConcurrentSkulkerHT::Update(uint64_t key, uint64_t value) {
         bush_id =
             (1ULL * base_id * kFastDivisionReciprocal) >> kFastDivisionShift;
     }
+    uint64_t in_bush_offset = base_id - bush_id * kBushCapacity;
+
+    uint8_t* bush = &bush_tab[(bush_id << kBushIdShiftOffset)];
 
     // Use std::atomic for concurrent_version
     std::atomic<uint8_t>& concurrent_version =
         *reinterpret_cast<std::atomic<uint8_t>*>(
-            &bush_tab[(bush_id << kBushIdShiftOffset) +
-                      kConcurrentVersionOffset]);
+            &bush[kConcurrentVersionOffset]);
 
     uint8_t expected_version;
     do {
@@ -640,12 +645,8 @@ bool ConcurrentSkulkerHT::Update(uint64_t key, uint64_t value) {
              !concurrent_version.compare_exchange_weak(expected_version,
                                                        expected_version + 1));
 
-    uint64_t in_bush_offset = base_id - bush_id * kBushCapacity;
-
-    uint8_t* bush = &bush_tab[(bush_id << kBushIdShiftOffset)];
-
-    uint16_t& control_info = *reinterpret_cast<uint16_t*>(
-        bush_tab + (bush_id << kBushIdShiftOffset) + kControlOffset);
+    uint16_t& control_info =
+        *reinterpret_cast<uint16_t*>(bush + kControlOffset);
     uint16_t control_info_before_item = control_info >> in_bush_offset;
 
     uint8_t item_cnt = uint8_t(_popcnt32(control_info));
@@ -678,11 +679,9 @@ bool ConcurrentSkulkerHT::Update(uint64_t key, uint64_t value) {
         }
 
         uint8_t* pre_tiny_ptr =
-            &bush_tab[(bush_id << kBushIdShiftOffset) +
-                      (before_item_cnt > exhibitor_num
-                           ? kSkulkerOffset -
-                                 (before_item_cnt - 1 - exhibitor_num)
-                           : (before_item_cnt - 1) * kEntryByteLength)];
+            bush + (before_item_cnt > exhibitor_num
+                        ? kSkulkerOffset - (before_item_cnt - 1 - exhibitor_num)
+                        : (before_item_cnt - 1) * kEntryByteLength);
 
         uintptr_t pre_deref_key = base_id;
 
@@ -715,12 +714,14 @@ void ConcurrentSkulkerHT::Free(uint64_t key) {
         bush_id =
             (1ULL * base_id * kFastDivisionReciprocal) >> kFastDivisionShift;
     }
+    uint64_t in_bush_offset = base_id - bush_id * kBushCapacity;
+
+    uint8_t* bush = &bush_tab[(bush_id << kBushIdShiftOffset)];
 
     // Use std::atomic for concurrent_version
     std::atomic<uint8_t>& concurrent_version =
         *reinterpret_cast<std::atomic<uint8_t>*>(
-            &bush_tab[(bush_id << kBushIdShiftOffset) +
-                      kConcurrentVersionOffset]);
+            &bush[kConcurrentVersionOffset]);
 
     uint8_t expected_version;
     do {
@@ -729,12 +730,8 @@ void ConcurrentSkulkerHT::Free(uint64_t key) {
              !concurrent_version.compare_exchange_weak(expected_version,
                                                        expected_version + 1));
 
-    uint64_t in_bush_offset = base_id - bush_id * kBushCapacity;
-
-    uint8_t* bush = &bush_tab[(bush_id << kBushIdShiftOffset)];
-
-    uint16_t& control_info = *reinterpret_cast<uint16_t*>(
-        bush_tab + (bush_id << kBushIdShiftOffset) + kControlOffset);
+    uint16_t& control_info =
+        *reinterpret_cast<uint16_t*>(bush + kControlOffset);
     uint16_t control_info_before_item = control_info >> in_bush_offset;
 
     uint8_t item_cnt = uint8_t(_popcnt32(control_info));
@@ -816,11 +813,9 @@ void ConcurrentSkulkerHT::Free(uint64_t key) {
         }
 
         uint8_t* pre_tiny_ptr =
-            &bush_tab[(bush_id << kBushIdShiftOffset) +
-                      (before_item_cnt > exhibitor_num
-                           ? kSkulkerOffset -
-                                 (before_item_cnt - 1 - exhibitor_num)
-                           : (before_item_cnt - 1) * kEntryByteLength)];
+            bush + (before_item_cnt > exhibitor_num
+                        ? kSkulkerOffset - (before_item_cnt - 1 - exhibitor_num)
+                        : (before_item_cnt - 1) * kEntryByteLength);
 
         uintptr_t pre_deref_key = base_id;
 
