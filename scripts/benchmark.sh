@@ -268,6 +268,60 @@ bin_size=127
 
 # RunCTest
 
+# thread_num=16
+# for case_id in 1 6 7; do
+#     for object_id in 14; do
+#         entry_id=10000
+#         for table_size in 67108864; do
+#             opt_num=63753420
+#             output=$(Run)
+#             echo "$output"
+#             let "entry_id++"
+#         done
+#     done
+# done
+# thread_num=0
+
+# exit
+
+thread_num=1
+for case_id in 1 6 7; do
+    for object_id in 14; do
+        entry_id=10000
+        for table_size in 10480576; do
+            opt_num=10480576
+            output=$(Run)
+            echo "$output"
+            let "entry_id++"
+        done
+    done
+done
+thread_num=0
+
+exit
+
+# for case_id in 1; do
+#     for object_id in 7; do
+#         # entry_id=100
+#         entry_id=118
+#         for table_size in 16777215; do
+#             # for load_factor in 0.05 0.1 0.15 0.2 0.25 0.3 0.35 0.4 0.45 0.5 0.55 0.6 0.65 0.7 0.75 0.8 0.85 0.9 0.95; do
+#             for load_factor in 0.95; do
+#                 opt_num=$(printf "%.0f" $(echo "$table_size * $load_factor" | bc -l))
+#                 output=$(RunRandMemFree)
+#                 echo "$output"
+#                 output=$(Run)
+#                 echo "$output"
+#                 let "entry_id++"
+#             done
+#         done
+#     done
+# done
+
+
+
+# exit
+
 # for case_id in 1; do
 #     for object_id in 7; do
 #         entry_id=0
@@ -279,14 +333,15 @@ bin_size=127
 #     done
 # done
 
-# thread_num=1
-# for case_id in 1 6 7; do
-#     for object_id in 14 15; do
+# thread_num=0
+# for case_id in 6 7; do
+#     for object_id in 12; do
 #         # for object_id in 13; do
 #         entry_id=0
 #         for table_size in 17108864; do
-#             opt_num=5753420
+#             opt_num=15753420
 #             Run
+#             # RunRandMemFree
 #             # output=$(Run)
 #             # echo "$output"
 #             let "entry_id++"
@@ -297,24 +352,24 @@ bin_size=127
 
 # exit
 
-thread_num=16
-for case_id in 17 18 19; do
-    for object_id in 16 15; do
-        entry_id=1000
-        for table_size in 268435456; do
-        # for table_size in 161061273; do
-        # for table_size in 67108864; do
-            # for asdf in 1 2; do
-            output=$(RunYCSB)
-            echo "$output"
-            let "entry_id++"
-            # done
-        done
-    done
-done
-thread_num=0
+# thread_num=16
+# for case_id in 17 18 19; do
+#     for object_id in 16 15; do
+#         entry_id=1000
+#         for table_size in 268435456; do
+#         # for table_size in 161061273; do
+#         # for table_size in 67108864; do
+#             # for asdf in 1 2; do
+#             output=$(RunYCSB)
+#             echo "$output"
+#             let "entry_id++"
+#             # done
+#         done
+#     done
+# done
+# thread_num=0
 
-exit
+# exit
 
 # YCSB without resize
 
@@ -384,7 +439,7 @@ thread_num=0
 for case_id in 9 10; do
     for object_id in 4 6 7 12 15; do
         entry_id=0
-        for table_size in 67108864; do
+        for table_size in 16777216; do
             for load_factor in 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 0.95; do
                 opt_num=$table_size
                 output=$(Run)
@@ -416,7 +471,7 @@ done
 for case_id in 1; do
     for object_id in 4 6 7 12 15; do
         entry_id=100
-        for table_size in 67108864; do
+        for table_size in 16777216; do
             for load_factor in 0.05 0.1 0.15 0.2 0.25 0.3 0.35 0.4 0.45 0.5 0.55 0.6 0.65 0.7 0.75 0.8 0.85 0.9 0.95; do
                 opt_num=$(printf "%.0f" $(echo "$table_size * $load_factor" | bc -l))
                 output=$(RunRandMemFree)

@@ -4,21 +4,21 @@ import csv
 
 
 def extract_throughput(file_path):
-    """Extract Fill Throughput and Run Throughput from a result file."""
+    """Extract Throughput and Latency from a result file."""
     with open(file_path, 'r') as f:
         content = f.read()
 
-        fill_throughput_match = re.search(
-            r'Fill Throughput: (\d+) ops/s', content)
-        run_throughput_match = re.search(
-            r'Run Throughput: (\d+) ops/s', content)
+        throughput_match = re.search(
+            r'Throughput: (\d+) ops/s', content)
+        latency_match = re.search(
+            r'Latency: (\d+) ns/op', content)
 
-        fill_throughput = int(fill_throughput_match.group(
-            1)) if fill_throughput_match else None
-        run_throughput = int(run_throughput_match.group(1)
-                             ) if run_throughput_match else None
+        throughput = int(throughput_match.group(
+            1)) if throughput_match else None
+        latency = int(latency_match.group(1)
+                      ) if latency_match else None
 
-        return fill_throughput, run_throughput
+        return throughput, latency
 
 
 def main():
@@ -35,43 +35,43 @@ def main():
     # List to store all data entries
     all_data = []
 
-    # Define valid IDs based on the bash script
-    valid_ids = {
-        0: [6, 7, 14, 15, 17],  # entry_id = 0
-        1: [6, 7, 16, 15, 18]   # entry_id = 1
-    }
-    valid_case_ids = [17, 18, 19]
+    # Define valid IDs based on the updated bash script
+    valid_object_ids = [6, 7, 14, 15, 17]
+    valid_case_ids = [1, 3, 6, 7]
+    thread_nums = [1, 2, 4, 8, 16, 32]
 
     # Process only the valid result files
-    for entry_id, object_ids in valid_ids.items():
-        for case_id in valid_case_ids:
-            for object_id in object_ids:
+    for case_id in valid_case_ids:
+        for object_id in valid_object_ids:
+            entry_id = 10  # Starting entry_id
+            for thread_num in thread_nums:
                 filename = f"object_{object_id}_case_{case_id}_entry_{entry_id}_.txt"
                 file_path = os.path.join(base_dir, filename)
 
                 if os.path.exists(file_path):
                     # Read throughput data
-                    fill_throughput, run_throughput = extract_throughput(
-                        file_path)
+                    throughput, latency = extract_throughput(file_path)
 
                     # Skip if we couldn't extract the data
-                    if fill_throughput is None or run_throughput is None:
+                    if throughput is None or latency is None:
                         print(
                             f"Warning: Could not extract throughput data from {filename}")
                         continue
 
                     # Store the data
                     all_data.append(
-                        (case_id, entry_id, object_id, fill_throughput, run_throughput))
+                        (case_id, object_id, thread_num, throughput, latency))
+
+                entry_id += 1  # Increment entry_id for each thread_num
 
     # Write a single CSV file
-    csv_filename = "ycsb_results.csv"
+    csv_filename = "scaling_results.csv"
     csv_path = os.path.join(output_dir, csv_filename)
 
     with open(csv_path, 'w', newline='') as csvfile:
         writer = csv.writer(csvfile)
         # Write header
-        writer.writerow(['case_id', 'entry_id', 'object_id', 'fill_throughput (ops/s)', 'run_throughput (ops/s)'])
+        writer.writerow(['case_id', 'object_id', 'thread_num', 'throughput (ops/s)', 'latency (ns/op)'])
         # Write data
         for entry in all_data:
             writer.writerow(entry)
