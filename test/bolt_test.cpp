@@ -1,4 +1,3 @@
-#include "concurrent_skulker_ht.h"
 #include <gtest/gtest.h>
 #include <chrono>
 #include <cstdint>
@@ -9,6 +8,7 @@
 #include <thread>
 #include <unordered_map>
 #include <vector>
+#include "bolt_ht.h"
 #include "utils/rng.h"
 
 rng::rng64 rng64(123456789);
@@ -19,7 +19,7 @@ using namespace std;
 // Ensure SlowXXHash64 is defined or included
 // If SlowXXHash64 is part of an external library, ensure it is linked correctly
 
-// Ensure ConcurrentSkulkerHT is defined in concurrent_skulker_ht.h
+// Ensure BoltHT is defined in concurrent_skulker_ht.h
 // If not, include the correct header or define the class
 
 uint64_t my_int_rand() {
@@ -34,37 +34,43 @@ uint64_t my_value_rand() {
     // return SlowXXHash64::hash(&tmp, sizeof(int32_t), 1);
 }
 
-void concurrent_insert(ConcurrentSkulkerHT& ht,
-                       const vector<pair<uint64_t, uint64_t>>& data, int start,
-                       int end) {
+void concurrent_insert(BoltHT& ht, const vector<pair<uint64_t, uint64_t>>& data,
+                       int start, int end) {
     for (int i = start; i < end; ++i) {
+        // ht.Insert(data[i].first, data[i].second);
         if (!ht.Insert(data[i].first, data[i].second)) {
-            printf("insert failed: %llu, %llu\n", data[i].first,
+            printf("insert failed: %d %llu, %llu\n", i, data[i].first,
                    data[i].second);
             exit(0);
         }
     }
 }
 
-void concurrent_query(ConcurrentSkulkerHT& ht,
-                      const vector<pair<uint64_t, uint64_t>>& data, int start,
-                      int end) {
+void concurrent_query(BoltHT& ht, const vector<pair<uint64_t, uint64_t>>& data,
+                      int start, int end) {
     for (int i = start; i < end; ++i) {
         uint64_t val = 0;
         // std::cout << i - start << std::endl;
         // ht.Query(data[i].first + 1000000000000000000ull, &val);
-        ht.Query(data[i].first, &val);
-        // ASSERT_TRUE(ht.Query(data[i].first, &val));
-        // ASSERT_EQ(val, data[i].second);
+        // bool res = ht.Query(data[i].first, &val);
+        // if (!res) {
+        //     std::cout << "query failed: " << i << " " << data[i].first
+        //               << std::endl;
+        // }
+        // if (val != data[i].second) {
+        //     std::cout << "query failed: " << i << " " << data[i].first << " "
+        //               << val << " " << data[i].second << std::endl;
+        // }
+        ASSERT_TRUE(ht.Query(data[i].first, &val));
+        ASSERT_EQ(val, data[i].second);
     }
 }
 
-TEST(ConcurrentSkulkerHT_TESTSUITE, ParallelInsertQuery) {
+TEST(BoltHT_TESTSUITE, ParallelInsertQuery) {
     srand(233);
 
     // int num_threads = std::thread::hardware_concurrency();
-    int num_threads = 1;
-    // int num_operations = 1e8;  // Large number of operations
+    int num_threads = 10;
     int num_operations = (1ull << 27) - 1;  // Large number of operations
 
     // Declare start and end for timing
@@ -80,7 +86,7 @@ TEST(ConcurrentSkulkerHT_TESTSUITE, ParallelInsertQuery) {
     // Ensure SlowXXHash64 is defined or included
     // If SlowXXHash64 is part of an external library, ensure it is linked correctly
 
-    // Ensure ConcurrentSkulkerHT is defined in concurrent_skulker_ht.h
+    // Ensure BoltHT is defined in concurrent_skulker_ht.h
     // If not, include the correct header or define the class
 
     // Correct the namespace usage
@@ -88,7 +94,7 @@ TEST(ConcurrentSkulkerHT_TESTSUITE, ParallelInsertQuery) {
     using namespace tinyptr;  // Ensure tinyptr is a valid namespace
 
     start = chrono::high_resolution_clock::now();
-    ConcurrentSkulkerHT ht(static_cast<uint64_t>(num_operations) * 2, 127);
+    BoltHT ht(static_cast<uint64_t>(num_operations), 127);
     end = chrono::high_resolution_clock::now();
     std::cout
         << "init time: "

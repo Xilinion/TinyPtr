@@ -21,11 +21,11 @@
 
 namespace tinyptr {
 
-class ConcurrentSkulkerHT {
-    friend struct ConcurrentSkulkerHTBushLookupInitializer;
+class BoltHT {
+    friend struct BoltHTCloudLookupInitializer;
 
    public:
-    static uint8_t kBushLookup[256];
+    static uint8_t kCloudLookup[256];
     static constexpr uint8_t kByteMask = 0xFF;
     static constexpr uint8_t kByteShift = 8;
 
@@ -33,71 +33,78 @@ class ConcurrentSkulkerHT {
     const uint64_t kHashSeed1;
     const uint64_t kHashSeed2;
     const uint8_t kQuotientingTailLength;
+    const uint8_t kBoltQuotientingLength;
     const uint64_t kQuotientingTailMask;
     const uint8_t kQuotKeyByteLength;
-    const uint8_t kEntryByteLength;
+    const uint8_t kCrystalByteLength;
+    const uint8_t kDropletByteLength;
 
     // layout
-    // {4*{TP,K,V},{Skulkers},{Control}}
+    // {4*{TP,K,V},{Bolts},{Control}}
 
-    // const uint8_t kBushByteLength = utils::kCacheLineSize;
-    static constexpr uint8_t kBushByteLength = 64;
-    static constexpr uint8_t kBushIdShiftOffset = 6;
-    // control byte and skulkers grow from the end of the bush
+    // const uint8_t kCloudByteLength = utils::kCacheLineSize;
+    static constexpr uint8_t kCloudByteLength = 64;
+    static constexpr uint8_t kCloudIdShiftOffset = 6;
+    // control byte and bolts grow from the end of the cloud
     static constexpr uint8_t kConcurrentVersionByteLength = 1;
-    static constexpr uint8_t kControlByteLength = 2;
-    const uint8_t kConcurrentVersionOffset;
-    const uint8_t kControlOffset;
-    const uint8_t kSkulkerOffset;
+    static constexpr uint8_t kConcurrentVersionOffset =
+        kCloudByteLength - kConcurrentVersionByteLength;
+    static constexpr uint8_t kControlByteLength = 1;
+    static constexpr uint8_t kControlOffset =
+        kConcurrentVersionOffset - kControlByteLength;
+    static constexpr uint8_t kBoltByteLength = 2;
+    static constexpr uint8_t kBoltByteLengthShift = 1;
+    static constexpr uint8_t kBoltOffset = kControlOffset;
+    static constexpr uint8_t kCrystalOffset = 0;
 
+    static constexpr uint8_t kControlCrystalMask = (1 << 3) - 1;
+    static constexpr uint8_t kControlBoltShift = 3;
+
+    static constexpr double kCloudOverflowBound = 0.5;
     // expected ratio of used quotienting slots
-    const double kBushRatio;
-    const double kBushOverflowBound;
-    // expected ratio of skulkers over data size
-    const double kSkulkerRatio;
-    const uint8_t kInitExhibitorNum;
-    const uint8_t kInitSkulkerNum;
-    const uint8_t kBushCapacity;
-    const uint64_t kBushNum;
+    const uint64_t kCloudNum;
 
     const uint16_t kBinSize;
     const uint64_t kBinNum;
-    const uint8_t kTinyPtrOffset;
-    const uint8_t kKeyOffset;
+    static constexpr uint8_t kTinyPtrOffset = 0;
+    static constexpr uint8_t kFingerprintOffset = 1;
+    static constexpr uint8_t kKeyOffset = 0;
     const uint8_t kValueOffset;
+    static constexpr uint8_t kDropletKeyOffset = 0;
+    const uint8_t kDropletValueOffset;
     const uint16_t kBinByteLength;
     static constexpr uintptr_t kPtr16BAlignMask = ~0xF;
     static constexpr uintptr_t kPtr16BBufferOffsetMask = 0xF;
     static constexpr uint8_t kPtr16BBufferSecondLoadOffset = 16;
     // const uintptr_t kPtrCacheLineOffsetMask = utils::kCacheLineSize - 1;
-    static constexpr uintptr_t kPtrCacheLineOffsetMask = kBushByteLength - 1;
+    static constexpr uintptr_t kPtrCacheLineOffsetMask = kCloudByteLength - 1;
     static constexpr uintptr_t kPtrCacheLineAlignMask =
-        ~((uintptr_t)(kBushByteLength - 1));
+        ~((uintptr_t)(kCloudByteLength - 1));
 
-    // base hash, spread the base_id
-    const uint64_t kBaseHashFactor;
-    const uint64_t kBaseHashInverse;
+    // cloud hash, spread the cloud_id
+    // const uint64_t kBaseHashFactor;
+    // const uint64_t kBaseHashInverse;
 
     static constexpr uint8_t kFastDivisionUpperBoundLog = 31;
     const uint8_t kFastDivisionShift[2];
-    const uint64_t kFastDivisionUpperBound = 1ULL << kFastDivisionUpperBoundLog;
+    static constexpr uint64_t kFastDivisionUpperBound =
+        1ULL << kFastDivisionUpperBoundLog;
     const uint64_t kFastDivisionReciprocal[2];
 
    protected:
     uint8_t AutoQuotTailLength(uint64_t size);
     uint64_t GenBaseHashFactor(uint64_t min_gap, uint64_t mod_mask);
-    uint64_t GenBaseHashInverse(uint64_t base_hash_factor, uint64_t mod_mask,
-                                uint64_t mod_bit_length);
+    // uint64_t GenBaseHashInverse(uint64_t cloud_hash_factor, uint64_t mod_mask,
+    //                             uint64_t mod_bit_length);
     uint8_t AutoLockNum(uint64_t thread_num_supported);
     uint8_t AutoFastDivisionInnerShift(uint64_t divisor);
 
    public:
-    ConcurrentSkulkerHT(uint64_t size, uint8_t quotienting_tail_length,
-                        uint16_t bin_size);
-    ConcurrentSkulkerHT(uint64_t size, uint16_t bin_size);
-    ConcurrentSkulkerHT(uint64_t size);
+    BoltHT(uint64_t size, uint8_t quotienting_tail_length, uint16_t bin_size);
+    BoltHT(uint64_t size, uint16_t bin_size);
+    BoltHT(uint64_t size);
 
-    ~ConcurrentSkulkerHT();
+    ~BoltHT();
 
     bool Insert(uint64_t key, uint64_t value);
     bool Query(uint64_t key, uint64_t* value_ptr);
@@ -105,10 +112,10 @@ class ConcurrentSkulkerHT {
     void Free(uint64_t key);
 
     void SetResizeStride(uint64_t stride_num);
-    bool ResizeMoveStride(uint64_t stride_id, ConcurrentSkulkerHT* new_ht);
+    bool ResizeMoveStride(uint64_t stride_id, BoltHT* new_ht);
 
    protected:
-    uint8_t* bush_tab;
+    uint8_t* cloud_tab;
     uint8_t* byte_array;
     uint8_t* bin_cnt_head;
 
@@ -124,27 +131,49 @@ class ConcurrentSkulkerHT {
     }
 
     __attribute__((always_inline)) inline uint64_t hash_1_bin(uint64_t key) {
-        uint64_t hash = XXH64(&key, sizeof(uint64_t), kHashSeed1) >> 33;
+        uint64_t hash = XXH64(&key, sizeof(uint64_t), kHashSeed1) >>
+                        (sizeof(uint64_t) - kFastDivisionUpperBoundLog);
 
         return hash -
                ((hash * kFastDivisionReciprocal[1]) >> kFastDivisionShift[1]) *
                    kBinNum;
     }
 
-    __attribute__((always_inline)) inline uint64_t hash_base_id(uint64_t key) {
+    __attribute__((always_inline)) inline uint64_t hash_1_bin_from_hash(
+        uint64_t hash) {
+        hash >>= (8 * sizeof(uint64_t) - kFastDivisionUpperBoundLog);
+        return hash -
+               ((hash * kFastDivisionReciprocal[1]) >> kFastDivisionShift[1]) *
+                   kBinNum;
+    }
+
+    __attribute__((always_inline)) inline uint64_t hash_cloud_id(uint64_t key) {
+
         uint64_t tmp = key >> kQuotientingTailLength;
-        return (((XXH64(&tmp, sizeof(uint64_t), kHashSeed1) ^ key) &
-                 kQuotientingTailMask) *
-                kBaseHashFactor) &
-               kQuotientingTailMask;
+
+        // return (((XXH64(&tmp, sizeof(uint64_t), kHashSeed1) ^ key) &
+        //          kQuotientingTailMask) *
+        //         kBaseHashFactor) &
+        //        kQuotientingTailMask;
+        return ((XXH64(&tmp, sizeof(uint64_t), kHashSeed1) ^ key) &
+                kQuotientingTailMask);
+    }
+
+    __attribute__((always_inline)) inline uint64_t cloud_id_from_hash(
+        uint64_t hash) {
+        return (hash & kQuotientingTailMask);
     }
 
     __attribute__((always_inline)) inline uint64_t hash_key_rebuild(
-        uint64_t quotiented_key, uint64_t base_id) {
+        uint64_t quotiented_key, uint64_t cloud_id) {
         uint64_t tmp = (quotiented_key << kQuotientingTailLength) >>
                        kQuotientingTailLength;
-        return ((XXH64(&tmp, sizeof(uint64_t), kHashSeed1) ^
-                 ((base_id * kBaseHashInverse) & kQuotientingTailMask)) &
+
+        // return ((XXH64(&tmp, sizeof(uint64_t), kHashSeed1) ^
+        //          ((cloud_id * kBaseHashInverse) & kQuotientingTailMask)) &
+        //         kQuotientingTailMask) |
+        //        (tmp << kQuotientingTailLength);
+        return ((XXH64(&tmp, sizeof(uint64_t), kHashSeed1) ^ cloud_id) &
                 kQuotientingTailMask) |
                (tmp << kQuotientingTailLength);
     }
@@ -174,10 +203,10 @@ class ConcurrentSkulkerHT {
         ptr = ptr & ((1 << 7) - 1);
         if (flag) {
             return byte_array +
-                   (hash_2_bin(key) * kBinSize + ptr - 1) * kEntryByteLength;
+                   (hash_2_bin(key) * kBinSize + ptr - 1) * kDropletByteLength;
         } else {
             return byte_array +
-                   (hash_1_bin(key) * kBinSize + ptr - 1) * kEntryByteLength;
+                   (hash_1_bin(key) * kBinSize + ptr - 1) * kDropletByteLength;
         }
     }
 
@@ -196,7 +225,7 @@ class ConcurrentSkulkerHT {
 
             if (head < kBinSize) {
                 uint8_t* entry =
-                    byte_array + (bin1 * kBinSize + head) * kEntryByteLength;
+                    byte_array + (bin1 * kBinSize + head) * kDropletByteLength;
                 uint8_t new_pre_tiny_ptr = head + 1;
                 head = head + 1 + entry[kTinyPtrOffset];
                 if (head > kBinSize) {
@@ -239,8 +268,8 @@ class ConcurrentSkulkerHT {
             uint8_t& cnt = bin_cnt(bin_id);
 
             if (head < kBinSize) {
-                uint8_t* entry =
-                    byte_array + (bin_id * kBinSize + head) * kEntryByteLength;
+                uint8_t* entry = byte_array + (bin_id * kBinSize + head) *
+                                                  kDropletByteLength;
                 uint8_t new_pre_tiny_ptr = (head + 1) | (flag << 7);
                 head = head + 1 + entry[kTinyPtrOffset];
                 if (head > kBinSize) {
@@ -260,22 +289,15 @@ class ConcurrentSkulkerHT {
     __attribute__((always_inline)) inline bool ptab_insert(
         uint8_t* pre_tiny_ptr, uintptr_t pre_deref_key, uint64_t key,
         uint64_t value) {
-        while (*pre_tiny_ptr != 0) {
-            uint8_t* entry =
-                ptab_query_entry_address(pre_deref_key, *pre_tiny_ptr);
-            pre_tiny_ptr = entry + kTinyPtrOffset;
-            pre_deref_key = reinterpret_cast<uintptr_t>(entry);
-        }
 
         uint8_t* entry = ptab_insert_entry_address(pre_deref_key);
 
         if (entry != nullptr) {
             *pre_tiny_ptr = *entry;
             // assuming little endian
-            *reinterpret_cast<uint64_t*>(entry + kKeyOffset) =
-                key >> kQuotientingTailLength;
-            entry[kTinyPtrOffset] = 0;
-            *reinterpret_cast<uint64_t*>(entry + kValueOffset) = value;
+            *reinterpret_cast<uint64_t*>(entry + kDropletKeyOffset) =
+                key >> kBoltQuotientingLength;
+            *reinterpret_cast<uint64_t*>(entry + kDropletValueOffset) = value;
             return true;
         } else {
             return false;
@@ -318,7 +340,7 @@ class ConcurrentSkulkerHT {
         }
 
         uint8_t tmp = aiming_entry[kTinyPtrOffset];
-        memcpy(aiming_entry, cur_entry, kEntryByteLength);
+        memcpy(aiming_entry, cur_entry, kDropletByteLength);
         aiming_entry[kTinyPtrOffset] = tmp;
 
         uint64_t bin_id = (cur_entry - byte_array) / kBinByteLength;
@@ -339,7 +361,7 @@ class ConcurrentSkulkerHT {
         bin_locks[bin_id].clear(std::memory_order_release);
     }
 
-    __attribute__((always_inline)) inline void ptab_lift_to_bush(
+    __attribute__((always_inline)) inline void ptab_lift_to_cloud(
         uint8_t* pre_tiny_ptr, uintptr_t pre_deref_key,
         uint8_t* exhibitor_ptr) {
 
@@ -362,7 +384,7 @@ class ConcurrentSkulkerHT {
         }
 
         uint8_t tmp = exhibitor_ptr[kTinyPtrOffset];
-        memcpy(exhibitor_ptr, cur_entry, kEntryByteLength);
+        memcpy(exhibitor_ptr, cur_entry, kDropletByteLength);
         exhibitor_ptr[kTinyPtrOffset] = tmp;
 
         uint64_t bin_id = (cur_entry - byte_array) / kBinByteLength;
@@ -383,68 +405,69 @@ class ConcurrentSkulkerHT {
         bin_locks[bin_id].clear(std::memory_order_release);
     }
 
-    __attribute__((always_inline)) inline bool bush_exhibitor_hide(
-        uint8_t* bush, uint64_t bush_offset, uint16_t& control_info,
+    __attribute__((always_inline)) inline bool cloud_exhibitor_hide(
+        uint8_t* cloud, uint64_t cloud_offset, uint16_t& control_info,
         uint8_t exhibitor_num, uint8_t item_cnt) {
 
-        thread_local static uint8_t* play_entry = new uint8_t[kEntryByteLength];
+        thread_local static uint8_t* play_entry =
+            new uint8_t[kDropletByteLength];
         thread_local static uint64_t* play_1 =
             reinterpret_cast<uint64_t*>(play_entry);
         thread_local static uint64_t* play_2 =
             reinterpret_cast<uint64_t*>(play_entry + kValueOffset);
 
-        // convert the last exhibitor to the first skulker
-        memcpy(play_entry, bush + (exhibitor_num - 1) * kEntryByteLength,
-               kEntryByteLength);
-        // *play_1 = *(uint64_t*)(bush + (exhibitor_num - 1) * kEntryByteLength);
-        // *play_2 = *(uint64_t*)(bush + (exhibitor_num - 1) * kEntryByteLength +
+        // convert the last exhibitor to the first bolt
+        memcpy(play_entry, cloud + (exhibitor_num - 1) * kDropletByteLength,
+               kDropletByteLength);
+        // *play_1 = *(uint64_t*)(cloud + (exhibitor_num - 1) * kDropletByteLength);
+        // *play_2 = *(uint64_t*)(cloud + (exhibitor_num - 1) * kDropletByteLength +
         //                        kValueOffset);
 
-        // exhibitor spills and converts the last exhibitor to the first skulker
-        for (uint8_t* i = bush + kSkulkerOffset - (item_cnt - exhibitor_num);
-             i < bush + kSkulkerOffset; i++) {
+        // exhibitor spills and converts the last exhibitor to the first bolt
+        for (uint8_t* i = cloud + kBoltOffset - (item_cnt - exhibitor_num);
+             i < cloud + kBoltOffset; i++) {
             *i = *(i + 1);
         }
 
-        // get the base_id of the last exhibitor
+        // get the cloud_id of the last exhibitor
 
-        uint32_t hide_in_bush_offset = _tzcnt_u32(
+        uint32_t hide_in_cloud_offset = _tzcnt_u32(
             _pdep_u32(1u << (item_cnt - exhibitor_num), control_info));
 
         /*
-        uint8_t hide_in_bush_offset = 0;
+        uint8_t hide_in_cloud_offset = 0;
         uint16_t control_info_before_spilled =
-            control_info >> (hide_in_bush_offset + 1);
+            control_info >> (hide_in_cloud_offset + 1);
 
-        while (kBushLookup[control_info_before_spilled & kByteMask] +
-                   kBushLookup[(control_info_before_spilled >> kByteShift)] >=
+        while (kCloudLookup[control_info_before_spilled & kByteMask] +
+                   kCloudLookup[(control_info_before_spilled >> kByteShift)] >=
                exhibitor_num) {
-            hide_in_bush_offset++;
+            hide_in_cloud_offset++;
             control_info_before_spilled =
-                control_info >> (hide_in_bush_offset + 1);
+                control_info >> (hide_in_cloud_offset + 1);
         }
         */
 
-        uintptr_t spilled_base_id = bush_offset + hide_in_bush_offset;
+        uintptr_t spilled_cloud_id = cloud_offset + hide_in_cloud_offset;
 
-        bush[kSkulkerOffset] = play_entry[kTinyPtrOffset];
+        cloud[kBoltOffset] = play_entry[kTinyPtrOffset];
 
-        if (!ptab_insert(bush + kSkulkerOffset, spilled_base_id,
+        if (!ptab_insert(cloud + kBoltOffset, spilled_cloud_id,
                          hash_key_rebuild(*(uint64_t*)(play_entry + kKeyOffset),
-                                          spilled_base_id),
+                                          spilled_cloud_id),
                          *(uint64_t*)(play_entry + kValueOffset))) {
 
-            // recover the bush
-            for (uint8_t* i = bush + kSkulkerOffset;
-                 i > bush + kSkulkerOffset - (item_cnt - exhibitor_num); i--) {
+            // recover the cloud
+            for (uint8_t* i = cloud + kBoltOffset;
+                 i > cloud + kBoltOffset - (item_cnt - exhibitor_num); i--) {
                 *i = *(i - 1);
             }
 
-            memcpy(bush + (exhibitor_num - 1) * kEntryByteLength, play_entry,
-                   kEntryByteLength);
-            // *(uint64_t*)(bush + (exhibitor_num - 1) * kEntryByteLength) =
+            memcpy(cloud + (exhibitor_num - 1) * kDropletByteLength, play_entry,
+                   kDropletByteLength);
+            // *(uint64_t*)(cloud + (exhibitor_num - 1) * kDropletByteLength) =
             //     *play_1;
-            // *(uint64_t*)(bush + (exhibitor_num - 1) * kEntryByteLength +
+            // *(uint64_t*)(cloud + (exhibitor_num - 1) * kDropletByteLength +
             //              kValueOffset) = *play_2;
 
             return false;
@@ -453,66 +476,66 @@ class ConcurrentSkulkerHT {
         return true;
     }
 
-    // exhibitor_num is the # we currently have in the bush
-    __attribute__((always_inline)) inline void bush_skulker_raid(
-        uint8_t* bush, uint64_t bush_offset, uint16_t& control_info,
+    // exhibitor_num is the # we currently have in the cloud
+    __attribute__((always_inline)) inline void cloud_bolt_raid(
+        uint8_t* cloud, uint64_t cloud_offset, uint16_t& control_info,
         uint8_t exhibitor_num, uint8_t item_cnt) {
-        uint8_t* exhibitor_ptr = bush + (exhibitor_num)*kEntryByteLength;
-        exhibitor_ptr[kTinyPtrOffset] = bush[kSkulkerOffset];
+        uint8_t* exhibitor_ptr = cloud + (exhibitor_num)*kDropletByteLength;
+        exhibitor_ptr[kTinyPtrOffset] = cloud[kBoltOffset];
 
-        for (uint8_t* i = bush + kSkulkerOffset;
-             i > bush + kSkulkerOffset - (item_cnt - exhibitor_num - 1); i--) {
+        for (uint8_t* i = cloud + kBoltOffset;
+             i > cloud + kBoltOffset - (item_cnt - exhibitor_num - 1); i--) {
             *i = *(i - 1);
         }
 
-        // get the base_id of the first skulker
+        // get the cloud_id of the first bolt
 
-        uint32_t raid_in_bush_offset = _tzcnt_u32(
+        uint32_t raid_in_cloud_offset = _tzcnt_u32(
             _pdep_u32(1u << (item_cnt - exhibitor_num - 1), control_info));
 
         /*
-        uint8_t raid_in_bush_offset = 0;
+        uint8_t raid_in_cloud_offset = 0;
         uint16_t control_info_before_spilled =
-            control_info >> (raid_in_bush_offset + 1);
+            control_info >> (raid_in_cloud_offset + 1);
 
-        while (kBushLookup[control_info_before_spilled & kByteMask] +
-                   kBushLookup[(control_info_before_spilled >> kByteShift)] >
+        while (kCloudLookup[control_info_before_spilled & kByteMask] +
+                   kCloudLookup[(control_info_before_spilled >> kByteShift)] >
                exhibitor_num) {
-            raid_in_bush_offset++;
+            raid_in_cloud_offset++;
             control_info_before_spilled =
-                control_info >> (raid_in_bush_offset + 1);
+                control_info >> (raid_in_cloud_offset + 1);
         }
         */
 
         uint8_t* pre_tiny_ptr = exhibitor_ptr + kTinyPtrOffset;
-        uintptr_t pre_deref_key = bush_offset + raid_in_bush_offset;
+        uintptr_t pre_deref_key = cloud_offset + raid_in_cloud_offset;
 
-        ptab_lift_to_bush(pre_tiny_ptr, pre_deref_key, exhibitor_ptr);
+        ptab_lift_to_cloud(pre_tiny_ptr, pre_deref_key, exhibitor_ptr);
     }
 
    public:
     __attribute__((always_inline)) inline void prefetch_key(uint64_t key) {
-        uint64_t base_id = hash_base_id(key);
+        uint64_t cloud_id = hash_cloud_id(key);
         // do fast division
-        uint64_t bush_id;
-        if (base_id > kFastDivisionUpperBound) {
-            bush_id = base_id / kBushCapacity;
-        } else {
-            bush_id = (1ULL * base_id * kFastDivisionReciprocal[0]) >>
-                      kFastDivisionShift[0];
-        }
+        // uint64_t cloud_id;
+        // if (cloud_id > kFastDivisionUpperBound) {
+        //     cloud_id = cloud_id / kCloudCapacity;
+        // } else {
+        //     cloud_id = (1ULL * cloud_id * kFastDivisionReciprocal[0]) >>
+        //                kFastDivisionShift[0];
+        // }
         __builtin_prefetch(
-            (const void*)(bush_tab + (bush_id << kBushIdShiftOffset)));
+            (const void*)(cloud_tab + (cloud_id << kCloudIdShiftOffset)));
     }
 };
 
-struct ConcurrentSkulkerHTBushLookupInitializer {
-    ConcurrentSkulkerHTBushLookupInitializer() {
+struct BoltHTCloudLookupInitializer {
+    BoltHTCloudLookupInitializer() {
         for (int i = 0; i < 256; ++i) {
-            ConcurrentSkulkerHT::kBushLookup[i] = 0;
+            BoltHT::kCloudLookup[i] = 0;
             int tmp = i;
             while (tmp) {
-                ConcurrentSkulkerHT::kBushLookup[i]++;
+                BoltHT::kCloudLookup[i]++;
                 tmp -= tmp & (-tmp);
             }
         }

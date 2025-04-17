@@ -3,22 +3,26 @@ import re
 import csv
 
 
-def extract_throughput(file_path):
-    """Extract Throughput and Latency from a result file."""
+def extract_metrics(file_path):
+    """Extract Throughput and Latency for both Insert and Query operations."""
     with open(file_path, 'r') as f:
         content = f.read()
 
-        throughput_match = re.search(
-            r'Throughput: (\d+) ops/s', content)
-        latency_match = re.search(
-            r'Latency: (\d+) ns/op', content)
+        # Extract Insert metrics
+        insert_throughput_match = re.search(r'Insert Throughput: (\d+) ops/s', content)
+        insert_latency_match = re.search(r'Insert Latency: (\d+) ns/op', content)
+        
+        # Extract Query metrics
+        query_throughput_match = re.search(r'Query Throughput: (\d+) ops/s', content)
+        query_latency_match = re.search(r'Query Latency: (\d+) ns/op', content)
 
-        throughput = int(throughput_match.group(
-            1)) if throughput_match else None
-        latency = int(latency_match.group(1)
-                      ) if latency_match else None
+        # Get values or None if not found
+        insert_throughput = int(insert_throughput_match.group(1)) if insert_throughput_match else None
+        insert_latency = int(insert_latency_match.group(1)) if insert_latency_match else None
+        query_throughput = int(query_throughput_match.group(1)) if query_throughput_match else None
+        query_latency = int(query_latency_match.group(1)) if query_latency_match else None
 
-        return throughput, latency
+        return insert_throughput, insert_latency, query_throughput, query_latency
 
 
 def main():
@@ -37,7 +41,7 @@ def main():
 
     # Define valid IDs based on the updated bash script
     valid_case_ids = [9, 10]
-    valid_object_ids = [4, 6, 7, 12, 15]
+    valid_object_ids = [4, 6, 7, 12, 15, 19]
     load_factors = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.95]
 
     # Process only the valid result files
@@ -49,18 +53,24 @@ def main():
                 file_path = os.path.join(base_dir, filename)
 
                 if os.path.exists(file_path):
-                    # Read throughput data
-                    throughput, latency = extract_throughput(file_path)
+                    # Read metrics data
+                    insert_throughput, insert_latency, query_throughput, query_latency = extract_metrics(file_path)
 
                     # Skip if we couldn't extract the data
-                    if throughput is None or latency is None:
-                        print(
-                            f"Warning: Could not extract throughput data from {filename}")
+                    if any(metric is None for metric in [insert_throughput, insert_latency, query_throughput, query_latency]):
+                        print(f"Warning: Could not extract complete metrics from {filename}")
                         continue
 
                     # Store the data with load_factor
-                    all_data.append(
-                        (case_id, object_id, load_factor, throughput, latency))
+                    all_data.append((
+                        case_id, 
+                        object_id, 
+                        load_factor, 
+                        insert_throughput, 
+                        insert_latency,
+                        query_throughput,
+                        query_latency
+                    ))
 
                 entry_id += 1  # Increment entry_id for each load_factor
 
@@ -71,7 +81,15 @@ def main():
     with open(csv_path, 'w', newline='') as csvfile:
         writer = csv.writer(csvfile)
         # Write header
-        writer.writerow(['case_id', 'object_id', 'load_factor', 'throughput (ops/s)', 'latency (ns/op)'])
+        writer.writerow([
+            'case_id', 
+            'object_id', 
+            'load_factor', 
+            'insert_throughput (ops/s)', 
+            'insert_latency (ns/op)',
+            'query_throughput (ops/s)',
+            'query_latency (ns/op)'
+        ])
         # Write data
         for entry in all_data:
             writer.writerow(entry)

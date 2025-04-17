@@ -160,7 +160,7 @@ def plot_micro_benchmarks(csv_path, output_dir):
         plt.close()
 
 def plot_progressive_latency(csv_path, output_dir):
-    """Plot progressive latency results with multiple objects on the same figure."""
+    """Plot progressive latency results with separate graphs for query hits, query misses, and insertions."""
     df = pd.read_csv(csv_path)
     
     print(f"Inspecting progressive latency CSV:")
@@ -177,42 +177,82 @@ def plot_progressive_latency(csv_path, output_dir):
         print("No suitable object/data structure column found")
         return
     
-    # Try to identify time/x-axis and latency/y-axis columns
-    time_cols = [col for col in numeric_cols if 'time' in col.lower() or 'load' in col.lower()]
-    latency_cols = [col for col in numeric_cols if 'latency' in col.lower() or 'throughput' in col.lower()]
+    # Create three separate graphs: query hits, query misses, and insertions
     
-    # If no explicit time column, try to find any column that might represent time/progression
-    if not time_cols:
-        time_cols = [col for col in numeric_cols if any(term in col.lower() for term in 
-                                                        ['step', 'iter', 'index', 'load', 'factor'])]
+    # 1. Plot for Query Hits
+    query_hit_df = df[df['case_id'] == 'QUERY_HIT_ONLY_CUSTOM_LOAD_FACTOR']
+    if not query_hit_df.empty:
+        plt.figure(figsize=(14, 8))
+        sns.lineplot(data=query_hit_df, x='load_factor', y='query_latency (ns/op)', hue=object_col, marker='o')
+        plt.title('Query Latency for Hit Operations vs Load Factor')
+        plt.xlabel('Load Factor')
+        plt.ylabel('Query Latency (ns/op)')
+        plt.legend(title='Implementation')
+        plt.tight_layout()
+        plt.savefig(os.path.join(output_dir, 'query_hit_latency.pdf'), format='pdf')
+        plt.close()
+        
+        # Optional: Also plot throughput
+        plt.figure(figsize=(14, 8))
+        sns.lineplot(data=query_hit_df, x='load_factor', y='query_throughput (ops/s)', hue=object_col, marker='o')
+        plt.title('Query Throughput for Hit Operations vs Load Factor')
+        plt.xlabel('Load Factor')
+        plt.ylabel('Query Throughput (ops/s)')
+        plt.legend(title='Implementation')
+        plt.tight_layout()
+        plt.savefig(os.path.join(output_dir, 'query_hit_throughput.pdf'), format='pdf')
+        plt.close()
     
-    # If still no time column, use the first numeric column
-    if not time_cols and numeric_cols:
-        time_cols = [numeric_cols[0]]
+    # 2. Plot for Query Misses
+    query_miss_df = df[df['case_id'] == 'QUERY_MISS_ONLY_CUSTOM_LOAD_FACTOR']
+    if not query_miss_df.empty:
+        plt.figure(figsize=(14, 8))
+        sns.lineplot(data=query_miss_df, x='load_factor', y='query_latency (ns/op)', hue=object_col, marker='o')
+        plt.title('Query Latency for Miss Operations vs Load Factor')
+        plt.xlabel('Load Factor')
+        plt.ylabel('Query Latency (ns/op)')
+        plt.legend(title='Implementation')
+        plt.tight_layout()
+        plt.savefig(os.path.join(output_dir, 'query_miss_latency.pdf'), format='pdf')
+        plt.close()
+        
+        # Optional: Also plot throughput
+        plt.figure(figsize=(14, 8))
+        sns.lineplot(data=query_miss_df, x='load_factor', y='query_throughput (ops/s)', hue=object_col, marker='o')
+        plt.title('Query Throughput for Miss Operations vs Load Factor')
+        plt.xlabel('Load Factor')
+        plt.ylabel('Query Throughput (ops/s)')
+        plt.legend(title='Implementation')
+        plt.tight_layout()
+        plt.savefig(os.path.join(output_dir, 'query_miss_throughput.pdf'), format='pdf')
+        plt.close()
     
-    # If no explicit latency/performance column, use remaining numeric columns
-    if not latency_cols:
-        latency_cols = [col for col in numeric_cols if col not in time_cols]
-    
-    # For each x-y pair, create a line plot with all objects
-    for x_col in time_cols:
-        for y_col in latency_cols:
-            plt.figure(figsize=(14, 8))
-            
-            # Plot all objects as different lines on the same figure
-            sns.lineplot(data=df, x=x_col, y=y_col, hue=object_col, marker='o')
-            
-            plt.title(f'{y_col} vs {x_col} Comparison')
-            plt.xlabel(x_col)
-            plt.ylabel(y_col)
-            plt.tight_layout()
-            
-            # Add a legend with the object names
-            plt.legend(title='Implementation')
-            
-            safe_filename = sanitize_filename(f'comparison_progressive_{y_col}_vs_{x_col}')
-            plt.savefig(os.path.join(output_dir, f'{safe_filename}.pdf'), format='pdf')
-            plt.close()
+    # 3. Plot for Insertions (combining both datasets since insert performance is the same)
+    # Using query_hit_df as the base, but we could use either one since both contain insertion data
+    if not df.empty:
+        # Create a set of unique combinations of object_id and load_factor
+        combined_df = df.drop_duplicates(subset=[object_col, 'load_factor'])
+        
+        plt.figure(figsize=(14, 8))
+        sns.lineplot(data=combined_df, x='load_factor', y='insert_latency (ns/op)', hue=object_col, marker='o')
+        plt.title('Insert Latency vs Load Factor')
+        plt.xlabel('Load Factor')
+        plt.ylabel('Insert Latency (ns/op)')
+        plt.legend(title='Implementation')
+        plt.tight_layout()
+        plt.savefig(os.path.join(output_dir, 'insert_latency.pdf'), format='pdf')
+        plt.close()
+        
+        # Optional: Also plot throughput
+        plt.figure(figsize=(14, 8))
+        sns.lineplot(data=combined_df, x='load_factor', y='insert_throughput (ops/s)', hue=object_col, marker='o')
+        plt.title('Insert Throughput vs Load Factor')
+        plt.xlabel('Load Factor')
+        plt.ylabel('Insert Throughput (ops/s)')
+        plt.legend(title='Implementation')
+        plt.tight_layout()
+        plt.savefig(os.path.join(output_dir, 'insert_throughput.pdf'), format='pdf')
+        plt.close()
 
 def plot_scaling_results(csv_path, output_dir):
     """Plot scaling results with all objects on the same figure."""

@@ -61,7 +61,7 @@ function(build_CLHT)
         # COMMAND ${CMAKE_MAKE_PROGRAM} dependencies
         # COMMAND ${CMAKE_MAKE_PROGRAM} all
         # COMMAND ${CMAKE_MAKE_PROGRAM} libclht_lb_res.a
-        COMMAND ${CMAKE_MAKE_PROGRAM} clht_lf_res
+        COMMAND ${CMAKE_MAKE_PROGRAM} clht_lb_res
         INSTALL_COMMAND ""
         CONFIGURE_COMMAND ""
     )
