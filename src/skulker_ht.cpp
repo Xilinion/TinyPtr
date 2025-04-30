@@ -98,7 +98,7 @@ SkulkerHT::SkulkerHT(uint64_t size, uint8_t quotienting_tail_length,
     void* combined_mem;
 
     combined_mem = mmap(NULL, total_size, PROT_READ | PROT_WRITE,
-                        MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
+                        MAP_ANONYMOUS | MAP_PRIVATE | MAP_POPULATE, -1, 0);
 
     uint8_t* base =
         (uint8_t*)((uint64_t)(combined_mem + 63) & ~static_cast<uint64_t>(63));

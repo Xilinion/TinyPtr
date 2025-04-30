@@ -170,8 +170,18 @@ ConcurrentSkulkerHT::ConcurrentSkulkerHT(uint64_t size,
     //     // Handle allocation failure
     //     abort();
     // }
+
+    // auto start = std::chrono::high_resolution_clock::now();
+
     combined_mem = mmap(NULL, total_size, PROT_READ | PROT_WRITE,
-                        MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
+                        MAP_ANONYMOUS | MAP_PRIVATE | MAP_POPULATE, -1, 0);
+
+    // auto end = chrono::high_resolution_clock::now();
+    // std::cout
+    //     << "mmap time: "
+    //     << chrono::duration_cast<chrono::milliseconds>(end - start).count()
+    //     << "ms" << std::endl;
+
     // combined_mem = mmap(nullptr, total_size, PROT_READ | PROT_WRITE,
     //                     MAP_PRIVATE | MAP_ANONYMOUS | MAP_HUGETLB, -1, 0);
 
@@ -604,7 +614,6 @@ query_again:
                 bush + kSkulkerOffset - (before_item_cnt - 1 - exhibitor_num);
         }
 
-
         // uint8_t* pre_tiny_ptr =
         //     bush + (before_item_cnt > exhibitor_num
         //                 ? kSkulkerOffset - (before_item_cnt - 1 - exhibitor_num)
@@ -617,10 +626,10 @@ query_again:
 
         while (*pre_tiny_ptr != 0) {
 
-        // hit_num++;
-        // if (hit_num % 100000 == 0) {
-        //     std::cout << "hit_num: " << hit_num << std::endl;
-        // }
+            // hit_num++;
+            // if (hit_num % 100000 == 0) {
+            //     std::cout << "hit_num: " << hit_num << std::endl;
+            // }
             // *value_ptr = *pre_tiny_ptr;
             // return false;
 

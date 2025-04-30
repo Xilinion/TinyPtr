@@ -61,7 +61,7 @@ ByteArrayChainedHT::ByteArrayChainedHT(uint64_t size,
     // Allocate a single aligned block
     void* combined_mem;
     combined_mem = mmap(NULL, total_size, PROT_READ | PROT_WRITE,
-                        MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
+                        MAP_ANONYMOUS | MAP_PRIVATE | MAP_POPULATE, -1, 0);
 
     // Assign pointers to their respective regions
     uint8_t* base =
