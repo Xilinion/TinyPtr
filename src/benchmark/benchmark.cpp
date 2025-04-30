@@ -637,6 +637,10 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
                               << int(duration * 1000000.0 / double(load_cnt))
                               << " ns/op" << std::endl;
 
+                if (para.object_id == BenchmarkObjectType::BOLT) {
+                    dynamic_cast<BenchmarkBoltHT*>(obj)->Stats();
+                }
+
                 if (para.object_id == BenchmarkObjectType::BYTEARRAYCHAINEDHT ||
                     para.object_id == BenchmarkObjectType::BINAWARECHAINEDHT ||
                     para.object_id == BenchmarkObjectType::SAMEBINCHAINEDHT) {

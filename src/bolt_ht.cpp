@@ -16,8 +16,6 @@ namespace tinyptr {
 uint8_t BoltHT::kCloudLookup[256];
 struct BoltHTCloudLookupInitializer bolt_ht_cloud_lookup_initializer;
 
-std::mutex output_mutex;
-
 // #define USE_CONCURRENT_VERSION_QUERY
 
 uint8_t BoltHT::AutoFastDivisionInnerShift(uint64_t divisor) {
@@ -129,18 +127,18 @@ BoltHT::BoltHT(uint64_t size, uint8_t quotienting_tail_length,
     //     abort();
     // }
     combined_mem = mmap(NULL, total_size, PROT_READ | PROT_WRITE,
-                        MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
+                        MAP_ANONYMOUS | MAP_PRIVATE | MAP_POPULATE, -1, 0);
 
     // Assign pointers to their respective regions
-    uint8_t* cloud =
+    uint8_t* base =
         (uint8_t*)((uint64_t)(combined_mem + 63) & ~static_cast<uint64_t>(63));
-    cloud_tab = cloud;
-    cloud += cloud_size_aligned;
+    cloud_tab = base;
+    base += cloud_size_aligned;
 
-    byte_array = cloud;
-    cloud += byte_array_size_aligned;
+    byte_array = base;
+    base += byte_array_size_aligned;
 
-    bin_cnt_head = cloud;
+    bin_cnt_head = base;
 }
 
 BoltHT::BoltHT(uint64_t size, uint16_t bin_size) : BoltHT(size, 0, bin_size) {}
@@ -250,6 +248,7 @@ bool BoltHT::Insert(uint64_t key, uint64_t value) {
     }
 }
 
+/*
 bool BoltHT::Query(uint64_t key, uint64_t* value_ptr) {
     uint64_t cloud_id = hash_cloud_id(key);
     uint8_t* cloud = &cloud_tab[(cloud_id << kCloudIdShiftOffset)];
@@ -329,10 +328,241 @@ query_again:
     return false;
 }
 
+*/
+
+bool BoltHT::Query(uint64_t key, uint64_t* value_ptr) {
+    //  ────────────────────────────────────────────
+    //    ❶  One-time, per-thread constants
+    // ────────────────────────────────────────────
+    const uint32_t CBL = kCrystalByteLength;  //  1 … 16
+    const uint32_t BBL = kBoltByteLength;     //  1 … 16
+    const uint32_t KL = kQuotKeyByteLength;   //  1 …  8
+
+    static thread_local struct {
+        __m256i cry_off;       // {0, CBL, 2·CBL, 3·CBL}
+        __m256i cry_mask_vec;  // mask real key bytes
+        uint64_t cry_mask;
+        __m128i rev_idx16;  // {7,6,5,4,3,2,1,0}
+    } C = [&] {
+        uint64_t offs[4] = {0, CBL, 2ULL * CBL, 3ULL * CBL};
+        const uint64_t km = (KL == 8) ? ~0ULL : ((1ULL << (KL * 8)) - 1ULL);
+        return decltype(C){
+            _mm256_load_si256(reinterpret_cast<const __m256i*>(offs)),
+            _mm256_set1_epi64x(km), km, _mm_set_epi16(0, 1, 2, 3, 4, 5, 6, 7)};
+    }();
+
+    // 4ns above
+
+    //  ────────────────────────────────────────────
+    //    ❷  Pre-compute query-key parts
+    // ────────────────────────────────────────────
+    const uint64_t truncated = key >> kQuotientingTailLength;
+    const __m256i key_vec = _mm256_set1_epi64x(truncated & C.cry_mask);
+
+    const uint8_t query_fp = static_cast<uint8_t>(truncated & kByteMask);
+    const uint64_t bolt_masked_key = (truncated >> kByteShift)
+                                     << kBoltQuotientingLength;
+
+    uint8_t* cloud = cloud_tab + (hash_cloud_id(key) << kCloudIdShiftOffset);
+
+    // 4ns above, hash is ~3ns
+
+retry:
+    // ===== version-controlled critical section ===========================
+
+    auto* ver = reinterpret_cast<std::atomic<uint8_t>*>(
+        cloud + kConcurrentVersionOffset);
+    uint8_t v0;
+    do {
+        v0 = ver->load();
+    } while (v0 & 1u);
+
+    // 30ns for the check & load
+
+    const uint8_t control = cloud[kControlOffset];
+    const uint8_t crystal_cnt = control & kControlCrystalMask;  // 0–7
+    const uint8_t bolt_cnt = control >> kControlBoltShift;      // 0–31
+
+    // 2-3ns
+
+        // 22ns for positive
+        // 16ns for negative
+    //  ───────────────────────────────────────── Crystal probe ────────────────
+    {
+
+        const uint8_t* base = cloud + kCrystalOffset;
+
+        __m256i g = _mm256_i64gather_epi64(
+            reinterpret_cast<const long long*>(base + kKeyOffset), C.cry_off,
+            1);
+        // __m256i g = _mm256_load_si256(
+        //     reinterpret_cast<const __m256i*>(base + kKeyOffset));
+
+        // 5-6ns
+
+        g = _mm256_and_si256(g, C.cry_mask_vec);
+
+        // 0-1ns
+
+        uint32_t bm = _mm256_cmpeq_epi64_mask(g, key_vec);
+
+        // 5ns
+        
+        bm &= (1u << (crystal_cnt)) - 1u;
+
+        // 5ns
+
+        // *value_ptr = bm;
+        // return false;
+        
+
+        if (bm) {
+            // int idx = _tzcnt_u32(bm) >> 3;
+            int idx = _tzcnt_u32(bm);
+            // idx &= 3;
+
+            // *value_ptr= idx;
+
+            const uint8_t* hit = base + idx * CBL;
+            *value_ptr = *reinterpret_cast<const uint64_t*>(hit + kValueOffset);
+
+            if ((ver->load() != v0))
+                goto retry;
+            return true;
+        }
+    }
+
+    // *value_ptr = crystal_cnt + bolt_cnt;
+    // return false;
+
+    //  ───────────────────────── Bolt probe (2-byte bolts) ───────────────
+    if (bolt_cnt) {
+        uint8_t* fp_hi =
+            cloud + kBoltOffset - kBoltByteLength + kFingerprintOffset;
+
+        uint32_t remaining = bolt_cnt;  // bolts left to scan
+        uint32_t base_idx = 0;          // index of fp_hi
+
+        const __m128i even_mask16 = _mm_set1_epi16(0x00FF);
+        const uint16_t query_fp16 = static_cast<uint16_t>(query_fp);
+        const __m128i qfp16_vec = _mm_set1_epi16(query_fp16);
+
+        do {
+            const uint32_t batch = remaining >= 8 ? 8 : remaining;
+
+            uint8_t* fp_lo = fp_hi - 7 * kBoltByteLength;
+
+            __m128i bytes =
+                _mm_loadu_si128(reinterpret_cast<const __m128i*>(fp_lo));
+
+            __m128i fp16 = _mm_and_si128(bytes, even_mask16);
+
+            __m128i tmp = _mm_add_epi16(_mm_set1_epi16(base_idx),
+                                        C.rev_idx16);  // {base+batch-1-7 …}
+
+            __m128i cand = _mm_xor_si128(fp16, tmp);
+
+            uint32_t mask = _mm_cmpeq_epi16_mask(cand, qfp16_vec);
+
+            mask &= ~((1u << (8 - batch)) - 1u);
+
+            while (mask) {
+                int idx = 7 - _tzcnt_u32(mask);
+                mask &= mask - 1u;
+
+                uint8_t* bolt_ptr =
+                    fp_hi -
+                    (static_cast<uint64_t>(idx) << kBoltByteLengthShift) -
+                    kFingerprintOffset;
+                uint8_t* tiny_ptr = bolt_ptr + kTinyPtrOffset;
+
+                uint64_t deref_key =
+                    (hash_cloud_id(key) << kByteShift) | query_fp;
+
+                uint8_t* entry = ptab_query_entry_address(deref_key, *tiny_ptr);
+
+                uint64_t entry_mk =
+                    (*reinterpret_cast<uint64_t*>(entry + kDropletKeyOffset))
+                    << kBoltQuotientingLength;
+
+                if (entry_mk == bolt_masked_key) {
+                    *value_ptr = *reinterpret_cast<uint64_t*>(
+                        entry + kDropletValueOffset);
+
+                    if ((ver->load() != v0))
+                        goto retry;
+                    return true;
+                }
+            }
+
+            fp_hi -= kBoltByteLength * 8;
+            base_idx += batch;
+            remaining -= batch;
+        } while (remaining);
+        // } while (0);
+    }
+
+    //  ───────────────────────────────────────── Miss / version check ─────────
+    if ((ver->load() != v0))
+        goto retry;
+    return false;
+}
+
 bool BoltHT::Update(uint64_t key, uint64_t value) {
+
     return 1;
 }
 
 void BoltHT::Free(uint64_t key) {}
+
+void BoltHT::Scan4Stats() {
+    uint64_t total_slots = kCloudNum * kCloudByteLength;
+    uint64_t used_slots = 0;
+    uint64_t empty_slots = 0;
+
+    uint8_t* cloud = cloud_tab;
+    uint8_t* byte_array = byte_array;
+    uint8_t* bin_cnt_head = bin_cnt_head;
+
+    uint64_t crystal_cnt_hist[128] = {0};
+    uint64_t bolt_cnt_hist[128] = {0};
+    uint64_t total_bolt_cnt = 0;
+    uint64_t total_crystal_cnt = 0;
+
+    for (uint64_t i = 0; i < kCloudNum; i++) {
+        uint8_t control_info = cloud[kControlOffset];
+        uint8_t crystal_cnt = control_info & kControlCrystalMask;
+        uint8_t bolt_cnt = (control_info >> kControlBoltShift);
+
+        crystal_cnt_hist[crystal_cnt]++;
+        bolt_cnt_hist[bolt_cnt]++;
+        total_bolt_cnt += bolt_cnt;
+        total_crystal_cnt += crystal_cnt;
+
+        cloud += kCloudByteLength;
+    }
+
+    std::cout << "kCloudNum: " << kCloudNum << std::endl;
+    std::cout << "Total crystal cnt: " << total_crystal_cnt << std::endl;
+    std::cout << "Total bolt cnt: " << total_bolt_cnt << std::endl;
+
+    std::cout << "Crystal cnt hist: " << std::endl;
+    for (uint64_t i = 0; i < 128; i++) {
+        if (crystal_cnt_hist[i] > 0) {
+            std::cout << "Crystal cnt: " << i
+                      << " count: " << crystal_cnt_hist[i] << std::endl;
+        }
+    }
+    std::cout << std::endl;
+
+    std::cout << "Bolt cnt hist: " << std::endl;
+    for (uint64_t i = 0; i < 128; i++) {
+        if (bolt_cnt_hist[i] > 0) {
+            std::cout << "Bolt cnt: " << i << " count: " << bolt_cnt_hist[i]
+                      << std::endl;
+        }
+    }
+    std::cout << std::endl;
+}
 
 }  // namespace tinyptr

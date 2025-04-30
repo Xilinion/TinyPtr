@@ -268,11 +268,18 @@ bin_size=127
 
 # RunCTest
 
+# ../build/junction_test
+# exit
 
-for case_id in 1; do
-    for object_id in 5; do
+# ../build/bolt_test
+# exit
+
+# ../build/concurrent_skulker_ht_test
+
+for case_id in 6 7; do
+    for object_id in 19; do
         entry_id=0
-        for table_size in 1777216; do
+        for table_size in 16777215; do
             opt_num=$table_size
             Run
             let "entry_id++"
@@ -336,25 +343,26 @@ exit
 
 # exit
 
-for case_id in 7; do
-    for object_id in 19; do
-        entry_id=10000
-        # for table_size in 16777215; do
-        for table_size in 8000000; do
-            opt_num=$table_size
-            RunValgrind
-            let "entry_id++"
-        done
-    done
-done
+# for case_id in 7; do
+#     for object_id in 19; do
+#         entry_id=10000
+#         # for table_size in 16777215; do
+#         for table_size in 8000000; do
+#             opt_num=$table_size
+#             RunValgrind
+#             let "entry_id++"
+#         done
+#     done
+# done
 
-exit
+# exit
 
 for case_id in 1; do
-    for object_id in 19; do
+    for object_id in 4 12; do
         entry_id=100
         for table_size in 16777215; do
             for load_factor in 0.05 0.1 0.15 0.2 0.25 0.3 0.35 0.4 0.45 0.5 0.55 0.6 0.65 0.7 0.75 0.8 0.85 0.9 0.95; do
+                opt_num=$(printf "%.0f" $(echo "$table_size * $load_factor" | bc -l))
                 output=$(Run)
                 echo "$output"
                 let "entry_id++"
@@ -364,7 +372,7 @@ for case_id in 1; do
 done
 
 for case_id in 9 10; do
-    for object_id in 19; do
+    for object_id in 4 12; do
         entry_id=0
         for table_size in 16777215; do
             for load_factor in 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 0.95; do

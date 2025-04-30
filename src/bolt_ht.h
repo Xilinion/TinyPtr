@@ -7,6 +7,7 @@
 #include <sys/cdefs.h>
 #include <sys/types.h>
 #include <atomic>
+#include <bitset>
 #include <cstdint>
 #include <functional>
 #include <iostream>
@@ -60,7 +61,7 @@ class BoltHT {
     static constexpr uint8_t kControlCrystalMask = (1 << 3) - 1;
     static constexpr uint8_t kControlBoltShift = 3;
 
-    static constexpr double kCloudOverflowBound = 0.5;
+    static constexpr double kCloudOverflowBound = 0.23;
     // expected ratio of used quotienting slots
     const uint64_t kCloudNum;
 
@@ -114,6 +115,8 @@ class BoltHT {
     void SetResizeStride(uint64_t stride_num);
     bool ResizeMoveStride(uint64_t stride_id, BoltHT* new_ht);
 
+    void Scan4Stats();
+
    protected:
     uint8_t* cloud_tab;
     uint8_t* byte_array;
@@ -131,8 +134,9 @@ class BoltHT {
     }
 
     __attribute__((always_inline)) inline uint64_t hash_1_bin(uint64_t key) {
-        uint64_t hash = XXH64(&key, sizeof(uint64_t), kHashSeed1) >>
-                        (sizeof(uint64_t) - kFastDivisionUpperBoundLog);
+        // uint64_t hash = XXH64(&key, sizeof(uint64_t), kHashSeed1) >>
+        //                 (8 * sizeof(uint64_t) - kFastDivisionUpperBoundLog);
+        uint64_t hash = XXH64(&key, sizeof(uint64_t), kHashSeed1) >> 33;
 
         return hash -
                ((hash * kFastDivisionReciprocal[1]) >> kFastDivisionShift[1]) *
@@ -141,7 +145,8 @@ class BoltHT {
 
     __attribute__((always_inline)) inline uint64_t hash_1_bin_from_hash(
         uint64_t hash) {
-        hash >>= (8 * sizeof(uint64_t) - kFastDivisionUpperBoundLog);
+        // hash >>= (8 * sizeof(uint64_t) - kFastDivisionUpperBoundLog);
+        hash >>= 33;
         return hash -
                ((hash * kFastDivisionReciprocal[1]) >> kFastDivisionShift[1]) *
                    kBinNum;
@@ -184,6 +189,12 @@ class BoltHT {
 
     __attribute__((always_inline)) inline uint64_t hash_2_bin(uint64_t key) {
         uint64_t hash = XXH64(&key, sizeof(uint64_t), kHashSeed2) >> 33;
+
+        // std::cout << "hash_2_bin: "
+        //           << hash - ((hash * kFastDivisionReciprocal[1]) >>
+        //                      kFastDivisionShift[1]) *
+        //                         kBinNum
+        //           << std::endl;
         return hash -
                ((hash * kFastDivisionReciprocal[1]) >> kFastDivisionShift[1]) *
                    kBinNum;
