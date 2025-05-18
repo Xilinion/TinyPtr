@@ -276,7 +276,7 @@ bin_size=127
 
 # ../build/concurrent_skulker_ht_test
 
-for case_id in 1 6 7; do
+for case_id in 6 7; do
     for object_id in 20; do
         entry_id=0
         for table_size in 16777215; do
@@ -286,6 +286,25 @@ for case_id in 1 6 7; do
         done
     done
 done
+
+exit
+
+thread_num=1
+for case_id in 9 10; do
+    for object_id in 20; do
+        entry_id=10000
+        for table_size in 16777215; do
+            # for load_factor in 0.5; do
+            for load_factor in 0.1; do
+                opt_num=$table_size
+                output=$(Run)
+                echo "$output"
+                let "entry_id++"
+            done
+        done
+    done
+done
+thread_num=0
 
 exit
 

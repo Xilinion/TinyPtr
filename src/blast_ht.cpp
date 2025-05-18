@@ -386,6 +386,10 @@ query_again:
 
     uint8_t crystal_begin = kControlOffset - kEntryByteLength;
 
+    if (key == 0) {
+        *value_ptr = 0;
+    }
+
     __m256i revert_mask = _mm256_set_epi8(
         31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, 16, 15, 14,
         13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0);
@@ -395,7 +399,7 @@ query_again:
     fp_vec = _mm256_xor_si256(fp_vec, revert_mask);
     __mmask32 mask = _mm256_cmpeq_epi8_mask(fp_vec, _mm256_set1_epi8(fp));
 
-    mask &= ~((1u << (fp_cnt)) - 1u);
+    mask &= ((1u << (fp_cnt)) - 1u);
 
     // *value_ptr = mask;
     // if (concurrent_version.load() != expected_version) {
@@ -406,14 +410,22 @@ query_again:
     // }
     // return true;
 
-    if (mask == 0) {
-        if (concurrent_version.load() != expected_version) {
-            goto query_again;
-        }
-        return false;
-    }
+    // if (mask == 0) {
+    //     if (concurrent_version.load() != expected_version) {
+    //         goto query_again;
+    //     }
+    //     return false;
+    // }
 
-    do {
+    // do {
+    while (mask) {
+
+        static uint64_t cnt = 0;
+        cnt++;
+        if (cnt % 100000 == 0) {
+            std::cout << "cnt: " << cnt << std::endl;
+        }
+
         // while (mask) {
         uint8_t i = __builtin_ctz(mask);
         mask &= ~(1u << i);
@@ -452,7 +464,8 @@ query_again:
                 return true;
             }
         }
-    } while (mask);
+    }
+    // } while (mask);
 
     if (concurrent_version.load() != expected_version) {
         goto query_again;
