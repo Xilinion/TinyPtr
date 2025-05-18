@@ -63,7 +63,7 @@ TEST(ConcurrentSkulkerHT_TESTSUITE, ParallelInsertQuery) {
     srand(233);
 
     // int num_threads = std::thread::hardware_concurrency();
-    int num_threads = 1;
+    int num_threads = 16;
     // int num_operations = 1e8;  // Large number of operations
     int num_operations = (1ull << 27) - 1;  // Large number of operations
 

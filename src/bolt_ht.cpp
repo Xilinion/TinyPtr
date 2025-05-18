@@ -328,6 +328,7 @@ query_again:
     return false;
 }
 
+
 */
 
 bool BoltHT::Query(uint64_t key, uint64_t* value_ptr) {
@@ -363,7 +364,9 @@ bool BoltHT::Query(uint64_t key, uint64_t* value_ptr) {
     const uint64_t bolt_masked_key = (truncated >> kByteShift)
                                      << kBoltQuotientingLength;
 
-    uint8_t* cloud = cloud_tab + (hash_cloud_id(key) << kCloudIdShiftOffset);
+    uint64_t cloud_id = hash_cloud_id(key);
+
+    uint8_t* cloud = cloud_tab + (cloud_id << kCloudIdShiftOffset);
 
     // 4ns above, hash is ~3ns
 
@@ -385,12 +388,17 @@ retry:
 
     // 2-3ns
 
-        // 22ns for positive
-        // 16ns for negative
+    // 22ns for positive
+    // 16ns for negative
     //  ───────────────────────────────────────── Crystal probe ────────────────
     {
 
         const uint8_t* base = cloud + kCrystalOffset;
+
+        // __m256i cry_off_vec = _mm256_set_epi64x(3ULL * CBL, 2ULL * CBL, CBL, 0);
+        // __m256i g = _mm256_i64gather_epi64(
+        //     reinterpret_cast<const long long*>(base + kKeyOffset), cry_off_vec,
+        //     1);
 
         __m256i g = _mm256_i64gather_epi64(
             reinterpret_cast<const long long*>(base + kKeyOffset), C.cry_off,
@@ -400,23 +408,32 @@ retry:
 
         // 5-6ns
 
+        // auto cry_mask_vec =
+        //     _mm256_set1_epi64x((KL == 8) ? ~0ULL : ((1ULL << (KL * 8)) - 1ULL));
+        // g = _mm256_and_si256(g, cry_mask_vec);
         g = _mm256_and_si256(g, C.cry_mask_vec);
 
         // 0-1ns
 
+        // *value_ptr = _mm256_extract_epi64(g, 0);
+        // return false;
+
         uint32_t bm = _mm256_cmpeq_epi64_mask(g, key_vec);
 
         // 5ns
-        
+
         bm &= (1u << (crystal_cnt)) - 1u;
 
         // 5ns
 
         // *value_ptr = bm;
         // return false;
-        
+
+        // 10ns for positive
+        // 1ns for negative
 
         if (bm) {
+
             // int idx = _tzcnt_u32(bm) >> 3;
             int idx = _tzcnt_u32(bm);
             // idx &= 3;
@@ -436,6 +453,11 @@ retry:
     // return false;
 
     //  ───────────────────────── Bolt probe (2-byte bolts) ───────────────
+    // 44ns for positive
+    // 19ns for negative
+    // if (1) {
+    // 48ns for positive
+    // 23ns for negative
     if (bolt_cnt) {
         uint8_t* fp_hi =
             cloud + kBoltOffset - kBoltByteLength + kFingerprintOffset;
@@ -447,6 +469,8 @@ retry:
         const uint16_t query_fp16 = static_cast<uint16_t>(query_fp);
         const __m128i qfp16_vec = _mm_set1_epi16(query_fp16);
 
+        // 0-2ns
+
         do {
             const uint32_t batch = remaining >= 8 ? 8 : remaining;
 
@@ -457,18 +481,33 @@ retry:
 
             __m128i fp16 = _mm_and_si128(bytes, even_mask16);
 
-            __m128i tmp = _mm_add_epi16(_mm_set1_epi16(base_idx),
-                                        C.rev_idx16);  // {base+batch-1-7 …}
+            // 0ns
+
+            __m128i lala = _mm_set_epi16(0, 1, 2, 3, 4, 5, 6, 7);
+
+            __m128i tmp = _mm_add_epi16(_mm_set1_epi16(base_idx), lala);
+            // __m128i tmp = _mm_add_epi16(_mm_set1_epi16(base_idx), C.rev_idx16);
+
+            // 9-10ns
 
             __m128i cand = _mm_xor_si128(fp16, tmp);
+            // 0ns
 
             uint32_t mask = _mm_cmpeq_epi16_mask(cand, qfp16_vec);
 
             mask &= ~((1u << (8 - batch)) - 1u);
 
+            // 0-1ns
+
             while (mask) {
+                // passing this while
+                // 7ns for positive
+                // 5ns for negative
+
                 int idx = 7 - _tzcnt_u32(mask);
                 mask &= mask - 1u;
+
+                // 0-1ns
 
                 uint8_t* bolt_ptr =
                     fp_hi -
@@ -476,21 +515,35 @@ retry:
                     kFingerprintOffset;
                 uint8_t* tiny_ptr = bolt_ptr + kTinyPtrOffset;
 
-                uint64_t deref_key =
-                    (hash_cloud_id(key) << kByteShift) | query_fp;
+                uint64_t deref_key = (cloud_id << kByteShift) | query_fp;
+
+                // 1ns
 
                 uint8_t* entry = ptab_query_entry_address(deref_key, *tiny_ptr);
+
+                // 1 ns
 
                 uint64_t entry_mk =
                     (*reinterpret_cast<uint64_t*>(entry + kDropletKeyOffset))
                     << kBoltQuotientingLength;
 
+                // 13ns for positive, makes sense, since around 20% items are bolts
+                // 1ns for negative, it accesses some random place in the derefrence table, low lantency comes from the lower possibility of the getting into this branch
+
                 if (entry_mk == bolt_masked_key) {
+                    // adding the branch only
+                    // 9ns for positive
+                    // 3ns for negative
+
                     *value_ptr = *reinterpret_cast<uint64_t*>(
                         entry + kDropletValueOffset);
 
+                    // 1-2ns
+
                     if ((ver->load() != v0))
                         goto retry;
+                    // 0ns
+
                     return true;
                 }
             }
@@ -498,8 +551,10 @@ retry:
             fp_hi -= kBoltByteLength * 8;
             base_idx += batch;
             remaining -= batch;
+            // } while (0);
         } while (remaining);
-        // } while (0);
+        // 6ns for postive not using 0
+        // 2ns for not using 0
     }
 
     //  ───────────────────────────────────────── Miss / version check ─────────
@@ -507,6 +562,8 @@ retry:
         goto retry;
     return false;
 }
+
+
 
 bool BoltHT::Update(uint64_t key, uint64_t value) {
 

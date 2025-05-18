@@ -16,6 +16,7 @@
 #include "../chained_ht_64.h"
 #include "../dereference_table_64.h"
 #include "benchmark_bin_aware_chainedht.h"
+#include "benchmark_blast_ht.h"
 #include "benchmark_bolt_ht.h"
 #include "benchmark_bytearray_chainedht.h"
 #include "benchmark_chained.h"
@@ -589,6 +590,9 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
         } break;
         case BenchmarkObjectType::BOLT:
             obj = new BenchmarkBoltHT(table_size, para.bin_size);
+            break;
+        case BenchmarkObjectType::BLAST:
+            obj = new BenchmarkBlastHT(table_size, para.bin_size);
             break;
         default:
             abort();

@@ -271,13 +271,13 @@ bin_size=127
 # ../build/junction_test
 # exit
 
-# ../build/bolt_test
+# ../build/blast_test
 # exit
 
 # ../build/concurrent_skulker_ht_test
 
-for case_id in 6 7; do
-    for object_id in 19; do
+for case_id in 1 6 7; do
+    for object_id in 20; do
         entry_id=0
         for table_size in 16777215; do
             opt_num=$table_size

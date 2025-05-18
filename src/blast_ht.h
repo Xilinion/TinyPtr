@@ -22,9 +22,7 @@
 
 namespace tinyptr {
 
-class BoltHT {
-    friend struct BoltHTCloudLookupInitializer;
-
+class BlastHT {
    public:
     static uint8_t kCloudLookup[256];
     static constexpr uint8_t kByteMask = 0xFF;
@@ -33,12 +31,13 @@ class BoltHT {
    public:
     const uint64_t kHashSeed1;
     const uint64_t kHashSeed2;
-    const uint8_t kQuotientingTailLength;
-    const uint8_t kBoltQuotientingLength;
+    const uint8_t kCloudQuotientingLength;
+    const uint8_t kBlastQuotientingLength;
+    const uint64_t kBlastQuotientingMask;
     const uint64_t kQuotientingTailMask;
     const uint8_t kQuotKeyByteLength;
-    const uint8_t kCrystalByteLength;
-    const uint8_t kDropletByteLength;
+    const uint8_t kEntryByteLength;
+    const uint8_t kCrystalOffset;
 
     // layout
     // {4*{TP,K,V},{Bolts},{Control}}
@@ -53,13 +52,12 @@ class BoltHT {
     static constexpr uint8_t kControlByteLength = 1;
     static constexpr uint8_t kControlOffset =
         kConcurrentVersionOffset - kControlByteLength;
-    static constexpr uint8_t kBoltByteLength = 2;
-    static constexpr uint8_t kBoltByteLengthShift = 1;
-    static constexpr uint8_t kBoltOffset = kControlOffset;
-    static constexpr uint8_t kCrystalOffset = 0;
+    // static constexpr uint8_t kBoltByteLength = 2;
+    // static constexpr uint8_t kBoltByteLengthShift = 1;
+    // static constexpr uint8_t kBoltOffset = kControlOffset;
 
     static constexpr uint8_t kControlCrystalMask = (1 << 3) - 1;
-    static constexpr uint8_t kControlBoltShift = 3;
+    static constexpr uint8_t kControlTinyPtrShift = 3;
 
     static constexpr double kCloudOverflowBound = 0.23;
     // expected ratio of used quotienting slots
@@ -68,11 +66,10 @@ class BoltHT {
     const uint16_t kBinSize;
     const uint64_t kBinNum;
     static constexpr uint8_t kTinyPtrOffset = 0;
-    static constexpr uint8_t kFingerprintOffset = 1;
+    static constexpr uint8_t kFingerprintOffset = 0;
+    static constexpr uint8_t kFingerprintShift = 3;
     static constexpr uint8_t kKeyOffset = 0;
     const uint8_t kValueOffset;
-    static constexpr uint8_t kDropletKeyOffset = 0;
-    const uint8_t kDropletValueOffset;
     const uint16_t kBinByteLength;
     static constexpr uintptr_t kPtr16BAlignMask = ~0xF;
     static constexpr uintptr_t kPtr16BBufferOffsetMask = 0xF;
@@ -101,11 +98,11 @@ class BoltHT {
     uint8_t AutoFastDivisionInnerShift(uint64_t divisor);
 
    public:
-    BoltHT(uint64_t size, uint8_t quotienting_tail_length, uint16_t bin_size);
-    BoltHT(uint64_t size, uint16_t bin_size);
-    BoltHT(uint64_t size);
+    BlastHT(uint64_t size, uint8_t quotienting_tail_length, uint16_t bin_size);
+    BlastHT(uint64_t size, uint16_t bin_size);
+    BlastHT(uint64_t size);
 
-    ~BoltHT();
+    ~BlastHT();
 
     bool Insert(uint64_t key, uint64_t value);
     bool Query(uint64_t key, uint64_t* value_ptr);
@@ -113,7 +110,7 @@ class BoltHT {
     void Free(uint64_t key);
 
     void SetResizeStride(uint64_t stride_num);
-    bool ResizeMoveStride(uint64_t stride_id, BoltHT* new_ht);
+    bool ResizeMoveStride(uint64_t stride_id, BlastHT* new_ht);
 
     void Scan4Stats();
 
@@ -154,7 +151,7 @@ class BoltHT {
 
     __attribute__((always_inline)) inline uint64_t hash_cloud_id(uint64_t key) {
 
-        uint64_t tmp = key >> kQuotientingTailLength;
+        uint64_t tmp = key >> kCloudQuotientingLength;
 
         // return (((XXH64(&tmp, sizeof(uint64_t), kHashSeed1) ^ key) &
         //          kQuotientingTailMask) *
@@ -171,8 +168,8 @@ class BoltHT {
 
     __attribute__((always_inline)) inline uint64_t hash_key_rebuild(
         uint64_t quotiented_key, uint64_t cloud_id) {
-        uint64_t tmp = (quotiented_key << kQuotientingTailLength) >>
-                       kQuotientingTailLength;
+        uint64_t tmp = (quotiented_key << kCloudQuotientingLength) >>
+                       kCloudQuotientingLength;
 
         // return ((XXH64(&tmp, sizeof(uint64_t), kHashSeed1) ^
         //          ((cloud_id * kBaseHashInverse) & kQuotientingTailMask)) &
@@ -180,7 +177,7 @@ class BoltHT {
         //        (tmp << kQuotientingTailLength);
         return ((XXH64(&tmp, sizeof(uint64_t), kHashSeed1) ^ cloud_id) &
                 kQuotientingTailMask) |
-               (tmp << kQuotientingTailLength);
+               (tmp << kCloudQuotientingLength);
     }
 
     __attribute__((always_inline)) inline uint64_t hash_2(uint64_t key) {
@@ -214,10 +211,10 @@ class BoltHT {
         ptr = ptr & ((1 << 7) - 1);
         if (flag) {
             return byte_array +
-                   (hash_2_bin(key) * kBinSize + ptr - 1) * kDropletByteLength;
+                   (hash_2_bin(key) * kBinSize + ptr - 1) * kEntryByteLength;
         } else {
             return byte_array +
-                   (hash_1_bin(key) * kBinSize + ptr - 1) * kDropletByteLength;
+                   (hash_1_bin(key) * kBinSize + ptr - 1) * kEntryByteLength;
         }
     }
 
@@ -236,7 +233,7 @@ class BoltHT {
 
             if (head < kBinSize) {
                 uint8_t* entry =
-                    byte_array + (bin1 * kBinSize + head) * kDropletByteLength;
+                    byte_array + (bin1 * kBinSize + head) * kEntryByteLength;
                 uint8_t new_pre_tiny_ptr = head + 1;
                 head = head + 1 + entry[kTinyPtrOffset];
                 if (head > kBinSize) {
@@ -280,7 +277,7 @@ class BoltHT {
 
             if (head < kBinSize) {
                 uint8_t* entry = byte_array + (bin_id * kBinSize + head) *
-                                                  kDropletByteLength;
+                                                  kEntryByteLength;
                 uint8_t new_pre_tiny_ptr = (head + 1) | (flag << 7);
                 head = head + 1 + entry[kTinyPtrOffset];
                 if (head > kBinSize) {
@@ -306,9 +303,8 @@ class BoltHT {
         if (entry != nullptr) {
             *pre_tiny_ptr = *entry;
             // assuming little endian
-            *reinterpret_cast<uint64_t*>(entry + kDropletKeyOffset) =
-                key >> kBoltQuotientingLength;
-            *reinterpret_cast<uint64_t*>(entry + kDropletValueOffset) = value;
+            *reinterpret_cast<uint64_t*>(entry + kKeyOffset) = key;
+            *reinterpret_cast<uint64_t*>(entry + kValueOffset) = value;
             return true;
         } else {
             return false;
@@ -326,7 +322,7 @@ class BoltHT {
         if (*pre_tiny_ptr != 0) {
             cur_entry = ptab_query_entry_address(pre_deref_key, *pre_tiny_ptr);
             if ((*reinterpret_cast<uint64_t*>(cur_entry + kKeyOffset)
-                 << kQuotientingTailLength) == quotiented_N_reshifted_key) {
+                 << kCloudQuotientingLength) == quotiented_N_reshifted_key) {
                 aiming_entry = cur_entry;
             }
             cur_tiny_ptr = cur_entry + kTinyPtrOffset;
@@ -340,7 +336,7 @@ class BoltHT {
             cur_entry = ptab_query_entry_address(
                 reinterpret_cast<uint64_t>(cur_tiny_ptr), *cur_tiny_ptr);
             if ((*reinterpret_cast<uint64_t*>(cur_entry + kKeyOffset)
-                 << kQuotientingTailLength) == quotiented_N_reshifted_key) {
+                 << kCloudQuotientingLength) == quotiented_N_reshifted_key) {
                 aiming_entry = cur_entry;
             }
             cur_tiny_ptr = cur_entry + kTinyPtrOffset;
@@ -351,7 +347,7 @@ class BoltHT {
         }
 
         uint8_t tmp = aiming_entry[kTinyPtrOffset];
-        memcpy(aiming_entry, cur_entry, kDropletByteLength);
+        memcpy(aiming_entry, cur_entry, kEntryByteLength);
         aiming_entry[kTinyPtrOffset] = tmp;
 
         uint64_t bin_id = (cur_entry - byte_array) / kBinByteLength;
@@ -372,158 +368,6 @@ class BoltHT {
         bin_locks[bin_id].clear(std::memory_order_release);
     }
 
-    __attribute__((always_inline)) inline void ptab_lift_to_cloud(
-        uint8_t* pre_tiny_ptr, uintptr_t pre_deref_key,
-        uint8_t* exhibitor_ptr) {
-
-        uint8_t* cur_tiny_ptr = nullptr;
-        uint8_t* cur_entry = nullptr;
-
-        if (*pre_tiny_ptr != 0) {
-            cur_entry = ptab_query_entry_address(pre_deref_key, *pre_tiny_ptr);
-            cur_tiny_ptr = cur_entry + kTinyPtrOffset;
-        } else {
-            return;
-        }
-
-        while (*cur_tiny_ptr != 0) {
-            pre_tiny_ptr = cur_tiny_ptr;
-
-            cur_entry = ptab_query_entry_address(
-                reinterpret_cast<uint64_t>(cur_tiny_ptr), *cur_tiny_ptr);
-            cur_tiny_ptr = cur_entry + kTinyPtrOffset;
-        }
-
-        uint8_t tmp = exhibitor_ptr[kTinyPtrOffset];
-        memcpy(exhibitor_ptr, cur_entry, kDropletByteLength);
-        exhibitor_ptr[kTinyPtrOffset] = tmp;
-
-        uint64_t bin_id = (cur_entry - byte_array) / kBinByteLength;
-
-        while (bin_locks[bin_id].test_and_set(std::memory_order_acquire))
-            ;
-
-        bin_cnt(bin_id)--;
-        uint8_t& head = bin_head(bin_id);
-        uint8_t cur_in_bin_pos = ((uint8_t)((*pre_tiny_ptr) << 1) >> 1) - 1;
-        cur_entry[kTinyPtrOffset] = head + kBinSize - cur_in_bin_pos;
-        if (cur_entry[kTinyPtrOffset] > kBinSize) {
-            cur_entry[kTinyPtrOffset] -= (kBinSize + 1);
-        }
-        head = cur_in_bin_pos;
-        *pre_tiny_ptr = 0;
-
-        bin_locks[bin_id].clear(std::memory_order_release);
-    }
-
-    __attribute__((always_inline)) inline bool cloud_exhibitor_hide(
-        uint8_t* cloud, uint64_t cloud_offset, uint16_t& control_info,
-        uint8_t exhibitor_num, uint8_t item_cnt) {
-
-        thread_local static uint8_t* play_entry =
-            new uint8_t[kDropletByteLength];
-        thread_local static uint64_t* play_1 =
-            reinterpret_cast<uint64_t*>(play_entry);
-        thread_local static uint64_t* play_2 =
-            reinterpret_cast<uint64_t*>(play_entry + kValueOffset);
-
-        // convert the last exhibitor to the first bolt
-        memcpy(play_entry, cloud + (exhibitor_num - 1) * kDropletByteLength,
-               kDropletByteLength);
-        // *play_1 = *(uint64_t*)(cloud + (exhibitor_num - 1) * kDropletByteLength);
-        // *play_2 = *(uint64_t*)(cloud + (exhibitor_num - 1) * kDropletByteLength +
-        //                        kValueOffset);
-
-        // exhibitor spills and converts the last exhibitor to the first bolt
-        for (uint8_t* i = cloud + kBoltOffset - (item_cnt - exhibitor_num);
-             i < cloud + kBoltOffset; i++) {
-            *i = *(i + 1);
-        }
-
-        // get the cloud_id of the last exhibitor
-
-        uint32_t hide_in_cloud_offset = _tzcnt_u32(
-            _pdep_u32(1u << (item_cnt - exhibitor_num), control_info));
-
-        /*
-        uint8_t hide_in_cloud_offset = 0;
-        uint16_t control_info_before_spilled =
-            control_info >> (hide_in_cloud_offset + 1);
-
-        while (kCloudLookup[control_info_before_spilled & kByteMask] +
-                   kCloudLookup[(control_info_before_spilled >> kByteShift)] >=
-               exhibitor_num) {
-            hide_in_cloud_offset++;
-            control_info_before_spilled =
-                control_info >> (hide_in_cloud_offset + 1);
-        }
-        */
-
-        uintptr_t spilled_cloud_id = cloud_offset + hide_in_cloud_offset;
-
-        cloud[kBoltOffset] = play_entry[kTinyPtrOffset];
-
-        if (!ptab_insert(cloud + kBoltOffset, spilled_cloud_id,
-                         hash_key_rebuild(*(uint64_t*)(play_entry + kKeyOffset),
-                                          spilled_cloud_id),
-                         *(uint64_t*)(play_entry + kValueOffset))) {
-
-            // recover the cloud
-            for (uint8_t* i = cloud + kBoltOffset;
-                 i > cloud + kBoltOffset - (item_cnt - exhibitor_num); i--) {
-                *i = *(i - 1);
-            }
-
-            memcpy(cloud + (exhibitor_num - 1) * kDropletByteLength, play_entry,
-                   kDropletByteLength);
-            // *(uint64_t*)(cloud + (exhibitor_num - 1) * kDropletByteLength) =
-            //     *play_1;
-            // *(uint64_t*)(cloud + (exhibitor_num - 1) * kDropletByteLength +
-            //              kValueOffset) = *play_2;
-
-            return false;
-        }
-
-        return true;
-    }
-
-    // exhibitor_num is the # we currently have in the cloud
-    __attribute__((always_inline)) inline void cloud_bolt_raid(
-        uint8_t* cloud, uint64_t cloud_offset, uint16_t& control_info,
-        uint8_t exhibitor_num, uint8_t item_cnt) {
-        uint8_t* exhibitor_ptr = cloud + (exhibitor_num)*kDropletByteLength;
-        exhibitor_ptr[kTinyPtrOffset] = cloud[kBoltOffset];
-
-        for (uint8_t* i = cloud + kBoltOffset;
-             i > cloud + kBoltOffset - (item_cnt - exhibitor_num - 1); i--) {
-            *i = *(i - 1);
-        }
-
-        // get the cloud_id of the first bolt
-
-        uint32_t raid_in_cloud_offset = _tzcnt_u32(
-            _pdep_u32(1u << (item_cnt - exhibitor_num - 1), control_info));
-
-        /*
-        uint8_t raid_in_cloud_offset = 0;
-        uint16_t control_info_before_spilled =
-            control_info >> (raid_in_cloud_offset + 1);
-
-        while (kCloudLookup[control_info_before_spilled & kByteMask] +
-                   kCloudLookup[(control_info_before_spilled >> kByteShift)] >
-               exhibitor_num) {
-            raid_in_cloud_offset++;
-            control_info_before_spilled =
-                control_info >> (raid_in_cloud_offset + 1);
-        }
-        */
-
-        uint8_t* pre_tiny_ptr = exhibitor_ptr + kTinyPtrOffset;
-        uintptr_t pre_deref_key = cloud_offset + raid_in_cloud_offset;
-
-        ptab_lift_to_cloud(pre_tiny_ptr, pre_deref_key, exhibitor_ptr);
-    }
-
    public:
     __attribute__((always_inline)) inline void prefetch_key(uint64_t key) {
         uint64_t cloud_id = hash_cloud_id(key);
@@ -538,19 +382,6 @@ class BoltHT {
         __builtin_prefetch(
             (const void*)(cloud_tab + (cloud_id << kCloudIdShiftOffset)));
     }
-};
-
-struct BoltHTCloudLookupInitializer {
-    BoltHTCloudLookupInitializer() {
-        for (int i = 0; i < 256; ++i) {
-            BoltHT::kCloudLookup[i] = 0;
-            int tmp = i;
-            while (tmp) {
-                BoltHT::kCloudLookup[i]++;
-                tmp -= tmp & (-tmp);
-            }
-        }
-    };
 };
 
 }  // namespace tinyptr

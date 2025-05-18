@@ -42,6 +42,7 @@ results/
 cmake-build-debug
 .vscode
 .cache
+.clangd
 
 # Profiling
 perf.data*
