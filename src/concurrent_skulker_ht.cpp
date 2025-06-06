@@ -72,7 +72,7 @@ uint8_t ConcurrentSkulkerHT::AutoLockNum(uint64_t thread_num_supported) {
 
 ConcurrentSkulkerHT::ConcurrentSkulkerHT(uint64_t size,
                                          uint8_t quotienting_tail_length,
-                                         uint16_t bin_size)
+                                         uint16_t bin_size, bool if_resize)
     : kHashSeed1(rand() & ((1 << 16) - 1)),
       kHashSeed2(65536 + rand()),
       kQuotientingTailLength(quotienting_tail_length
@@ -173,8 +173,13 @@ ConcurrentSkulkerHT::ConcurrentSkulkerHT(uint64_t size,
 
     // auto start = std::chrono::high_resolution_clock::now();
 
-    combined_mem = mmap(NULL, total_size, PROT_READ | PROT_WRITE,
-                        MAP_ANONYMOUS | MAP_PRIVATE | MAP_POPULATE, -1, 0);
+    if (if_resize) {
+        combined_mem = mmap(NULL, total_size, PROT_READ | PROT_WRITE,
+                            MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
+    } else {
+        combined_mem = mmap(NULL, total_size, PROT_READ | PROT_WRITE,
+                            MAP_ANONYMOUS | MAP_PRIVATE | MAP_POPULATE, -1, 0);
+    }
 
     // auto end = chrono::high_resolution_clock::now();
     // std::cout
@@ -262,11 +267,12 @@ ConcurrentSkulkerHT::ConcurrentSkulkerHT(uint64_t size,
     // freopen("lalala.txt", "w", stdout);
 }
 
-ConcurrentSkulkerHT::ConcurrentSkulkerHT(uint64_t size, uint16_t bin_size)
-    : ConcurrentSkulkerHT(size, 0, bin_size) {}
+ConcurrentSkulkerHT::ConcurrentSkulkerHT(uint64_t size, uint16_t bin_size,
+                                         bool if_resize)
+    : ConcurrentSkulkerHT(size, 0, bin_size, if_resize) {}
 
-ConcurrentSkulkerHT::ConcurrentSkulkerHT(uint64_t size)
-    : ConcurrentSkulkerHT(size, 0, 127) {}
+ConcurrentSkulkerHT::ConcurrentSkulkerHT(uint64_t size, bool if_resize)
+    : ConcurrentSkulkerHT(size, 0, 127, if_resize) {}
 
 ConcurrentSkulkerHT::~ConcurrentSkulkerHT() {
     munmap(bush_tab, kBushNum * kBushByteLength);

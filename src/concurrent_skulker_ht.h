@@ -93,9 +93,10 @@ class ConcurrentSkulkerHT {
 
    public:
     ConcurrentSkulkerHT(uint64_t size, uint8_t quotienting_tail_length,
-                        uint16_t bin_size);
-    ConcurrentSkulkerHT(uint64_t size, uint16_t bin_size);
-    ConcurrentSkulkerHT(uint64_t size);
+                        uint16_t bin_size, bool if_resize = false);
+    ConcurrentSkulkerHT(uint64_t size, uint16_t bin_size,
+                        bool if_resize = false);
+    ConcurrentSkulkerHT(uint64_t size, bool if_resize = false);
 
     ~ConcurrentSkulkerHT();
 

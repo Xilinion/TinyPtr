@@ -25,7 +25,8 @@ uint8_t ConcurrentByteArrayChainedHT::AutoQuotTailLength(uint64_t size) {
 }
 
 ConcurrentByteArrayChainedHT::ConcurrentByteArrayChainedHT(
-    uint64_t size, uint8_t quotienting_tail_length, uint16_t bin_size)
+    uint64_t size, uint8_t quotienting_tail_length, uint16_t bin_size,
+    bool if_resize)
     : kHashSeed1(rand() & ((1 << 16) - 1)),
       kHashSeed2(65536 + rand()),
       kQuotientingTailLength(quotienting_tail_length
@@ -82,8 +83,13 @@ ConcurrentByteArrayChainedHT::ConcurrentByteArrayChainedHT(
 
     // Allocate a single aligned block
     void* combined_mem;
-    combined_mem = mmap(NULL, total_size, PROT_READ | PROT_WRITE,
-                        MAP_ANONYMOUS | MAP_PRIVATE | MAP_POPULATE, -1, 0);
+    if (if_resize) {
+        combined_mem = mmap(NULL, total_size, PROT_READ | PROT_WRITE,
+                            MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
+    } else {
+        combined_mem = mmap(NULL, total_size, PROT_READ | PROT_WRITE,
+                            MAP_ANONYMOUS | MAP_PRIVATE | MAP_POPULATE, -1, 0);
+    }
 
     // Assign pointers to their respective regions
     uint8_t* base =
@@ -144,11 +150,13 @@ ConcurrentByteArrayChainedHT::ConcurrentByteArrayChainedHT(
 }
 
 ConcurrentByteArrayChainedHT::ConcurrentByteArrayChainedHT(uint64_t size,
-                                                           uint16_t bin_size)
-    : ConcurrentByteArrayChainedHT(size, 0, bin_size) {}
+                                                           uint16_t bin_size,
+                                                           bool if_resize)
+    : ConcurrentByteArrayChainedHT(size, 0, bin_size, if_resize) {}
 
-ConcurrentByteArrayChainedHT::ConcurrentByteArrayChainedHT(uint64_t size)
-    : ConcurrentByteArrayChainedHT(size, 0, 127) {}
+ConcurrentByteArrayChainedHT::ConcurrentByteArrayChainedHT(uint64_t size,
+                                                           bool if_resize)
+    : ConcurrentByteArrayChainedHT(size, 0, 127, if_resize) {}
 
 ConcurrentByteArrayChainedHT::~ConcurrentByteArrayChainedHT() {
     munmap(byte_array, kBinNum * kBinSize * kEntryByteLength);

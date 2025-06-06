@@ -170,8 +170,8 @@ class ResizableHT {
                 std::chrono::high_resolution_clock::time_point my_time[10];
                 // my_time[0] = std::chrono::high_resolution_clock::now();
 
-                partitions_new[part_id] =
-                    new HTType(uint64_t(part_size[part_id] * resize_factor));
+                partitions_new[part_id] = new HTType(
+                    uint64_t(part_size[part_id] * resize_factor), true);
 
                 partitions[part_id]->SetResizeStride(stride_num);
 
@@ -276,7 +276,7 @@ ResizableHT<HTType>::ResizableHT(uint64_t initial_size_per_part_,
     part_resize_threshold = new int64_t[part_num];
 
     for (uint64_t i = 0; i < part_num; i++) {
-        partitions[i] = new HTType(initial_size_per_part);
+        partitions[i] = new HTType(initial_size_per_part, true);
         part_size[i] = initial_size_per_part;
         part_resize_threshold[i] = initial_size_per_part * resize_threshold;
     }
