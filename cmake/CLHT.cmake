@@ -55,12 +55,12 @@ function(build_CLHT)
         COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/sspfd/src/sspfd/libsspfd.a <BINARY_DIR>/external/lib/libsspfd.a
         COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/sspfd/src/sspfd/sspfd.h <BINARY_DIR>/external/include/sspfd.h
         COMMAND ${CMAKE_COMMAND} -E echo "#define __GNUC_MINOR__ 3" | cat - <BINARY_DIR>/include/clht.h > temp && mv temp <BINARY_DIR>/include/clht.h
-        # COMMAND /bin/sh -c "sed -i 's/^CFLAGS = .*/CFLAGS = -D__GNUC_MINOR__=3 -D_GNU_SOURCE/' <BINARY_DIR>/Makefile"
         COMMAND ${CMAKE_COMMAND} -E copy <BINARY_DIR>/include/clht.h <BINARY_DIR>/clht.h
-        # COMMAND ${CMAKE_MAKE_PROGRAM} libclht_lb_res.a
-        # COMMAND ${CMAKE_MAKE_PROGRAM} dependencies
-        # COMMAND ${CMAKE_MAKE_PROGRAM} all
-        # COMMAND ${CMAKE_MAKE_PROGRAM} libclht_lb_res.a
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different <BINARY_DIR>/src/clht_lb_res.c <BINARY_DIR>/src/clht_lb_res.c.bak
+        COMMAND ${CMAKE_COMMAND} -E cat <BINARY_DIR>/src/clht_lb_res.c.bak | head -n 210 > <BINARY_DIR>/src/clht_lb_res.c.new
+        COMMAND ${CMAKE_COMMAND} -E echo_append "return __ac_Jenkins_hash_64(key) & (hashtable->hash)$<SEMICOLON>" >> <BINARY_DIR>/src/clht_lb_res.c.new
+        COMMAND ${CMAKE_COMMAND} -E cat <BINARY_DIR>/src/clht_lb_res.c.bak | tail -n +212 >> <BINARY_DIR>/src/clht_lb_res.c.new
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different <BINARY_DIR>/src/clht_lb_res.c.new <BINARY_DIR>/src/clht_lb_res.c
         COMMAND ${CMAKE_MAKE_PROGRAM} clht_lb_res
         INSTALL_COMMAND ""
         CONFIGURE_COMMAND ""
@@ -74,7 +74,6 @@ function(build_CLHT)
 
     set_target_properties(CLHT_lib PROPERTIES
         IMPORTED_LOCATION "${BINARY_DIR}/libclht.a"
-        # IMPORTED_LOCATION "${BINARY_DIR}/libclht_lf_res.a"
         INTERFACE_INCLUDE_DIRECTORIES ${SOURCE_DIR}
     )
 
