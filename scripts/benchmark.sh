@@ -129,6 +129,15 @@ function RunYCSB() {
     elif [ $case_id -eq 19 ]; then
         ycsb_load_path=$ycsb_c_load_file
         ycsb_exe_path=$ycsb_c_exe_file
+    elif [ $case_id -eq 20 ]; then
+        ycsb_load_path=$ycsb_a_load_file
+        ycsb_exe_path=$ycsb_neg_a_exe_file
+    elif [ $case_id -eq 21 ]; then
+        ycsb_load_path=$ycsb_b_load_file
+        ycsb_exe_path=$ycsb_neg_b_exe_file
+    elif [ $case_id -eq 22 ]; then
+        ycsb_load_path=$ycsb_c_load_file
+        ycsb_exe_path=$ycsb_neg_c_exe_file
     fi
 
     args="-o $object_id -c $case_id -e $entry_id -t $table_size -p $opt_num -l $load_factor -h $hit_percent -b $bin_size -q $quotient_tail_length -y $ycsb_load_path -s $ycsb_exe_path -n $thread_num -f "$res_path""
@@ -276,10 +285,10 @@ bin_size=127
 
 # ../build/concurrent_skulker_ht_test
 
-for case_id in 6 7; do
-    for object_id in 20; do
+for case_id in 1 6 7; do
+    for object_id in 5; do
         entry_id=0
-        for table_size in 16777215; do
+        for table_size in 16777216; do
             opt_num=$table_size
             Run
             let "entry_id++"

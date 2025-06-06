@@ -26,7 +26,10 @@ struct BenchmarkCaseType {
         YCSB_A = 17,
         YCSB_B = 18,
         YCSB_C = 19,
-        COUNT = 20
+        YCSB_NEG_A = 20,
+        YCSB_NEG_B = 21,
+        YCSB_NEG_C = 22,
+        COUNT = 23
     };
 
     BenchmarkCaseType() = default;
