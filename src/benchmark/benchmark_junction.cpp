@@ -12,7 +12,8 @@ BenchmarkJunction::BenchmarkJunction(int n) : BenchmarkObject64(TYPE) {
         table_size *= 2;
     }
     // tab = new junction::ConcurrentMap_Grampa<uint64_t, uint64_t>(n);
-    tab = new junction::ConcurrentMap_Leapfrog<uint64_t, uint64_t>(table_size);
+    // tab = new junction::ConcurrentMap_Leapfrog<uint64_t, uint64_t>(table_size);
+    tab = new junction::ConcurrentMap_Linear<uint64_t, uint64_t>(table_size);
 }
 
 uint8_t BenchmarkJunction::Insert(uint64_t key, uint64_t value) {

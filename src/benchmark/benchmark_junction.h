@@ -1,5 +1,6 @@
 #include <junction/ConcurrentMap_Grampa.h>
 #include <junction/ConcurrentMap_Leapfrog.h>
+#include <junction/ConcurrentMap_Linear.h>
 #include "benchmark/benchmark_object_64.h"
 
 namespace tinyptr {
@@ -28,7 +29,8 @@ class BenchmarkJunction : public BenchmarkObject64 {
 
    private:
     // junction::ConcurrentMap_Grampa<uint64_t, uint64_t>* tab;
-    junction::ConcurrentMap_Leapfrog<uint64_t, uint64_t>* tab;
+    // junction::ConcurrentMap_Leapfrog<uint64_t, uint64_t>* tab;
+    junction::ConcurrentMap_Linear<uint64_t, uint64_t>* tab;
 };
 
 }  // namespace tinyptr
