@@ -184,7 +184,7 @@ bool BlastHT::Insert(uint64_t key, uint64_t value) {
 
         crystal_end -= kEntryByteLength;
 
-        cloud[kFingerprintOffset + fp_cnt] = fp ^ fp_cnt;
+        cloud[kFingerprintOffset + fp_cnt] = fp;
 
         reinterpret_cast<uint64_t*>(cloud + crystal_end + kKeyOffset)[0] =
             truncated_key;
@@ -196,9 +196,8 @@ bool BlastHT::Insert(uint64_t key, uint64_t value) {
         return true;
     } else if (crystal_end >= fp_cnt + tp_cnt + 2) {
 
-        uint8_t* fp_ptr = cloud + fp_cnt;
         uint8_t* tiny_ptr = cloud + crystal_end - tp_cnt - 1;
-        fp_ptr[0] = fp ^ fp_cnt;
+        cloud[kFingerprintOffset + fp_cnt] = fp;
 
         bool result = ptab_insert(tiny_ptr, (cloud_id << kByteShift) | fp,
                                   truncated_key, value);
@@ -224,13 +223,12 @@ bool BlastHT::Insert(uint64_t key, uint64_t value) {
         crystal_end += kEntryByteLength;
 
         uint8_t* tiny_ptr = cloud + crystal_end - 1;
-        uint8_t last_crystal_fp =
-            cloud[kFingerprintOffset + crystal_cnt - 1] ^ (crystal_cnt - 1);
+        uint8_t last_crystal_fp = cloud[kFingerprintOffset + crystal_cnt - 1];
 
         if (ptab_insert(tiny_ptr, (cloud_id << kByteShift) | last_crystal_fp,
                         last_crystal_trunced_key, last_crystal_value)) {
 
-            cloud[kFingerprintOffset + fp_cnt] = fp ^ fp_cnt;
+            cloud[kFingerprintOffset + fp_cnt] = fp;
             tiny_ptr -= tp_cnt + 1;
 
             if (ptab_insert(tiny_ptr, (cloud_id << kByteShift) | fp,
@@ -309,7 +307,7 @@ query_again:
 
     // Crystal search - using standard loop
     for (uint8_t i = 0; i < fp_cnt; i++) {
-        if ((cloud[kFingerprintOffset + i] ^ i) == fp) {
+        if ((cloud[kFingerprintOffset + i]) == fp) {
             if (i < crystal_cnt) {
                 if (reinterpret_cast<uint64_t*>(cloud + crystal_begin -
                                                 i * kEntryByteLength +
@@ -386,13 +384,13 @@ query_again:
 
     uint8_t crystal_begin = kControlOffset - kEntryByteLength;
 
-    __m256i revert_mask = _mm256_set_epi8(
-        31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, 16, 15, 14,
-        13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0);
+    // __m256i revert_mask = _mm256_set_epi8(
+    //     31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, 16, 15, 14,
+    //     13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0);
     __m256i fp_vec = _mm256_loadu_si256(
         reinterpret_cast<__m256i*>(cloud + kFingerprintOffset));
 
-    fp_vec = _mm256_xor_si256(fp_vec, revert_mask);
+    // fp_vec = _mm256_xor_si256(fp_vec, revert_mask);
     __mmask32 mask = _mm256_cmpeq_epi8_mask(fp_vec, _mm256_set1_epi8(fp));
 
     mask &= ((1u << (fp_cnt)) - 1u);
@@ -500,13 +498,13 @@ bool BlastHT::Update(uint64_t key, uint64_t value) {
 
     uint8_t crystal_begin = kControlOffset - kEntryByteLength;
 
-    __m256i revert_mask = _mm256_set_epi8(
-        31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, 16, 15, 14,
-        13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0);
+    // __m256i revert_mask = _mm256_set_epi8(
+    //     31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, 16, 15, 14,
+    //     13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0);
     __m256i fp_vec = _mm256_loadu_si256(
         reinterpret_cast<__m256i*>(cloud + kFingerprintOffset));
 
-    fp_vec = _mm256_xor_si256(fp_vec, revert_mask);
+    // fp_vec = _mm256_xor_si256(fp_vec, revert_mask);
     __mmask32 mask = _mm256_cmpeq_epi8_mask(fp_vec, _mm256_set1_epi8(fp));
 
     mask &= ((1u << (fp_cnt)) - 1u);
