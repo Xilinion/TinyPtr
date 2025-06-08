@@ -82,8 +82,8 @@ BlastHT::BlastHT(uint64_t size, uint8_t quotienting_tail_length,
       kFastDivisionReciprocal{
           (1ULL << kFastDivisionShift[0]) / kEntryByteLength + 1 /*not used*/,
           (1ULL << kFastDivisionShift[1]) / kBinNum + 1} {
-
-    assert(size / 2 > (1ULL << (kCloudQuotientingLength)));
+            
+    assert(size / 2 >= (1ULL << (kCloudQuotientingLength)));
     assert(bin_size < 128);
 
     // Determine the number of threads
