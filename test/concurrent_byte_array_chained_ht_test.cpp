@@ -87,7 +87,7 @@ TEST(ConcurrentByteArrayChainedHT_TESTSUITE, ParallelInsertQuery) {
     using namespace tinyptr;  // Ensure tinyptr is a valid namespace
 
     start = chrono::high_resolution_clock::now();
-    ConcurrentByteArrayChainedHT ht(static_cast<uint64_t>(num_operations)*2, 127);
+    ConcurrentByteArrayChainedHT ht(static_cast<uint64_t>(num_operations)*2, 127, false);
     end = chrono::high_resolution_clock::now();
     std::cout
         << "init time: "
