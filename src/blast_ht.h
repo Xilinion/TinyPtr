@@ -180,6 +180,24 @@ class BlastHT {
                (tmp << kCloudQuotientingLength);
     }
 
+    __attribute__((always_inline)) inline uint64_t hash_key_rebuild(
+        uint64_t quotiented_key, uint64_t cloud_id, uint8_t fp) {
+        uint64_t tmp = (quotiented_key << kBlastQuotientingLength) >>
+                       kBlastQuotientingLength;
+
+        uint64_t fp_64 = fp;
+        fp_64 <<= kCloudQuotientingLength;
+        fp_64 |= cloud_id;
+
+        // return ((XXH64(&tmp, sizeof(uint64_t), kHashSeed1) ^
+        //          ((cloud_id * kBaseHashInverse) & kQuotientingTailMask)) &
+        //         kQuotientingTailMask) |
+        //        (tmp << kQuotientingTailLength);
+        return ((XXH64(&tmp, sizeof(uint64_t), kHashSeed1) ^ fp_64) &
+                kBlastQuotientingMask) |
+               (tmp << kBlastQuotientingLength);
+    }
+
     __attribute__((always_inline)) inline uint64_t hash_2(uint64_t key) {
         return XXH64(&key, sizeof(uint64_t), kHashSeed2);
     }
@@ -276,8 +294,8 @@ class BlastHT {
             uint8_t& cnt = bin_cnt(bin_id);
 
             if (head < kBinSize) {
-                uint8_t* entry = byte_array + (bin_id * kBinSize + head) *
-                                                  kEntryByteLength;
+                uint8_t* entry =
+                    byte_array + (bin_id * kBinSize + head) * kEntryByteLength;
                 uint8_t new_pre_tiny_ptr = (head + 1) | (flag << 7);
                 head = head + 1 + entry[kTinyPtrOffset];
                 if (head > kBinSize) {
@@ -312,45 +330,11 @@ class BlastHT {
     }
 
     __attribute__((always_inline)) inline void ptab_free(
-        uint8_t* pre_tiny_ptr, uintptr_t pre_deref_key,
-        uint64_t quotiented_N_reshifted_key) {
+        uint8_t* pre_tiny_ptr, uintptr_t pre_deref_key) {
 
-        uint8_t* cur_tiny_ptr = nullptr;
-        uint8_t* cur_entry = nullptr;
-        uint8_t* aiming_entry = nullptr;
+        uint8_t* entry = ptab_query_entry_address(pre_deref_key, *pre_tiny_ptr);
 
-        if (*pre_tiny_ptr != 0) {
-            cur_entry = ptab_query_entry_address(pre_deref_key, *pre_tiny_ptr);
-            if ((*reinterpret_cast<uint64_t*>(cur_entry + kKeyOffset)
-                 << kCloudQuotientingLength) == quotiented_N_reshifted_key) {
-                aiming_entry = cur_entry;
-            }
-            cur_tiny_ptr = cur_entry + kTinyPtrOffset;
-        } else {
-            return;
-        }
-
-        while (*cur_tiny_ptr != 0) {
-            pre_tiny_ptr = cur_tiny_ptr;
-
-            cur_entry = ptab_query_entry_address(
-                reinterpret_cast<uint64_t>(cur_tiny_ptr), *cur_tiny_ptr);
-            if ((*reinterpret_cast<uint64_t*>(cur_entry + kKeyOffset)
-                 << kCloudQuotientingLength) == quotiented_N_reshifted_key) {
-                aiming_entry = cur_entry;
-            }
-            cur_tiny_ptr = cur_entry + kTinyPtrOffset;
-        }
-
-        if (aiming_entry == nullptr) {
-            return;
-        }
-
-        uint8_t tmp = aiming_entry[kTinyPtrOffset];
-        memcpy(aiming_entry, cur_entry, kEntryByteLength);
-        aiming_entry[kTinyPtrOffset] = tmp;
-
-        uint64_t bin_id = (cur_entry - byte_array) / kBinByteLength;
+        uint64_t bin_id = (entry - byte_array) / kBinByteLength;
 
         while (bin_locks[bin_id].test_and_set(std::memory_order_acquire))
             ;
@@ -358,9 +342,9 @@ class BlastHT {
         bin_cnt(bin_id)--;
         uint8_t& head = bin_head(bin_id);
         uint8_t cur_in_bin_pos = ((uint8_t)((*pre_tiny_ptr) << 1) >> 1) - 1;
-        cur_entry[kTinyPtrOffset] = head + kBinSize - cur_in_bin_pos;
-        if (cur_entry[kTinyPtrOffset] > kBinSize) {
-            cur_entry[kTinyPtrOffset] -= (kBinSize + 1);
+        entry[kTinyPtrOffset] = head + kBinSize - cur_in_bin_pos;
+        if (entry[kTinyPtrOffset] > kBinSize) {
+            entry[kTinyPtrOffset] -= (kBinSize + 1);
         }
         head = cur_in_bin_pos;
         *pre_tiny_ptr = 0;

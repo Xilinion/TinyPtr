@@ -82,7 +82,7 @@ BlastHT::BlastHT(uint64_t size, uint8_t quotienting_tail_length,
       kFastDivisionReciprocal{
           (1ULL << kFastDivisionShift[0]) / kEntryByteLength + 1 /*not used*/,
           (1ULL << kFastDivisionShift[1]) / kBinNum + 1} {
-            
+
     assert(size / 2 >= (1ULL << (kCloudQuotientingLength)));
     assert(bin_size < 128);
 
@@ -549,7 +549,191 @@ bool BlastHT::Update(uint64_t key, uint64_t value) {
     return false;
 }
 
-void BlastHT::Free(uint64_t key) {}
+/*
+void BlastHT::Free(uint64_t key) {
+    
+}
+*/
+
+void BlastHT::Free(uint64_t key) {
+
+    if (key == 2732118159742260093ull) {
+        printf("free: %llu\n", key);
+    }
+
+    uint64_t truncated_key = key >> kBlastQuotientingLength;
+    uint64_t masked_key = truncated_key << kBlastQuotientingLength;
+    uint64_t cloud_id =
+        ((XXH64(&truncated_key, sizeof(uint64_t), kHashSeed1) ^ key) &
+         kBlastQuotientingMask);
+    uint8_t fp = cloud_id >> kCloudQuotientingLength;
+    cloud_id = cloud_id & kQuotientingTailMask;
+
+    uint8_t* cloud = &cloud_tab[(cloud_id << kCloudIdShiftOffset)];
+
+    // Use std::atomic for concurrent_version
+    std::atomic<uint8_t>& concurrent_version =
+        *reinterpret_cast<std::atomic<uint8_t>*>(
+            &cloud[kConcurrentVersionOffset]);
+
+    uint8_t expected_version;
+    do {
+        expected_version = concurrent_version.load();
+    } while ((expected_version & 1) ||
+             !concurrent_version.compare_exchange_weak(expected_version,
+                                                       expected_version + 1));
+
+    uint8_t& control_info = cloud[kControlOffset];
+    uint8_t crystal_cnt = control_info & kControlCrystalMask;
+    uint8_t tp_cnt = (control_info >> kControlTinyPtrShift);
+    uint8_t fp_cnt = crystal_cnt + tp_cnt;
+
+    uint8_t crystal_begin = kControlOffset - kEntryByteLength;
+    uint8_t crystal_end = kControlOffset - kEntryByteLength * crystal_cnt;
+
+    __m256i fp_vec = _mm256_loadu_si256(
+        reinterpret_cast<__m256i*>(cloud + kFingerprintOffset));
+
+    __mmask32 mask = _mm256_cmpeq_epi8_mask(fp_vec, _mm256_set1_epi8(fp));
+
+    mask &= ((1u << (fp_cnt)) - 1u);
+
+    while (mask) {
+
+        uint8_t i = __builtin_ctz(mask);
+        mask &= ~(1u << i);
+
+        if (i < crystal_cnt) {
+            if (reinterpret_cast<uint64_t*>(cloud + crystal_begin -
+                                            i * kEntryByteLength +
+                                            kKeyOffset)[0]
+                    << kBlastQuotientingLength ==
+                masked_key) {
+
+                if (tp_cnt > 0) {
+
+                    uint8_t j = fp_cnt - 1;
+                    cloud[kFingerprintOffset + i] =
+                        cloud[kFingerprintOffset + j];
+
+                    uint64_t deref_key = (cloud_id << kByteShift) |
+                                         cloud[kFingerprintOffset + j];
+
+                    uint8_t* tiny_ptr = cloud + crystal_end - tp_cnt;
+                    uint8_t* entry =
+                        ptab_query_entry_address(deref_key, *tiny_ptr);
+                    uint64_t entry_key_word =
+                        (*reinterpret_cast<uint64_t*>(entry + kKeyOffset));
+                    uint64_t entry_value_word =
+                        *reinterpret_cast<uint64_t*>(entry + kValueOffset);
+
+                    std::memcpy(cloud + crystal_begin - i * kEntryByteLength,
+                                entry, kEntryByteLength);
+
+                    ptab_free(tiny_ptr, deref_key);
+
+                    control_info -= (1 << kControlTinyPtrShift);
+                    tp_cnt--;
+                    fp_cnt--;
+
+                    if (crystal_end - kEntryByteLength >= fp_cnt + tp_cnt - 1 &&
+                        tp_cnt > 0) {
+                        memmove(cloud + crystal_end - kEntryByteLength -
+                                    (tp_cnt - 1),
+                                cloud + crystal_end - tp_cnt, tp_cnt - 1);
+
+                        uint8_t* tiny_ptr = cloud + crystal_end - 1;
+                        uint64_t deref_key =
+                            (cloud_id << kByteShift) |
+                            cloud[kFingerprintOffset + crystal_cnt];
+                        uint8_t* entry =
+                            ptab_query_entry_address(deref_key, *tiny_ptr);
+
+                        uint8_t tmp_ptr = *tiny_ptr;
+
+                        std::memcpy(cloud + crystal_end - kEntryByteLength,
+                                    entry, kEntryByteLength);
+
+                        ptab_free(&tmp_ptr, deref_key);
+
+                        control_info++;
+                        control_info -= (1 << kControlTinyPtrShift);
+                    }
+
+                    concurrent_version++;
+                    return;
+
+                } else {
+                    uint8_t j = crystal_cnt - 1;
+                    std::memcpy(cloud + crystal_begin - i * kEntryByteLength,
+                                cloud + crystal_begin - j * kEntryByteLength,
+                                kEntryByteLength);
+
+                    cloud[kFingerprintOffset + i] =
+                        cloud[kFingerprintOffset + j];
+
+                    control_info--;
+
+                    concurrent_version++;
+                    return;
+                }
+            }
+        } else {
+            uint8_t crystal_end =
+                kControlOffset - kEntryByteLength * crystal_cnt;
+            uint8_t* tiny_ptr = cloud + crystal_end - i + crystal_cnt - 1;
+            uint64_t deref_key = (cloud_id << kByteShift) | fp;
+            uint8_t* entry = ptab_query_entry_address(deref_key, *tiny_ptr);
+
+            uint64_t entry_masked_key =
+                (*reinterpret_cast<uint64_t*>(entry + kKeyOffset))
+                << kBlastQuotientingLength;
+
+            if (entry_masked_key == masked_key) {
+
+                ptab_free(tiny_ptr, deref_key);
+
+                uint8_t j = fp_cnt - 1;
+
+                cloud[kFingerprintOffset + i] = cloud[kFingerprintOffset + j];
+                *tiny_ptr = cloud[crystal_end - tp_cnt];
+
+                control_info -= (1 << kControlTinyPtrShift);
+                tp_cnt--;
+                fp_cnt--;
+
+                if (crystal_end - kEntryByteLength >= fp_cnt + tp_cnt - 1 &&
+                    tp_cnt > 0) {
+                    memmove(
+                        cloud + crystal_end - kEntryByteLength - (tp_cnt - 1),
+                        cloud + crystal_end - tp_cnt, tp_cnt - 1);
+
+                    uint8_t* tiny_ptr = cloud + crystal_end - 1;
+                    uint64_t deref_key =
+                        (cloud_id << kByteShift) |
+                        cloud[kFingerprintOffset + crystal_cnt];
+                    uint8_t* entry =
+                        ptab_query_entry_address(deref_key, *tiny_ptr);
+
+                    uint8_t tmp_ptr = *tiny_ptr;
+
+                    std::memcpy(cloud + crystal_end - kEntryByteLength, entry,
+                                kEntryByteLength);
+
+                    ptab_free(&tmp_ptr, deref_key);
+
+                    control_info++;
+                    control_info -= (1 << kControlTinyPtrShift);
+                }
+
+                concurrent_version++;
+                return;
+            }
+        }
+    }
+
+    concurrent_version++;
+}
 
 void BlastHT::Scan4Stats() {
     uint64_t total_slots = kCloudNum * kCloudByteLength;
