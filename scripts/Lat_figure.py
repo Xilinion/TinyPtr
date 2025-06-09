@@ -10,13 +10,15 @@ output_dir = '../results/figure'
 os.makedirs(output_dir, exist_ok=True)
 
 # Define the case and object IDs to process
-case_ids = [1, 6, 7]
+case_ids = [3]
+# case_ids = [1, 3, 6, 7]
 object_ids = [3, 4, 6, 7, 10, 12]
 table_sizes = [1000000, 2000000, 4000000, 8000000, 16000000, 32000000, 64000000, 128000000]
 
 # Mapping of case IDs to names
 case_id_to_name = {
     1: "INSERT_ONLY",
+    3: "ERASE_ONLY",
     6: "QUERY_HIT_ONLY",
     7: "QUERY_MISS_ONLY"
 }
@@ -36,8 +38,6 @@ data = []
 
 # Iterate over each combination of case_id, object_id, and table_size
 for case_id in case_ids:
-    if case_id == 5:
-        continue
     for object_id in object_ids:
         entry_id = 0
         for table_size in table_sizes:

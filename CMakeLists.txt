@@ -3,6 +3,8 @@ cmake_minimum_required(VERSION 3.20)
 project(tinyptr)
 
 set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 if(COMPILE_FOR_VALGRIND)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mno-avx")
@@ -37,7 +39,6 @@ add_executable(${PROJECT_NAME} src/main.cpp)
 target_link_libraries(${PROJECT_NAME} PRIVATE tinyptr_lib)
 
 # Add external dependencies
-
 include(CLHT)
 build_CLHT()
 add_dependencies(tinyptr_lib CLHT)
@@ -52,6 +53,16 @@ include(iceberg)
 build_iceberg()
 add_dependencies(tinyptr_lib iceberg)
 target_link_libraries(tinyptr_lib PUBLIC iceberg_lib ssl crypto pthread)
+
+include(growt)
+build_growt()
+add_dependencies(tinyptr_lib growt)
+target_link_libraries(tinyptr_lib PUBLIC growt_lib pthread)
+
+include(junction)
+build_junction()
+add_dependencies(tinyptr_lib junction)
+target_link_libraries(tinyptr_lib PUBLIC junction_lib)
 
 # Add test support
 include(FetchContent)

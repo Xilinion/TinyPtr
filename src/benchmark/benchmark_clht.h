@@ -4,6 +4,8 @@
 #include <cmath>
 #include <cstdint>
 #include <iostream>
+#include <thread>
+#include <vector>
 #include "benchmark_object_64.h"
 #include "benchmark_object_type.h"
 #include "clht.h"
@@ -23,6 +25,10 @@ class BenchmarkCLHT : public BenchmarkObject64 {
     uint64_t Query(uint64_t key, uint8_t ptr);
     void Update(uint64_t key, uint8_t ptr, uint64_t value);
     void Erase(uint64_t key, uint8_t ptr);
+
+    void YCSBFill(std::vector<uint64_t>& keys, int num_threads);
+    void YCSBRun(std::vector<std::pair<uint64_t, uint64_t>>& ops,
+                 int num_threads);
 
    private:
     clht_t* tab;

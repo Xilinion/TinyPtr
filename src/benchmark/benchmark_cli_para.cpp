@@ -1,4 +1,3 @@
-
 #include "benchmark_cli_para.h"
 #include <unistd.h>
 #include <cstdio>
@@ -20,7 +19,8 @@ std::string BenchmarkCLIPara::GetOuputFileName() {
 
 void BenchmarkCLIPara::Parse(int argc, char** argv) {
     this->configuring_getopt();
-    for (int c; (c = getopt(argc, argv, "o:c:e:t:p:l:h:f:q:b:")) != -1;) {
+    for (int c;
+         (c = getopt(argc, argv, "o:c:e:t:p:l:h:f:q:b:m:y:s:n:z:")) != -1;) {
         switch (c) {
             // TODO: add validity check of parameters
             case 'o':
@@ -53,6 +53,22 @@ void BenchmarkCLIPara::Parse(int argc, char** argv) {
                 break;
             case 'b':
                 bin_size = std::stoi(optarg);
+                break;
+            case 'm':
+                sleep(1);
+                rand_mem_free = true;
+                break;
+            case 'y':
+                ycsb_load_path = std::string(optarg);
+                break;
+            case 's':
+                ycsb_run_path = std::string(optarg);
+                break;
+            case 'n':
+                thread_num = std::stoi(optarg);
+                break;
+            case 'z':
+                zipfian_skew = std::stod(optarg);
                 break;
             case '?':
                 // if (optopt == 'f')

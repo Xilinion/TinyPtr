@@ -2,6 +2,7 @@
 #include <emmintrin.h>
 #include <inttypes.h>
 #include <sys/cdefs.h>
+#include <sys/mman.h>
 #include <sys/types.h>
 #include <cstdint>
 #include <cstdio>
@@ -31,8 +32,8 @@ ByteArrayChainedHT::ByteArrayChainedHT(uint64_t size,
       kQuotientingTailLength(quotienting_tail_length
                                  ? quotienting_tail_length
                                  : AutoQuotTailLength(size)),
-      kQuotientingTailMask((1ll << kQuotientingTailLength) - 1),
-      kBaseTabSize(1 << kQuotientingTailLength),
+      kQuotientingTailMask((1ULL << kQuotientingTailLength) - 1),
+      kBaseTabSize(1ULL << kQuotientingTailLength),
       kBinSize(bin_size),
       kBinNum((size + kBinSize - 1) / kBinSize),
       kTinyPtrOffset((64 + 7 - kQuotientingTailLength) >> 3),
@@ -40,6 +41,41 @@ ByteArrayChainedHT::ByteArrayChainedHT(uint64_t size,
       kQuotKeyByteLength(kTinyPtrOffset),
       kEntryByteLength(kQuotKeyByteLength + 1 + 8),
       kBinByteLength(kBinSize * kEntryByteLength) {
+
+    uint64_t base_tab_size = kBaseTabSize;
+    uint64_t byte_array_size = kBinNum * kBinSize * kEntryByteLength;
+    uint64_t bin_cnt_size = kBinNum << 1;
+
+    // Align each section to 64 bytes
+    uint64_t base_tab_size_aligned =
+        (base_tab_size + 63) & ~static_cast<uint64_t>(63);
+    uint64_t byte_array_size_aligned =
+        (byte_array_size + 63) & ~static_cast<uint64_t>(63);
+    uint64_t bin_cnt_size_aligned =
+        (bin_cnt_size + 63) & ~static_cast<uint64_t>(63);
+
+    // Total size for combined allocation
+    uint64_t total_size =
+        base_tab_size_aligned + byte_array_size_aligned + bin_cnt_size_aligned;
+
+    // Allocate a single aligned block
+    void* combined_mem;
+    combined_mem = mmap(NULL, total_size, PROT_READ | PROT_WRITE,
+                        MAP_ANONYMOUS | MAP_PRIVATE | MAP_POPULATE, -1, 0);
+
+    // Assign pointers to their respective regions
+    uint8_t* base =
+        (uint8_t*)((uint64_t)(combined_mem + 63) & ~static_cast<uint64_t>(63));
+
+    byte_array = base;
+    base += byte_array_size_aligned;
+
+    bin_cnt_head = base;
+    base += bin_cnt_size_aligned;
+
+    base_tab = base;
+    /*
+
     (void)posix_memalign(reinterpret_cast<void**>(&byte_array), 64,
                          kBinNum * kBinSize * kEntryByteLength);
     memset(byte_array, 0, kBinNum * kBinSize * kEntryByteLength);
@@ -49,7 +85,10 @@ ByteArrayChainedHT::ByteArrayChainedHT(uint64_t size,
 
     (void)posix_memalign(reinterpret_cast<void**>(&bin_cnt_head), 64,
                          kBinNum << 1);
+    memset(bin_cnt_head, 0, kBinNum << 1);
+*/
 
+    /*
     for (uint64_t i = 0, ptr_offset = kTinyPtrOffset; i < kBinNum; i++) {
         for (uint8_t j = 0; j < kBinSize - 1; j++) {
             byte_array[ptr_offset] = j + 2;
@@ -62,6 +101,7 @@ ByteArrayChainedHT::ByteArrayChainedHT(uint64_t size,
         bin_cnt_head[i << 1] = 0;
         bin_cnt_head[(i << 1) | 1] = 1;
     }
+*/
 
     play_entry = new uint8_t[kEntryByteLength];
 }
@@ -291,8 +331,12 @@ void ByteArrayChainedHT::Free(uint64_t key) {
     uint64_t bin_id = (cur_entry - byte_array) / kBinByteLength;
     bin_cnt(bin_id)--;
     uint8_t& head = bin_head(bin_id);
-    cur_entry[kTinyPtrOffset] = head;
-    head = ((uint8_t)((*pre_tiny_ptr) << 1) >> 1);
+    uint8_t cur_in_bin_pos = ((uint8_t)((*pre_tiny_ptr) << 1) >> 1) - 1;
+    cur_entry[kTinyPtrOffset] = head + kBinSize - cur_in_bin_pos;
+    if (cur_entry[kTinyPtrOffset] > kBinSize) {
+        cur_entry[kTinyPtrOffset] -= (kBinSize + 1);
+    }
+    head = cur_in_bin_pos;
     *pre_tiny_ptr = 0;
 }
 

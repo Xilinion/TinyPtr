@@ -20,7 +20,15 @@ struct BenchmarkObjectType {
         YARDEDTTPHT = 10,
         FLATHASH = 11,
         SKULKERHT = 12,
-        COUNT = 13
+        GROWT = 13,
+        CONCURRENT_SKULKERHT = 14,
+        JUNCTION = 15,
+        RESIZABLE_SKULKERHT = 16,
+        CONCURRENT_BYTEARRAYCHAINEDHT = 17,
+        RESIZABLE_BYTEARRAYCHAINEDHT = 18,
+        BOLT = 19,
+        BLAST = 20,
+        COUNT = 21
     };
 
     BenchmarkObjectType(const BenchmarkObjectType& b) = default;

@@ -7,6 +7,7 @@
 #include <sys/types.h>
 #include <cstdint>
 #include <functional>
+#include <iostream>
 #include "common.h"
 #include "utils/cache_line_size.h"
 
@@ -150,11 +151,14 @@ class SkulkerHT {
         uint8_t& head = bin_head(bin_id);
         uint8_t& cnt = bin_cnt(bin_id);
 
-        if (head) {
+        if (head < kBinSize) {
             uint8_t* entry =
-                byte_array + (bin_id * kBinSize + head - 1) * kEntryByteLength;
-            uint8_t new_pre_tiny_ptr = head | (flag << 7);
-            head = entry[kTinyPtrOffset];
+                byte_array + (bin_id * kBinSize + head) * kEntryByteLength;
+            uint8_t new_pre_tiny_ptr = (head + 1) | (flag << 7);
+            head = head + 1 + entry[kTinyPtrOffset];
+            if (head > kBinSize) {
+                head -= (kBinSize + 1);
+            }
             *entry = new_pre_tiny_ptr;
             cnt++;
             return entry;
@@ -230,8 +234,12 @@ class SkulkerHT {
         uint64_t bin_id = (cur_entry - byte_array) / kBinByteLength;
         bin_cnt(bin_id)--;
         uint8_t& head = bin_head(bin_id);
-        cur_entry[kTinyPtrOffset] = head;
-        head = ((uint8_t)((*pre_tiny_ptr) << 1) >> 1);
+        uint8_t cur_in_bin_pos = ((uint8_t)((*pre_tiny_ptr) << 1) >> 1) - 1;
+        cur_entry[kTinyPtrOffset] = head + kBinSize - cur_in_bin_pos;
+        if (cur_entry[kTinyPtrOffset] > kBinSize) {
+            cur_entry[kTinyPtrOffset] -= (kBinSize + 1);
+        }
+        head = cur_in_bin_pos;
         *pre_tiny_ptr = 0;
     }
 
@@ -264,8 +272,12 @@ class SkulkerHT {
         uint64_t bin_id = (cur_entry - byte_array) / kBinByteLength;
         bin_cnt(bin_id)--;
         uint8_t& head = bin_head(bin_id);
-        cur_entry[kTinyPtrOffset] = head;
-        head = ((uint8_t)((*pre_tiny_ptr) << 1) >> 1);
+        uint8_t cur_in_bin_pos = ((uint8_t)((*pre_tiny_ptr) << 1) >> 1) - 1;
+        cur_entry[kTinyPtrOffset] = head + kBinSize - cur_in_bin_pos;
+        if (cur_entry[kTinyPtrOffset] > kBinSize) {
+            cur_entry[kTinyPtrOffset] -= (kBinSize + 1);
+        }
+        head = cur_in_bin_pos;
         *pre_tiny_ptr = 0;
     }
 
@@ -300,11 +312,10 @@ class SkulkerHT {
 
         bush[kSkulkerOffset] = play_entry[kTinyPtrOffset];
 
-        if (!ptab_insert(
-                bush + kSkulkerOffset, spilled_base_id,
-                hash_key_rebuild(*(uint64_t*)(play_entry + kKeyOffset),
-                                   spilled_base_id),
-                *(uint64_t*)(play_entry + kValueOffset))) {
+        if (!ptab_insert(bush + kSkulkerOffset, spilled_base_id,
+                         hash_key_rebuild(*(uint64_t*)(play_entry + kKeyOffset),
+                                          spilled_base_id),
+                         *(uint64_t*)(play_entry + kValueOffset))) {
 
             // recover the bush
             for (uint8_t* i = bush + kSkulkerOffset;

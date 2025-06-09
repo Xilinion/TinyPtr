@@ -3,6 +3,7 @@
 #include <emmintrin.h>
 #include <immintrin.h>
 #include <nmmintrin.h>
+#include <pthread.h>
 #include <sys/cdefs.h>
 #include <sys/types.h>
 #include <atomic>
@@ -11,7 +12,10 @@
 #include <iostream>
 #include <memory>  // Include for std::unique_ptr
 #include <mutex>   // Include for concurrency
+#include <queue>
 #include <thread>
+#include <utility>
+#include <vector>
 #include "common.h"
 #include "utils/cache_line_size.h"
 
@@ -22,8 +26,8 @@ class ConcurrentSkulkerHT {
 
    public:
     static uint8_t kBushLookup[256];
-    static const uint8_t kByteMask = 0xFF;
-    static const uint8_t kByteShift = 8;
+    static constexpr uint8_t kByteMask = 0xFF;
+    static constexpr uint8_t kByteShift = 8;
 
    public:
     const uint64_t kHashSeed1;
@@ -37,12 +41,12 @@ class ConcurrentSkulkerHT {
     // {4*{TP,K,V},{Skulkers},{Control}}
 
     // const uint8_t kBushByteLength = utils::kCacheLineSize;
-    const uint8_t kBushByteLength = 64;
-    const uint8_t kBushIdShiftOffset = 6;
+    static constexpr uint8_t kBushByteLength = 64;
+    static constexpr uint8_t kBushIdShiftOffset = 6;
     // control byte and skulkers grow from the end of the bush
-    const uint8_t kConcurrentVersionByteLength = 1;
+    static constexpr uint8_t kConcurrentVersionByteLength = 1;
+    static constexpr uint8_t kControlByteLength = 2;
     const uint8_t kConcurrentVersionOffset;
-    const uint8_t kControlByteLength = 2;
     const uint8_t kControlOffset;
     const uint8_t kSkulkerOffset;
 
@@ -62,22 +66,22 @@ class ConcurrentSkulkerHT {
     const uint8_t kKeyOffset;
     const uint8_t kValueOffset;
     const uint16_t kBinByteLength;
-    const uintptr_t kPtr16BAlignMask = ~0xF;
-    const uintptr_t kPtr16BBufferOffsetMask = 0xF;
-    const uint8_t kPtr16BBufferSecondLoadOffset = 16;
+    static constexpr uintptr_t kPtr16BAlignMask = ~0xF;
+    static constexpr uintptr_t kPtr16BBufferOffsetMask = 0xF;
+    static constexpr uint8_t kPtr16BBufferSecondLoadOffset = 16;
     // const uintptr_t kPtrCacheLineOffsetMask = utils::kCacheLineSize - 1;
-    const uintptr_t kPtrCacheLineOffsetMask = kBushByteLength - 1;
-    const uintptr_t kPtrCacheLineAlignMask =
+    static constexpr uintptr_t kPtrCacheLineOffsetMask = kBushByteLength - 1;
+    static constexpr uintptr_t kPtrCacheLineAlignMask =
         ~((uintptr_t)(kBushByteLength - 1));
 
     // base hash, spread the base_id
     const uint64_t kBaseHashFactor;
     const uint64_t kBaseHashInverse;
 
-    const uint64_t kFastDivisionShift = 36;
-    const uint64_t kFastDivisionUpperBound = 1ULL << 31;
-    const uint64_t kFastDivisionBase = 1ULL << kFastDivisionShift;
-    const uint64_t kFastDivisionReciprocal;
+    static constexpr uint8_t kFastDivisionUpperBoundLog = 31;
+    const uint8_t kFastDivisionShift[2];
+    const uint64_t kFastDivisionUpperBound = 1ULL << kFastDivisionUpperBoundLog;
+    const uint64_t kFastDivisionReciprocal[2];
 
    protected:
     uint8_t AutoQuotTailLength(uint64_t size);
@@ -85,35 +89,47 @@ class ConcurrentSkulkerHT {
     uint64_t GenBaseHashInverse(uint64_t base_hash_factor, uint64_t mod_mask,
                                 uint64_t mod_bit_length);
     uint8_t AutoLockNum(uint64_t thread_num_supported);
+    uint8_t AutoFastDivisionInnerShift(uint64_t divisor);
 
    public:
     ConcurrentSkulkerHT(uint64_t size, uint8_t quotienting_tail_length,
-                        uint16_t bin_size);
-    ConcurrentSkulkerHT(uint64_t size, uint16_t bin_size);
+                        uint16_t bin_size, bool if_resize = false);
+    ConcurrentSkulkerHT(uint64_t size, uint16_t bin_size,
+                        bool if_resize = false);
+    ConcurrentSkulkerHT(uint64_t size, bool if_resize = false);
+
+    ~ConcurrentSkulkerHT();
 
     bool Insert(uint64_t key, uint64_t value);
     bool Query(uint64_t key, uint64_t* value_ptr);
     bool Update(uint64_t key, uint64_t value);
     void Free(uint64_t key);
 
+    void SetResizeStride(uint64_t stride_num);
+    bool ResizeMoveStride(uint64_t stride_id, ConcurrentSkulkerHT* new_ht);
+
    protected:
     uint8_t* bush_tab;
     uint8_t* byte_array;
-    uint8_t* base_tab;
     uint8_t* bin_cnt_head;
 
-    std::unique_ptr<std::atomic_flag[]> bush_locks;
     std::unique_ptr<std::atomic_flag[]> bin_locks;
 
-    size_t bush_locks_size;
     size_t bin_locks_size;
 
+    uint64_t resize_stride_size;
+
+   protected:
     __attribute__((always_inline)) inline uint64_t hash_1(uint64_t key) {
         return XXH64(&key, sizeof(uint64_t), kHashSeed1);
     }
 
     __attribute__((always_inline)) inline uint64_t hash_1_bin(uint64_t key) {
-        return (XXH64(&key, sizeof(uint64_t), kHashSeed1)) % kBinNum;
+        uint64_t hash = XXH64(&key, sizeof(uint64_t), kHashSeed1) >> 33;
+
+        return hash -
+               ((hash * kFastDivisionReciprocal[1]) >> kFastDivisionShift[1]) *
+                   kBinNum;
     }
 
     __attribute__((always_inline)) inline uint64_t hash_base_id(uint64_t key) {
@@ -139,7 +155,10 @@ class ConcurrentSkulkerHT {
     }
 
     __attribute__((always_inline)) inline uint64_t hash_2_bin(uint64_t key) {
-        return (XXH64(&key, sizeof(uint64_t), kHashSeed2)) % kBinNum;
+        uint64_t hash = XXH64(&key, sizeof(uint64_t), kHashSeed2) >> 33;
+        return hash -
+               ((hash * kFastDivisionReciprocal[1]) >> kFastDivisionShift[1]) *
+                   kBinNum;
     }
 
     __attribute__((always_inline)) inline uint8_t& bin_cnt(uint64_t bin_id) {
@@ -176,11 +195,14 @@ class ConcurrentSkulkerHT {
             uint8_t& head = bin_head(bin1);
             uint8_t& cnt = bin_cnt(bin1);
 
-            if (head) {
-                uint8_t* entry = byte_array + (bin1 * kBinSize + head - 1) *
-                                                  kEntryByteLength;
-                uint8_t new_pre_tiny_ptr = head;
-                head = entry[kTinyPtrOffset];
+            if (head < kBinSize) {
+                uint8_t* entry =
+                    byte_array + (bin1 * kBinSize + head) * kEntryByteLength;
+                uint8_t new_pre_tiny_ptr = head + 1;
+                head = head + 1 + entry[kTinyPtrOffset];
+                if (head > kBinSize) {
+                    head -= (kBinSize + 1);
+                }
                 *entry = new_pre_tiny_ptr;
                 cnt++;
                 bin_locks[bin1].clear(std::memory_order_release);
@@ -217,11 +239,14 @@ class ConcurrentSkulkerHT {
             uint8_t& head = bin_head(bin_id);
             uint8_t& cnt = bin_cnt(bin_id);
 
-            if (head) {
-                uint8_t* entry = byte_array + (bin_id * kBinSize + head - 1) *
-                                                  kEntryByteLength;
-                uint8_t new_pre_tiny_ptr = head | (flag << 7);
-                head = entry[kTinyPtrOffset];
+            if (head < kBinSize) {
+                uint8_t* entry =
+                    byte_array + (bin_id * kBinSize + head) * kEntryByteLength;
+                uint8_t new_pre_tiny_ptr = (head + 1) | (flag << 7);
+                head = head + 1 + entry[kTinyPtrOffset];
+                if (head > kBinSize) {
+                    head -= (kBinSize + 1);
+                }
                 *entry = new_pre_tiny_ptr;
                 cnt++;
                 bin_locks[bin_id].clear(std::memory_order_release);
@@ -304,8 +329,12 @@ class ConcurrentSkulkerHT {
 
         bin_cnt(bin_id)--;
         uint8_t& head = bin_head(bin_id);
-        cur_entry[kTinyPtrOffset] = head;
-        head = ((uint8_t)((*pre_tiny_ptr) << 1) >> 1);
+        uint8_t cur_in_bin_pos = ((uint8_t)((*pre_tiny_ptr) << 1) >> 1) - 1;
+        cur_entry[kTinyPtrOffset] = head + kBinSize - cur_in_bin_pos;
+        if (cur_entry[kTinyPtrOffset] > kBinSize) {
+            cur_entry[kTinyPtrOffset] -= (kBinSize + 1);
+        }
+        head = cur_in_bin_pos;
         *pre_tiny_ptr = 0;
 
         bin_locks[bin_id].clear(std::memory_order_release);
@@ -344,8 +373,12 @@ class ConcurrentSkulkerHT {
 
         bin_cnt(bin_id)--;
         uint8_t& head = bin_head(bin_id);
-        cur_entry[kTinyPtrOffset] = head;
-        head = ((uint8_t)((*pre_tiny_ptr) << 1) >> 1);
+        uint8_t cur_in_bin_pos = ((uint8_t)((*pre_tiny_ptr) << 1) >> 1) - 1;
+        cur_entry[kTinyPtrOffset] = head + kBinSize - cur_in_bin_pos;
+        if (cur_entry[kTinyPtrOffset] > kBinSize) {
+            cur_entry[kTinyPtrOffset] -= (kBinSize + 1);
+        }
+        head = cur_in_bin_pos;
         *pre_tiny_ptr = 0;
 
         bin_locks[bin_id].clear(std::memory_order_release);
@@ -356,10 +389,17 @@ class ConcurrentSkulkerHT {
         uint8_t exhibitor_num, uint8_t item_cnt) {
 
         thread_local static uint8_t* play_entry = new uint8_t[kEntryByteLength];
+        thread_local static uint64_t* play_1 =
+            reinterpret_cast<uint64_t*>(play_entry);
+        thread_local static uint64_t* play_2 =
+            reinterpret_cast<uint64_t*>(play_entry + kValueOffset);
 
         // convert the last exhibitor to the first skulker
         memcpy(play_entry, bush + (exhibitor_num - 1) * kEntryByteLength,
                kEntryByteLength);
+        // *play_1 = *(uint64_t*)(bush + (exhibitor_num - 1) * kEntryByteLength);
+        // *play_2 = *(uint64_t*)(bush + (exhibitor_num - 1) * kEntryByteLength +
+        //                        kValueOffset);
 
         // exhibitor spills and converts the last exhibitor to the first skulker
         for (uint8_t* i = bush + kSkulkerOffset - (item_cnt - exhibitor_num);
@@ -368,6 +408,11 @@ class ConcurrentSkulkerHT {
         }
 
         // get the base_id of the last exhibitor
+
+        uint32_t hide_in_bush_offset = _tzcnt_u32(
+            _pdep_u32(1u << (item_cnt - exhibitor_num), control_info));
+
+        /*
         uint8_t hide_in_bush_offset = 0;
         uint16_t control_info_before_spilled =
             control_info >> (hide_in_bush_offset + 1);
@@ -379,6 +424,7 @@ class ConcurrentSkulkerHT {
             control_info_before_spilled =
                 control_info >> (hide_in_bush_offset + 1);
         }
+        */
 
         uintptr_t spilled_base_id = bush_offset + hide_in_bush_offset;
 
@@ -397,6 +443,10 @@ class ConcurrentSkulkerHT {
 
             memcpy(bush + (exhibitor_num - 1) * kEntryByteLength, play_entry,
                    kEntryByteLength);
+            // *(uint64_t*)(bush + (exhibitor_num - 1) * kEntryByteLength) =
+            //     *play_1;
+            // *(uint64_t*)(bush + (exhibitor_num - 1) * kEntryByteLength +
+            //              kValueOffset) = *play_2;
 
             return false;
         }
@@ -417,6 +467,11 @@ class ConcurrentSkulkerHT {
         }
 
         // get the base_id of the first skulker
+
+        uint32_t raid_in_bush_offset = _tzcnt_u32(
+            _pdep_u32(1u << (item_cnt - exhibitor_num - 1), control_info));
+
+        /*
         uint8_t raid_in_bush_offset = 0;
         uint16_t control_info_before_spilled =
             control_info >> (raid_in_bush_offset + 1);
@@ -428,11 +483,27 @@ class ConcurrentSkulkerHT {
             control_info_before_spilled =
                 control_info >> (raid_in_bush_offset + 1);
         }
+        */
 
         uint8_t* pre_tiny_ptr = exhibitor_ptr + kTinyPtrOffset;
         uintptr_t pre_deref_key = bush_offset + raid_in_bush_offset;
 
         ptab_lift_to_bush(pre_tiny_ptr, pre_deref_key, exhibitor_ptr);
+    }
+
+   public:
+    __attribute__((always_inline)) inline void prefetch_key(uint64_t key) {
+        uint64_t base_id = hash_base_id(key);
+        // do fast division
+        uint64_t bush_id;
+        if (base_id > kFastDivisionUpperBound) {
+            bush_id = base_id / kBushCapacity;
+        } else {
+            bush_id = (1ULL * base_id * kFastDivisionReciprocal[0]) >>
+                      kFastDivisionShift[0];
+        }
+        __builtin_prefetch(
+            (const void*)(bush_tab + (bush_id << kBushIdShiftOffset)));
     }
 };
 

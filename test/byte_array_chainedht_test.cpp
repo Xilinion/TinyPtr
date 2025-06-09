@@ -41,7 +41,8 @@ TEST(ByteArrayChainedHT_TESTSUITE, StdMapCompliance) {
 
     std::unordered_map<uint64_t, uint64_t> lala;
     // tinyptr::ByteArrayChainedHT chained_ht(m, 24, 127);
-    tinyptr::ByteArrayChainedHT chained_ht(m, 16, 127);
+    // tinyptr::ByteArrayChainedHT chained_ht(m, 16, 127);
+    tinyptr::ByteArrayChainedHT chained_ht(m, 127);
 
     while (n--) {
         uint64_t key = my_sparse_key_rand(), new_val = my_value_rand(), val = 0;
