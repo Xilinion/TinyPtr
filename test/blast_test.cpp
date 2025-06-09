@@ -19,7 +19,7 @@ using namespace std;
 // Ensure SlowXXHash64 is defined or included
 // If SlowXXHash64 is part of an external library, ensure it is linked correctly
 
-// Ensure BlastHT is defined in concurrent_skulker_ht.h
+// Ensure BlastHT is defined in concurrent_blast_ht.h
 // If not, include the correct header or define the class
 
 uint64_t my_int_rand() {
@@ -32,6 +32,13 @@ uint64_t my_value_rand() {
     return rng64();
     // cout << tmp << endl;
     // return SlowXXHash64::hash(&tmp, sizeof(int32_t), 1);
+}
+
+uint64_t my_sparse_key_rand() {
+    // int tmp = (rand() & ((1 << 8) - 1));
+    int tmp = (rand() & ((1 << 15) - 1));
+    return SlowXXHash64::hash(&tmp, sizeof(int32_t), 0);
+    // return tmp;
 }
 
 void concurrent_insert(BlastHT& ht,
@@ -89,7 +96,7 @@ TEST(BlastHT_TESTSUITE, ParallelInsertQuery) {
     // Ensure SlowXXHash64 is defined or included
     // If SlowXXHash64 is part of an external library, ensure it is linked correctly
 
-    // Ensure BlastHT is defined in concurrent_skulker_ht.h
+    // Ensure BlastHT is defined in concurrent_blast_ht.h
     // If not, include the correct header or define the class
 
     // Correct the namespace usage
@@ -147,6 +154,40 @@ TEST(BlastHT_TESTSUITE, ParallelInsertQuery) {
         << "query time: "
         << chrono::duration_cast<chrono::milliseconds>(end - start).count()
         << "ms" << std::endl;
+}
+
+
+TEST(BlastHT_TESTSUITE, StdMapCompliance) {
+    srand(233);
+
+    int n = 1e6, m = 1 << 14;
+    std::unordered_map<uint64_t, uint64_t> lala;
+    tinyptr::BlastHT blast_ht(m, 127);
+
+    int flag = 0;
+
+    while (n--) {
+        uint64_t key = my_sparse_key_rand(), new_val = my_value_rand(), val = 0;
+
+        if (lala.find(key) == lala.end() && blast_ht.Insert(key, new_val)) {
+            lala[key] = new_val;
+        }
+
+        key = my_sparse_key_rand(), new_val = my_value_rand(), val = 0;
+
+        if (lala.find(key) != lala.end()) {
+            ASSERT_TRUE(blast_ht.Query(key, &val));
+            ASSERT_EQ(val, lala[key]);
+        }
+
+        if (blast_ht.Update(key, new_val)) {
+            lala[key] = new_val;
+        }
+
+        if (3 > (rand() & ((1 << 3) - 1))) {
+            blast_ht.Free(key), lala.erase(key);
+        }
+    }
 }
 
 int main(int argc, char** argv) {
