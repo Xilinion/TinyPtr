@@ -549,17 +549,8 @@ bool BlastHT::Update(uint64_t key, uint64_t value) {
     return false;
 }
 
-/*
-void BlastHT::Free(uint64_t key) {
-    
-}
-*/
 
 void BlastHT::Free(uint64_t key) {
-
-    if (key == 2732118159742260093ull) {
-        printf("free: %llu\n", key);
-    }
 
     uint64_t truncated_key = key >> kBlastQuotientingLength;
     uint64_t masked_key = truncated_key << kBlastQuotientingLength;
