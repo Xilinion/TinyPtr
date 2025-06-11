@@ -355,7 +355,10 @@ class BlastHT {
 
    public:
     __attribute__((always_inline)) inline void prefetch_key(uint64_t key) {
-        uint64_t cloud_id = hash_cloud_id(key);
+        uint64_t truncated_key = key >> kBlastQuotientingLength;
+        uint64_t cloud_id =
+            ((XXH64(&truncated_key, sizeof(uint64_t), kHashSeed1) ^ key) &
+             kBlastQuotientingMask);
         // do fast division
         // uint64_t cloud_id;
         // if (cloud_id > kFastDivisionUpperBound) {

@@ -11,6 +11,7 @@
 #include <thread>
 #include <vector>
 
+#include "blast_ht.h"
 #include "concurrent_byte_array_chained_ht.h"
 #include "concurrent_skulker_ht.h"
 
@@ -367,5 +368,6 @@ void ResizableHT<HTType>::Erase(uint64_t handle, uint64_t key) {
 
 using ResizableSkulkerHT = ResizableHT<ConcurrentSkulkerHT>;
 using ResizableByteArrayChainedHT = ResizableHT<ConcurrentByteArrayChainedHT>;
+using ResizableBlastHT = ResizableHT<BlastHT>;
 
 }  // namespace tinyptr

@@ -28,7 +28,8 @@ struct BenchmarkObjectType {
         RESIZABLE_BYTEARRAYCHAINEDHT = 18,
         BOLT = 19,
         BLAST = 20,
-        COUNT = 21
+        RESIZABLE_BLAST = 21,
+        COUNT = 22
     };
 
     BenchmarkObjectType(const BenchmarkObjectType& b) = default;
