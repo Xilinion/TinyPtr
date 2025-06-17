@@ -762,7 +762,7 @@ bool BlastHT::ResizeMoveStride(uint64_t stride_id, BlastHT* new_ht) {
             uint8_t fp = cloud[kFingerprintOffset + crystal_iter];
 
             uint8_t* entry =
-                cloud - crystal_iter * kEntryByteLength - kEntryByteLength;
+                cloud + kControlOffset - crystal_iter * kEntryByteLength - kEntryByteLength;
 
             uint64_t ins_key = hash_key_rebuild(
                 (*reinterpret_cast<uint64_t*>(entry + kKeyOffset)), cloud_id,
