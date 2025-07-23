@@ -27,7 +27,7 @@
 #include "benchmark_conc_skulkerht.h"
 #include "benchmark_cuckoo.h"
 #include "benchmark_dereftab64.h"
-#include "benchmark_growt.h"
+// #include "benchmark_growt.h"
 #include "benchmark_iceberg.h"
 #include "benchmark_intarray64.h"
 #include "benchmark_junction.h"
@@ -566,9 +566,9 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
         case BenchmarkObjectType::SKULKERHT:
             obj = new BenchmarkSkulkerHT(table_size, para.bin_size);
             break;
-        case BenchmarkObjectType::GROWT:
-            obj = new BenchmarkGrowt(table_size);
-            break;
+        // case BenchmarkObjectType::GROWT:
+        //     obj = new BenchmarkGrowt(table_size);
+        //     break;
         case BenchmarkObjectType::CONCURRENT_SKULKERHT:
             obj = new BenchmarkConcSkulkerHT(table_size, para.bin_size);
             break;

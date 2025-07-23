@@ -1,3 +1,5 @@
+#if 0
+
 #include "benchmark_growt.h"
 
 namespace tinyptr {
@@ -47,3 +49,4 @@ void BenchmarkGrowt::Erase(uint64_t key, uint8_t ptr) {
     erase_wrapper(key);
 }
 }  // namespace tinyptr
+#endif
