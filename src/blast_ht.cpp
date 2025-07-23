@@ -56,7 +56,7 @@ uint8_t BlastHT::AutoLockNum(uint64_t thread_num_supported) {
 }
 
 BlastHT::BlastHT(uint64_t size, uint8_t quotienting_tail_length,
-                 uint16_t bin_size)
+                 uint16_t bin_size, bool if_resize)
     : kHashSeed1(rand() & ((1 << 16) - 1)),
       kHashSeed2(65536 + rand()),
       kCloudQuotientingLength(quotienting_tail_length
@@ -124,8 +124,14 @@ BlastHT::BlastHT(uint64_t size, uint8_t quotienting_tail_length,
     //     // Handle allocation failure
     //     abort();
     // }
-    combined_mem = mmap(NULL, total_size, PROT_READ | PROT_WRITE,
-                        MAP_ANONYMOUS | MAP_PRIVATE | MAP_POPULATE, -1, 0);
+
+    if (if_resize) {
+        combined_mem = mmap(NULL, total_size, PROT_READ | PROT_WRITE,
+                            MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
+    } else {
+        combined_mem = mmap(NULL, total_size, PROT_READ | PROT_WRITE,
+                            MAP_ANONYMOUS | MAP_PRIVATE | MAP_POPULATE, -1, 0);
+    }
 
     // Assign pointers to their respective regions
     uint8_t* base =
@@ -139,10 +145,11 @@ BlastHT::BlastHT(uint64_t size, uint8_t quotienting_tail_length,
     bin_cnt_head = base;
 }
 
-BlastHT::BlastHT(uint64_t size, uint16_t bin_size)
-    : BlastHT(size, 0, bin_size) {}
+BlastHT::BlastHT(uint64_t size, uint16_t bin_size, bool if_resize)
+    : BlastHT(size, 0, bin_size, if_resize) {}
 
-BlastHT::BlastHT(uint64_t size) : BlastHT(size, 0, 127) {}
+BlastHT::BlastHT(uint64_t size, bool if_resize)
+    : BlastHT(size, 0, 127, if_resize) {}
 
 BlastHT::~BlastHT() {
     munmap(cloud_tab, kCloudNum * kCloudByteLength);
@@ -549,17 +556,7 @@ bool BlastHT::Update(uint64_t key, uint64_t value) {
     return false;
 }
 
-/*
 void BlastHT::Free(uint64_t key) {
-    
-}
-*/
-
-void BlastHT::Free(uint64_t key) {
-
-    if (key == 2732118159742260093ull) {
-        printf("free: %llu\n", key);
-    }
 
     uint64_t truncated_key = key >> kBlastQuotientingLength;
     uint64_t masked_key = truncated_key << kBlastQuotientingLength;
@@ -733,6 +730,101 @@ void BlastHT::Free(uint64_t key) {
     }
 
     concurrent_version++;
+}
+
+void BlastHT::SetResizeStride(uint64_t stride_num) {
+    resize_stride_size = ceil(1.0 * kCloudNum / (stride_num));
+}
+
+bool BlastHT::ResizeMoveStride(uint64_t stride_id, BlastHT* new_ht) {
+
+    uint64_t stride_id_start = stride_id * resize_stride_size;
+    uint64_t stride_id_end = stride_id_start + resize_stride_size;
+    if (stride_id_end > kCloudNum) {
+        stride_id_end = kCloudNum;
+    }
+
+    std::queue<std::pair<uint64_t, uint64_t>> ins_queue;
+
+    for (uint64_t cloud_id = stride_id_start; cloud_id < stride_id_end;
+         cloud_id++) {
+        uint8_t* cloud = &cloud_tab[cloud_id << kCloudIdShiftOffset];
+        uint8_t& control_info = cloud[kControlOffset];
+        uint8_t crystal_cnt = control_info & kControlCrystalMask;
+        uint8_t tp_cnt = (control_info >> kControlTinyPtrShift);
+        uint8_t fp_cnt = crystal_cnt + tp_cnt;
+
+        uint8_t crystal_end = kControlOffset - kEntryByteLength * crystal_cnt;
+
+        for (uint8_t crystal_iter = 0, moved_cnt = 0;
+             crystal_iter < crystal_cnt; crystal_iter++) {
+
+            uint8_t fp = cloud[kFingerprintOffset + crystal_iter];
+
+            uint8_t* entry =
+                cloud + kControlOffset - crystal_iter * kEntryByteLength - kEntryByteLength;
+
+            uint64_t ins_key = hash_key_rebuild(
+                (*reinterpret_cast<uint64_t*>(entry + kKeyOffset)), cloud_id,
+                fp);
+
+            ins_queue.push(std::make_pair(
+                ins_key, *reinterpret_cast<uint64_t*>(entry + kValueOffset)));
+
+            new_ht->prefetch_key(ins_key);
+        }
+
+        for (uint8_t tp_iter = 0; tp_iter < tp_cnt; tp_iter++) {
+
+            uint8_t fp = cloud[kFingerprintOffset + tp_iter + crystal_cnt];
+
+            uint64_t deref_key = (cloud_id << kByteShift) | fp;
+            uint8_t* tiny_ptr = cloud + crystal_end - tp_iter - 1;
+
+            uint8_t* entry = ptab_query_entry_address(deref_key, *tiny_ptr);
+
+            uint64_t ins_key = hash_key_rebuild(
+                (*reinterpret_cast<uint64_t*>(entry + kKeyOffset)), cloud_id,
+                fp);
+            ins_queue.push(std::make_pair(
+                ins_key, *reinterpret_cast<uint64_t*>(entry + kValueOffset)));
+            new_ht->prefetch_key(ins_key);
+        }
+
+        if (ins_queue.size() >= 10) {
+            while (!ins_queue.empty()) {
+                auto ins_pair = ins_queue.front();
+                ins_queue.pop();
+                if (!new_ht->Insert(ins_pair.first, ins_pair.second)) {
+                    return false;
+                }
+            }
+        }
+    }
+
+    while (!ins_queue.empty()) {
+        auto ins_pair = ins_queue.front();
+        ins_queue.pop();
+        if (!new_ht->Insert(ins_pair.first, ins_pair.second)) {
+            return false;
+        }
+    }
+
+    // // asfasdfasdfasfasdfa
+    //     auto end_time = std::chrono::high_resolution_clock::now();
+
+    //     static auto resize_time =
+    //         std::chrono::duration_cast<std::chrono::milliseconds>(end_time -
+    //                                                               end_time)
+    //             .count();
+
+    //     resize_time += std::chrono::duration_cast<std::chrono::milliseconds>(
+    //                        end_time - start_time)
+    //                        .count();
+
+    //     std::cerr << "Resize time: " << resize_time << "ms" << std::endl;
+
+    return true;
 }
 
 void BlastHT::Scan4Stats() {

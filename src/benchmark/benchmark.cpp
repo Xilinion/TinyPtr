@@ -32,6 +32,7 @@
 #include "benchmark_intarray64.h"
 #include "benchmark_junction.h"
 #include "benchmark_object_64.h"
+#include "benchmark_resizable_blastht.h"
 #include "benchmark_resizable_bytearray_ht.h"
 #include "benchmark_resizable_skulkerht.h"
 #include "benchmark_same_bin_chainedht.h"
@@ -584,7 +585,7 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
                                                   part_num, thread_num);
         } break;
         case BenchmarkObjectType::RESIZABLE_BYTEARRAYCHAINEDHT: {
-            uint64_t part_num = 1;
+            uint64_t part_num = 10;
             obj = new BenchmarkResizableByteArrayChainedHT(
                 table_size / part_num, part_num, thread_num);
         } break;
@@ -594,6 +595,11 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
         case BenchmarkObjectType::BLAST:
             obj = new BenchmarkBlastHT(table_size, para.bin_size);
             break;
+        case BenchmarkObjectType::RESIZABLE_BLAST: {
+            uint64_t part_num = 10;
+            obj = new BenchmarkResizableBlastHT(table_size / part_num, part_num,
+                                                thread_num);
+        } break;
         default:
             abort();
     }
