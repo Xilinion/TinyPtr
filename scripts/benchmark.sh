@@ -97,7 +97,7 @@ function CommonArgs() {
 
 function WarmUp() {
     echo "== begin warming up: $args"
-    numactl --cpunodebind=1 --membind=1 ../build/tinyptr $args
+    $numactl_bind ../build/tinyptr $args
 }
 
 function Run() {
@@ -109,7 +109,7 @@ function Run() {
 
     echo "== begin benchmarking: $args"
 
-    output=$(numactl --cpunodebind=1 --membind=1 ../build/tinyptr $args 2>&1)
+    output=$($numactl_bind ../build/tinyptr $args 2>&1)
 
     echo "$output"
 
@@ -146,7 +146,7 @@ function RunYCSB() {
 
     echo "== begin benchmarking: $args"
 
-    output=$(numactl --cpunodebind=1 --membind=1 ../build/tinyptr $args 2>&1)
+    output=$($numactl_bind ../build/tinyptr $args 2>&1)
 
     echo "$output"
 
@@ -164,7 +164,7 @@ function RunRandMemFree() {
 
     echo "== begin benchmarking: $args"
 
-    numactl --cpunodebind=1 --membind=1 ../build/tinyptr $args &
+    $numactl_bind ../build/tinyptr $args &
 
     # sleep 1
 

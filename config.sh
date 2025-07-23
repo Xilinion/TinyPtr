@@ -15,3 +15,6 @@ ycsb_c_exe_file="$ycsb_workloads_dir/txnsc_unif_int.dat"
 ycsb_neg_a_exe_file="$ycsb_workloads_dir/txnsa_neg_unif_int.dat"
 ycsb_neg_b_exe_file="$ycsb_workloads_dir/txnsb_neg_unif_int.dat"
 ycsb_neg_c_exe_file="$ycsb_workloads_dir/txnsc_neg_unif_int.dat"
+
+numactl_bind=""
+# numactl_bind="numactl --cpunodebind=0 --membind=0"
