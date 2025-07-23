@@ -98,9 +98,10 @@ class BlastHT {
     uint8_t AutoFastDivisionInnerShift(uint64_t divisor);
 
    public:
-    BlastHT(uint64_t size, uint8_t quotienting_tail_length, uint16_t bin_size);
-    BlastHT(uint64_t size, uint16_t bin_size);
-    BlastHT(uint64_t size);
+    BlastHT(uint64_t size, uint8_t quotienting_tail_length, uint16_t bin_size,
+            bool if_resize);
+    BlastHT(uint64_t size, uint16_t bin_size, bool if_resize);
+    BlastHT(uint64_t size, bool if_resize);
 
     ~BlastHT();
 
@@ -354,7 +355,10 @@ class BlastHT {
 
    public:
     __attribute__((always_inline)) inline void prefetch_key(uint64_t key) {
-        uint64_t cloud_id = hash_cloud_id(key);
+        uint64_t truncated_key = key >> kBlastQuotientingLength;
+        uint64_t cloud_id =
+            ((XXH64(&truncated_key, sizeof(uint64_t), kHashSeed1) ^ key) &
+             kBlastQuotientingMask);
         // do fast division
         // uint64_t cloud_id;
         // if (cloud_id > kFastDivisionUpperBound) {

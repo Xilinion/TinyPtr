@@ -1019,8 +1019,6 @@ bool ConcurrentSkulkerHT::ResizeMoveStride(uint64_t stride_id,
 
 bool ConcurrentSkulkerHT::ResizeMoveStride(uint64_t stride_id,
                                            ConcurrentSkulkerHT* new_ht) {
-
-    // asfdasdfasdfad
     // auto start_time = std::chrono::high_resolution_clock::now();
 
     uint64_t stride_id_start = stride_id * resize_stride_size;
