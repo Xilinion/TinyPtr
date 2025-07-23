@@ -286,7 +286,7 @@ bin_size=127
 # ../build/concurrent_skulker_ht_test
 
 for case_id in 1 6 7; do
-    for object_id in 5; do
+    for object_id in 5 14 15 20; do
         entry_id=0
         for table_size in 16777216; do
             opt_num=$table_size
