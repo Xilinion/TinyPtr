@@ -23,17 +23,17 @@
 
 fieldcount=0
 recordcount=67108864
-operationcount=1342177280
+operationcount=671088640
 fieldlength=0
 
 workload=com.yahoo.ycsb.workloads.CoreWorkload
 
 readallfields=true
 
-readproportion=0.95
+readproportion=0.9
 updateproportion=0
 scanproportion=0
-insertproportion=0.05
+insertproportion=0.1
 
 requestdistribution=uniform
 
