@@ -84,4 +84,36 @@ void BenchmarkCLHT::YCSBRun(std::vector<std::pair<uint64_t, uint64_t>>& ops,
     clht_gc_destroy(tab);
 }
 
+void BenchmarkCLHT::ConcurrentRun(
+    std::vector<std::tuple<uint64_t, uint64_t, uint64_t>>& ops,
+    int num_threads) {
+    std::vector<std::thread> threads;
+    size_t chunk_size = ops.size() / num_threads;
+
+    for (int i = 0; i < num_threads; ++i) {
+        size_t start_index = i * chunk_size;
+        size_t end_index =
+            (i == num_threads - 1) ? ops.size() : start_index + chunk_size;
+
+        threads.emplace_back([this, &ops, start_index, end_index, i]() {
+            uint64_t value;
+            for (size_t j = start_index; j < end_index; ++j) {
+                if (std::get<0>(ops[j]) == ConcOptType::INSERT) {
+                    clht_put(tab, std::get<1>(ops[j]), std::get<2>(ops[j]));
+                } else if (std::get<0>(ops[j]) == ConcOptType::QUERY) {
+                    clht_get(tab->ht, std::get<1>(ops[j]));
+                } else if (std::get<0>(ops[j]) == ConcOptType::UPDATE) {
+                    clht_put(tab, std::get<1>(ops[j]), std::get<2>(ops[j]));
+                } else if (std::get<0>(ops[j]) == ConcOptType::ERASE) {
+                    clht_remove(tab, std::get<1>(ops[j]));
+                }
+            }
+        });
+    }
+
+    for (auto& thread : threads) {
+        thread.join();
+    }
+}
+
 }  // namespace tinyptr
