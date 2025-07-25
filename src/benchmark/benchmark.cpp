@@ -1319,8 +1319,11 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
             };
             break;
         case BenchmarkCaseType::YCSB_A:
+        case BenchmarkCaseType::YCSB_NEG_A:
         case BenchmarkCaseType::YCSB_B:
+        case BenchmarkCaseType::YCSB_NEG_B:
         case BenchmarkCaseType::YCSB_C:
+        case BenchmarkCaseType::YCSB_NEG_C:
             run = [this, para]() {
                 std::vector<uint64_t> ycsb_keys;
                 ycsb_load(ycsb_keys, para.ycsb_load_path);
