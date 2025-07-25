@@ -41,7 +41,7 @@ void BenchmarkCLHT::YCSBFill(std::vector<uint64_t>& keys, int num_threads) {
             (i == num_threads - 1) ? keys.size() : start_index + chunk_size;
 
         threads.emplace_back([this, &keys, start_index, end_index, i]() {
-            clht_gc_thread_init(tab, i);
+            clht_gc_thread_init(tab, gettid());
             for (size_t j = start_index; j < end_index; ++j) {
                 clht_put(tab, keys[j], 0);
             }
@@ -66,7 +66,7 @@ void BenchmarkCLHT::YCSBRun(std::vector<std::pair<uint64_t, uint64_t>>& ops,
             (i == num_threads - 1) ? ops.size() : start_index + chunk_size;
 
         threads.emplace_back([this, &ops, start_index, end_index, i]() {
-            clht_gc_thread_init(tab, i);
+            clht_gc_thread_init(tab, gettid());
             for (size_t j = start_index; j < end_index; ++j) {
                 if (ops[j].first == 1) {
                     clht_put(tab, ops[j].second, 0);
@@ -96,6 +96,7 @@ void BenchmarkCLHT::ConcurrentRun(
             (i == num_threads - 1) ? ops.size() : start_index + chunk_size;
 
         threads.emplace_back([this, &ops, start_index, end_index, i]() {
+            clht_gc_thread_init(tab, gettid());
             uint64_t value;
             for (size_t j = start_index; j < end_index; ++j) {
                 if (std::get<0>(ops[j]) == ConcOptType::INSERT) {
@@ -114,6 +115,8 @@ void BenchmarkCLHT::ConcurrentRun(
     for (auto& thread : threads) {
         thread.join();
     }
+
+    clht_gc_destroy(tab);
 }
 
 }  // namespace tinyptr
