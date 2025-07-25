@@ -100,6 +100,36 @@ function WarmUp() {
     $numactl_bind ../build/tinyptr $args
 }
 
+function RunWithRetry() {
+    local run_function="$1"
+    local max_retries=5
+    local retry_count=0
+    local expected_file="$res_path/object_${object_id}_case_${case_id}_entry_${entry_id}_.txt"
+    
+    while [ $retry_count -lt $max_retries ]; do
+        echo "== Attempt $((retry_count + 1)) of $max_retries"
+        
+        # Execute the benchmark function
+        local output=$($run_function)
+        echo "$output"
+        
+        # Check if file exists and is not empty
+        if [ -f "$expected_file" ] && [ -s "$expected_file" ]; then
+            echo "== Success: Output file created and not empty"
+            break
+        else
+            echo "== Warning: Output file missing or empty, retrying..."
+            retry_count=$((retry_count + 1))
+            
+            if [ $retry_count -eq $max_retries ]; then
+                echo "== Error: Failed after $max_retries attempts"
+            else
+                sleep 2  # Brief pause before retry
+            fi
+        fi
+    done
+}
+
 function Run() {
     #####native execution
 
@@ -279,7 +309,7 @@ bin_size=127
 
 # YCSB without resize
 
-no_resize_object_ids=(6 15 17 20)
+no_resize_object_ids=(5 6 7 15 17 20)
 
 thread_num=16
 for case_id in 17 18 19 20 21 22; do
@@ -288,8 +318,7 @@ for case_id in 17 18 19 20 21 22; do
         # for table_size in 134217728; do
         # /0.7
         for table_size in 191739611; do
-            output=$(RunYCSB)
-            echo "$output"
+            RunWithRetry "RunYCSB"
             let "entry_id++"
         done
     done
@@ -298,15 +327,14 @@ thread_num=0
 
 # YCSB with resize
 
-resize_object_ids=(6 15 18 21)
+resize_object_ids=(5 6 7 15 18 21)
 
 thread_num=16
 for case_id in 17 18 19 20 21 22; do
     for object_id in "${resize_object_ids[@]}"; do
         entry_id=1
         for table_size in 67108864; do
-            output=$(RunYCSB)
-            echo "$output"
+            RunWithRetry "RunYCSB"
             let "entry_id++"
         done
     done
@@ -321,8 +349,7 @@ for case_id in 1 3 6 7; do
         entry_id=0
         for table_size in 67108864; do
             opt_num=63753420
-            output=$(Run)
-            echo "$output"
+            RunWithRetry "Run"
             let "entry_id++"
         done
     done
@@ -337,8 +364,7 @@ for case_id in 1 3 6 7; do
         for table_size in 67108864; do
             opt_num=63753420
             for thread_num in 1 2 4 8 16 32; do
-                output=$(Run)
-                echo "$output"
+                RunWithRetry "Run"
                 let "entry_id++"
             done
         done
@@ -354,8 +380,7 @@ for case_id in 9 10; do
         for table_size in 16777215; do
             for load_factor in 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 0.95; do
                 opt_num=$table_size
-                output=$(Run)
-                echo "$output"
+                RunWithRetry "Run"
                 let "entry_id++"
             done
         done
@@ -370,8 +395,7 @@ for case_id in 0; do
         for table_size in 67108864; do
             for bin_size in 3 7 15 31 63 127; do
                 opt_num=$table_size
-                output=$(Run)
-                echo "$output"
+                RunWithRetry "Run"
                 let "entry_id++"
             done
         done
@@ -388,13 +412,14 @@ for case_id in 1; do
                 opt_num=$(printf "%.0f" $(echo "$table_size * $load_factor" | bc -l))
                 output=$(RunRandMemFree)
                 echo "$output"
-                output=$(Run)
-                echo "$output"
+                RunWithRetry "Run"
                 let "entry_id++"
             done
         done
     done
 done
+
+exit
 
 # load factor with deletion
 
