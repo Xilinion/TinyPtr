@@ -1,6 +1,7 @@
 import os
 import re
 import csv
+import config_py  # Import the shared configuration
 
 
 def extract_throughput(file_path):
@@ -40,8 +41,8 @@ def extract_memory_usage(file_path):
 
 def main():
     # Base directory for results
-    base_dir = "/home/xt253/TinyPtr/results"
-    output_dir = os.path.join(base_dir, "csv")
+    base_dir = config_py.RESULTS_DIR
+    output_dir = config_py.CSV_OUTPUT_DIR
 
     print(f"Processing results from {base_dir}")
     print(f"Output will be saved to {output_dir}")
@@ -54,7 +55,7 @@ def main():
 
     # Define valid IDs based on the updated bash script
     valid_case_ids = [1]
-    valid_object_ids = [4, 6, 7, 12, 15, 19]
+    valid_object_ids = [5, 6, 7, 15, 17, 20]
     load_factors = [0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95]
 
     # Process only the valid result files
