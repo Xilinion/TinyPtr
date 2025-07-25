@@ -67,8 +67,8 @@ function(build_CLHT)
         COMMAND ${CMAKE_COMMAND} -E echo_append "return __ac_Jenkins_hash_64(key) & (hashtable->hash)$<SEMICOLON>" >> <BINARY_DIR>/src/clht_lb_res.c.new
         COMMAND ${CMAKE_COMMAND} -E cat <BINARY_DIR>/src/clht_lb_res.c.bak | tail -n +212 >> <BINARY_DIR>/src/clht_lb_res.c.new
         COMMAND ${CMAKE_COMMAND} -E copy_if_different <BINARY_DIR>/src/clht_lb_res.c.new <BINARY_DIR>/src/clht_lb_res.c
-        COMMAND ${CMAKE_COMMAND} -E cat <BINARY_DIR>/src/clht_lb_res.c | head -n 593 > <BINARY_DIR>/src/clht_lb_res.c.new
-        COMMAND ${CMAKE_COMMAND} -E cat <BINARY_DIR>/src/clht_lb_res.c | tail -n +595 >> <BINARY_DIR>/src/clht_lb_res.c.new
+        COMMAND ${CMAKE_COMMAND} -E cat <BINARY_DIR>/src/clht_lb_res.c | head -n 591 > <BINARY_DIR>/src/clht_lb_res.c.new
+        COMMAND ${CMAKE_COMMAND} -E cat <BINARY_DIR>/src/clht_lb_res.c | tail -n +593 >> <BINARY_DIR>/src/clht_lb_res.c.new
         COMMAND ${CMAKE_COMMAND} -E copy_if_different <BINARY_DIR>/src/clht_lb_res.c.new <BINARY_DIR>/src/clht_lb_res.c
         COMMAND ${CMAKE_MAKE_PROGRAM} ${CLHT_DEBUG_DEFINES} clht_lb_res
         INSTALL_COMMAND ""
