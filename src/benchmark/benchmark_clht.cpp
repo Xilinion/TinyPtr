@@ -8,7 +8,7 @@ const BenchmarkObjectType BenchmarkCLHT::TYPE = BenchmarkObjectType::CLHT;
 
 BenchmarkCLHT::BenchmarkCLHT(int n) : BenchmarkObject64(TYPE) {
     tab = clht_create(n >> 1);
-    clht_gc_thread_init(tab, gettid());
+    clht_gc_thread_init(tab, 0);
 }
 
 BenchmarkCLHT::~BenchmarkCLHT() {
@@ -41,7 +41,7 @@ void BenchmarkCLHT::YCSBFill(std::vector<uint64_t>& keys, int num_threads) {
             (i == num_threads - 1) ? keys.size() : start_index + chunk_size;
 
         threads.emplace_back([this, &keys, start_index, end_index, i]() {
-            clht_gc_thread_init(tab, gettid());
+            clht_gc_thread_init(tab, i + 1);
             for (size_t j = start_index; j < end_index; ++j) {
                 clht_put(tab, keys[j], 0);
             }
@@ -52,7 +52,7 @@ void BenchmarkCLHT::YCSBFill(std::vector<uint64_t>& keys, int num_threads) {
         thread.join();
     }
 
-    clht_gc_destroy(tab);
+    // clht_gc_destroy(tab);
 }
 
 void BenchmarkCLHT::YCSBRun(std::vector<std::pair<uint64_t, uint64_t>>& ops,
@@ -66,7 +66,7 @@ void BenchmarkCLHT::YCSBRun(std::vector<std::pair<uint64_t, uint64_t>>& ops,
             (i == num_threads - 1) ? ops.size() : start_index + chunk_size;
 
         threads.emplace_back([this, &ops, start_index, end_index, i]() {
-            clht_gc_thread_init(tab, gettid());
+            // clht_gc_thread_init(tab, gettid());
             for (size_t j = start_index; j < end_index; ++j) {
                 if (ops[j].first == 1) {
                     clht_put(tab, ops[j].second, 0);
@@ -96,7 +96,7 @@ void BenchmarkCLHT::ConcurrentRun(
             (i == num_threads - 1) ? ops.size() : start_index + chunk_size;
 
         threads.emplace_back([this, &ops, start_index, end_index, i]() {
-            clht_gc_thread_init(tab, gettid());
+            clht_gc_thread_init(tab, i + 1);
             uint64_t value;
             for (size_t j = start_index; j < end_index; ++j) {
                 if (std::get<0>(ops[j]) == ConcOptType::INSERT) {

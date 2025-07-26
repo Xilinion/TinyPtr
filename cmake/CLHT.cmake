@@ -62,14 +62,14 @@ function(build_CLHT)
         COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/sspfd/src/sspfd/sspfd.h <BINARY_DIR>/external/include/sspfd.h
         COMMAND ${CMAKE_COMMAND} -E echo "#define __GNUC_MINOR__ 3" | cat - <BINARY_DIR>/include/clht.h > temp && mv temp <BINARY_DIR>/include/clht.h
         COMMAND ${CMAKE_COMMAND} -E copy <BINARY_DIR>/include/clht.h <BINARY_DIR>/clht.h
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different <BINARY_DIR>/src/clht_lb_res.c <BINARY_DIR>/src/clht_lb_res.c.bak
-        COMMAND ${CMAKE_COMMAND} -E cat <BINARY_DIR>/src/clht_lb_res.c.bak | head -n 210 > <BINARY_DIR>/src/clht_lb_res.c.new
-        COMMAND ${CMAKE_COMMAND} -E echo_append "return __ac_Jenkins_hash_64(key) & (hashtable->hash)$<SEMICOLON>" >> <BINARY_DIR>/src/clht_lb_res.c.new
-        COMMAND ${CMAKE_COMMAND} -E cat <BINARY_DIR>/src/clht_lb_res.c.bak | tail -n +212 >> <BINARY_DIR>/src/clht_lb_res.c.new
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different <BINARY_DIR>/src/clht_lb_res.c.new <BINARY_DIR>/src/clht_lb_res.c
-        COMMAND ${CMAKE_COMMAND} -E cat <BINARY_DIR>/src/clht_lb_res.c | head -n 591 > <BINARY_DIR>/src/clht_lb_res.c.new
-        COMMAND ${CMAKE_COMMAND} -E cat <BINARY_DIR>/src/clht_lb_res.c | tail -n +593 >> <BINARY_DIR>/src/clht_lb_res.c.new
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different <BINARY_DIR>/src/clht_lb_res.c.new <BINARY_DIR>/src/clht_lb_res.c
+        # COMMAND ${CMAKE_COMMAND} -E copy_if_different <BINARY_DIR>/src/clht_lb_res.c <BINARY_DIR>/src/clht_lb_res.c.bak
+        # COMMAND ${CMAKE_COMMAND} -E cat <BINARY_DIR>/src/clht_lb_res.c.bak | head -n 210 > <BINARY_DIR>/src/clht_lb_res.c.new
+        # COMMAND ${CMAKE_COMMAND} -E echo_append "return __ac_Jenkins_hash_64(key) & (hashtable->hash)$<SEMICOLON>" >> <BINARY_DIR>/src/clht_lb_res.c.new
+        # COMMAND ${CMAKE_COMMAND} -E cat <BINARY_DIR>/src/clht_lb_res.c.bak | tail -n +212 >> <BINARY_DIR>/src/clht_lb_res.c.new
+        # COMMAND ${CMAKE_COMMAND} -E copy_if_different <BINARY_DIR>/src/clht_lb_res.c.new <BINARY_DIR>/src/clht_lb_res.c
+        # COMMAND ${CMAKE_COMMAND} -E cat <BINARY_DIR>/src/clht_lb_res.c | head -n 591 > <BINARY_DIR>/src/clht_lb_res.c.new
+        # COMMAND ${CMAKE_COMMAND} -E cat <BINARY_DIR>/src/clht_lb_res.c | tail -n +593 >> <BINARY_DIR>/src/clht_lb_res.c.new
+        # COMMAND ${CMAKE_COMMAND} -E copy_if_different <BINARY_DIR>/src/clht_lb_res.c.new <BINARY_DIR>/src/clht_lb_res.c
         COMMAND ${CMAKE_MAKE_PROGRAM} ${CLHT_DEBUG_DEFINES} clht_lb_res
         INSTALL_COMMAND ""
         CONFIGURE_COMMAND ""

@@ -38,7 +38,7 @@ def main():
 
     # Define valid IDs based on the updated bash script
     valid_ids = {
-        0: [5, 6, 7, 15, 17, 20]  # entry_id = 0
+        0: [6, 7, 15, 17, 20]  # entry_id = 0
     }
     valid_case_ids = [1, 3, 6, 7]
 
