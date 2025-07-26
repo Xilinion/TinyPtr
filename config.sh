@@ -1,5 +1,7 @@
 # Define shared variables
 exp_dir="."
+exp_dir="$(realpath $exp_dir)"
+echo "exp_dir: $exp_dir"
 
 # Define base directory for workloads
 tmp_dir="$HOME/tmp"

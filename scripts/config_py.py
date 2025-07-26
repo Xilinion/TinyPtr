@@ -4,11 +4,11 @@
 import os
 
 # Results directory from config.sh
-RESULTS_DIR = "../results"
+RESULTS_DIR = "/users/xilin/TinyPtr/results"
 CSV_OUTPUT_DIR = os.path.join(RESULTS_DIR, "csv")
 
 # Other config variables if needed
-EXP_DIR = ".."
+EXP_DIR = "/users/xilin/TinyPtr"
 INDEX_MICROBENCH_DIR = "/users/xilin/tmp/index-microbench"
 
 print(f"Using results directory: {RESULTS_DIR}")

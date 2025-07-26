@@ -13,6 +13,8 @@ while getopts "d:" opt; do
     esac
 done
 
+exp_dir="$(realpath $exp_dir)"
+
 # Use the results directory from config
 results_dir="$exp_dir/results"
 

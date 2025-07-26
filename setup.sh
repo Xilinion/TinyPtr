@@ -18,6 +18,8 @@ sudo apt-get install python3-pandas
 sudo apt-get install -y openjdk-11-jdk
 sudo apt install -y libssl-dev
 sudo apt install -y numactl
+sudo pip3 install psrecord
+sudo pip3 install seaborn
 
 # YCSB
 bash scripts/ycsb/ycsb.sh
