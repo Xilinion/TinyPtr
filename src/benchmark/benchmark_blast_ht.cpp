@@ -9,7 +9,7 @@ const BenchmarkObjectType BenchmarkBlastHT::TYPE = BenchmarkObjectType::BLAST;
 
 BenchmarkBlastHT::BenchmarkBlastHT(uint64_t size, uint16_t bin_size)
     : BenchmarkObject64(TYPE) {
-    tab = new BlastHT(size, bin_size);
+    tab = new BlastHT(size, bin_size, false);
 }
 
 uint8_t BenchmarkBlastHT::Insert(uint64_t key, uint64_t value) {
