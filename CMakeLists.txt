@@ -35,6 +35,11 @@ add_library(tinyptr_lib ${SOURCES})
 target_include_directories(tinyptr_lib PRIVATE ${SOURCE_DIR})
 target_compile_options(tinyptr_lib INTERFACE -march=native -flto)
 
+# Add preprocessor definition based on resizing option
+if(DISABLE_RESIZING)
+    target_compile_definitions(tinyptr_lib PUBLIC CUCKOO_DISABLE_RESIZING)
+endif()
+
 add_executable(${PROJECT_NAME} src/main.cpp)
 target_link_libraries(${PROJECT_NAME} PRIVATE tinyptr_lib)
 
@@ -69,6 +74,7 @@ include(FetchContent)
 
 # Options
 option(BUILD_TESTING "Whether to enable unit test support" ON)
+option(DISABLE_RESIZING "Whether to disable resizing functionality" ON)
 
 if(BUILD_TESTING)
     FetchContent_Declare(
