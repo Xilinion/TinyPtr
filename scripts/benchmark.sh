@@ -37,56 +37,52 @@ function Init() {
     sudo chmod 777 ../scripts/FlameGraph/flamegraph.pl
 }
 
+function NormalCompileInit() {
+    clean_build=""
+    cmake_config="-B build -DCMAKE_BUILD_TYPE=Release -Wno-dev"
+    cmake_build="--build build --config Release -j8"
+    cap_config="CAP_SYS_RAWIO+eip"
+}
+
+function DebugCompileInit() {
+    clean_build="rm -rf ./build"
+    cmake_config="-B build -DCMAKE_BUILD_TYPE=Debug"
+    cmake_build="--build build --config Debug -j8"
+    cap_config="CAP_SYS_RAWIO+eip"
+}
+
+function ValgrindCompileInit() {
+    DebugCompileInit
+    cmake_config="$cmake_config -DCOMPILE_FOR_VALGRIND=ON -DCOMPILE_FOR_VALGRIND=ON"
+    cap_config="-r"
+}
+
+function AsanCompileInit() {
+    DebugCompileInit
+    cmake_config="$cmake_config -DCOMPILE_FOR_ASAN=ON"
+}
+
 function Compile() {
     cd ..
-    # rm -rf ./build
-    cmake -B build -DCMAKE_BUILD_TYPE=Release -Wno-dev | tail -n 90
-    cmake --build build --config Release -j8 | tail -n 90
+    $clean_build
+    cmake $cmake_config | tail -n 90
+    cmake $cmake_build | tail -n 90
     cd scripts
 
-    sudo setcap CAP_SYS_RAWIO+eip ../build/tinyptr
-}
-
-function DebugCompile() {
-    cd ..
-    # rm -rf ./build
-    cmake -B build -DCMAKE_BUILD_TYPE=Debug | tail -n 90
-    cmake --build build --config Debug -j8 | tail -n 90
-    cd scripts
-
-    sudo setcap CAP_SYS_RAWIO+eip ../build/tinyptr
-}
-
-function ValgrindCompile() {
-    cd ..
-    rm -rf ./build
-    cmake -B build -DCMAKE_BUILD_TYPE=Debug -DCOMPILE_FOR_VALGRIND=ON -DCOMPILE_FOR_VALGRIND=ON | tail -n 90
-    cmake --build build --config Debug -j8 | tail -n 90
-    cd scripts
-
-    sudo setcap -r ../build/tinyptr
-}
-
-function AsanCompile() {
-    cd ..
-    rm -rf ./build
-    cmake -B build -DCMAKE_BUILD_TYPE=Debug -DCOMPILE_FOR_ASAN=ON | tail -n 90
-    cmake --build build --config Debug -j8 | tail -n 90
-    cd scripts
-
-    sudo setcap CAP_SYS_RAWIO+eip ../build/tinyptr
+    sudo setcap $cap_config ../build/tinyptr
 }
 
 function CompileWithOption() {
     if [ $compile_option -eq 1 ]; then
-        Compile
+        NormalCompileInit
     elif [ $compile_option -eq 2 ]; then
-        DebugCompile
+        DebugCompileInit
     elif [ $compile_option -eq 3 ]; then
-        ValgrindCompile
+        ValgrindCompileInit
     elif [ $compile_option -eq 4 ]; then
-        AsanCompile
+        AsanCompileInit
     fi
+    Compile
 }
 
 function CommonArgs() {
