@@ -29,6 +29,7 @@ fi
 
 function Init() {
     compile_option=1
+    compile_resize=0
     sudo sysctl kernel.perf_event_paranoid=-1
     sudo sysctl kernel.kptr_restrict=0
     sudo sysctl kernel.yama.ptrace_scope=0
@@ -38,7 +39,7 @@ function Init() {
 }
 
 function NormalCompileInit() {
-    clean_build=""
+    clean_build="rm -rf ./build"
     cmake_config="-B build -DCMAKE_BUILD_TYPE=Release -Wno-dev"
     cmake_build="--build build --config Release -j8"
     cap_config="CAP_SYS_RAWIO+eip"
@@ -62,6 +63,10 @@ function AsanCompileInit() {
     cmake_config="$cmake_config -DCOMPILE_FOR_ASAN=ON"
 }
 
+function ResizeCompileConfigAppend() {
+    cmake_config="$cmake_config -DDISABLE_RESIZING=OFF"
+}
+
 function Compile() {
     cd ..
     $clean_build
@@ -82,6 +87,11 @@ function CompileWithOption() {
     elif [ $compile_option -eq 4 ]; then
         AsanCompileInit
     fi
+
+    if [ $compile_resize -ne 0 ]; then
+        ResizeCompileConfigAppend
+    fi
+
     Compile
 }
 
@@ -99,14 +109,14 @@ function RunWithRetry() {
     local max_retries=5
     local retry_count=0
     local expected_file="$res_path/object_${object_id}_case_${case_id}_entry_${entry_id}_.txt"
-    
+
     while [ $retry_count -lt $max_retries ]; do
         echo "== Attempt $((retry_count + 1)) of $max_retries"
-        
+
         # Execute the benchmark function
         local output=$($run_function)
         echo "$output"
-        
+
         # Check if file exists and is not empty
         if [ -f "$expected_file" ] && [ -s "$expected_file" ]; then
             echo "== Success: Output file created and not empty"
@@ -114,11 +124,11 @@ function RunWithRetry() {
         else
             echo "== Warning: Output file missing or empty, retrying..."
             retry_count=$((retry_count + 1))
-            
+
             if [ $retry_count -eq $max_retries ]; then
                 echo "== Error: Failed after $max_retries attempts"
             else
-                sleep 2  # Brief pause before retry
+                sleep 2 # Brief pause before retry
             fi
         fi
     done
@@ -287,6 +297,7 @@ Init
 # ValgrindCompile
 
 compile_option=1
+compile_resize=1
 CompileWithOption
 
 thread_num=0
@@ -301,9 +312,28 @@ bin_size=127
 
 # RunCTest
 
-# YCSB without resize
+no_resize_object_ids=(6 7 15 17 20)
+resize_object_ids=(6 7 15 18 21)
 
-no_resize_object_ids=(5 6 7 15 17 20)
+# YCSB with resize
+
+thread_num=16
+for case_id in 17 18 19 20 21 22; do
+    for object_id in "${resize_object_ids[@]}"; do
+        entry_id=1
+        for table_size in 33554432; do
+            RunWithRetry "RunYCSB"
+            let "entry_id++"
+        done
+    done
+done
+thread_num=0
+
+compile_option=1
+compile_resize=0
+CompileWithOption
+
+# YCSB without resize
 
 thread_num=16
 for case_id in 17 18 19 20 21 22; do
@@ -319,22 +349,6 @@ for case_id in 17 18 19 20 21 22; do
 done
 thread_num=0
 
-# YCSB with resize
-
-resize_object_ids=(5 6 7 15 18 21)
-
-thread_num=16
-for case_id in 17 18 19 20 21 22; do
-    for object_id in "${resize_object_ids[@]}"; do
-        entry_id=1
-        for table_size in 33554432; do
-            RunWithRetry "RunYCSB"
-            let "entry_id++"
-        done
-    done
-done
-thread_num=0
-
 # micro benchmark
 
 thread_num=16
@@ -342,6 +356,7 @@ for case_id in 1 3 6 7; do
     for object_id in "${no_resize_object_ids[@]}"; do
         entry_id=0
         for table_size in 67108863; do
+            # 0.95
             opt_num=63753420
             RunWithRetry "Run"
             let "entry_id++"
