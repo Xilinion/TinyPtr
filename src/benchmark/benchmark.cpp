@@ -596,7 +596,7 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
             obj = new BenchmarkBlastHT(table_size, para.bin_size);
             break;
         case BenchmarkObjectType::RESIZABLE_BLAST: {
-            uint64_t part_num = 10;
+            uint64_t part_num = 5;
             obj = new BenchmarkResizableBlastHT(table_size / part_num, part_num,
                                                 thread_num);
         } break;

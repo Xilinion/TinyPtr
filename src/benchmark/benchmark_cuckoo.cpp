@@ -7,10 +7,6 @@ const BenchmarkObjectType BenchmarkCuckoo::TYPE = BenchmarkObjectType::CUCKOO;
 
 BenchmarkCuckoo::BenchmarkCuckoo(int n) : BenchmarkObject64(TYPE) {
     tab = new libcuckoo::cuckoohash_map<uint64_t, uint64_t>(n);
-    
-#ifdef CUCKOO_DISABLE_RESIZING
-    tab->minimum_load_factor(1.0);
-#endif
 }
 
 uint8_t BenchmarkCuckoo::Insert(uint64_t key, uint64_t value) {

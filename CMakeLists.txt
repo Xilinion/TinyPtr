@@ -19,6 +19,8 @@ if(COMPILE_FOR_ASAN)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address -g")
 endif()
 
+option(DISABLE_RESIZING "Whether to disable resizing functionality" ON)
+
 set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 
 include_directories(src)
@@ -74,7 +76,6 @@ include(FetchContent)
 
 # Options
 option(BUILD_TESTING "Whether to enable unit test support" ON)
-option(DISABLE_RESIZING "Whether to disable resizing functionality" ON)
 
 if(BUILD_TESTING)
     FetchContent_Declare(
