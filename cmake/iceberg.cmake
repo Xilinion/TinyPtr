@@ -13,7 +13,7 @@ function(build_iceberg)
         set(ICEBERG_INTERFACE "ENABLE_BLOCK_LOCKING")
     else()
         set(ICEBERG_RESIZE_FLAG "")
-        set(ICEBERG_INTERFACE "ENABLE_RESIZE ENABLE_BLOCK_LOCKING")
+        set(ICEBERG_INTERFACE "ENABLE_RESIZE;ENABLE_BLOCK_LOCKING")  # Use semicolon for list
     endif()
 
     # Add ExternalProject for iceberg
