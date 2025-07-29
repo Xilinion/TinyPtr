@@ -101,7 +101,7 @@ function CommonArgs() {
 
 function WarmUp() {
     echo "== begin warming up: $args"
-    $numactl_bind ../build/tinyptr $args
+    $timeout_cmd $numactl_bind ../build/tinyptr $args
 }
 
 function RunWithRetry() {
@@ -143,8 +143,7 @@ function Run() {
 
     echo "== begin benchmarking: $args"
 
-    output=$($numactl_bind ../build/tinyptr $args 2>&1)
-
+    output=$($timeout_cmd $numactl_bind ../build/tinyptr $args 2>&1)
     echo "$output"
 
     echo "== end benchmarking: $args"
