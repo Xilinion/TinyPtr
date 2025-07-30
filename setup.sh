@@ -20,6 +20,7 @@ sudo apt install -y libssl-dev
 sudo apt install -y numactl
 sudo pip3 install psrecord
 sudo pip3 install seaborn
+sudo apt update && sudo apt install -y texlive-full
 
 # YCSB
 bash scripts/ycsb/ycsb.sh
