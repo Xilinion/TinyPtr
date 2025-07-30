@@ -10,11 +10,11 @@
 
 % Define styles for each object
 \pgfplotsset{
-    CuckooStyle/.style={fill=blue!70!gray!15, draw=blue!85!gray!35},
-    IcebergStyle/.style={fill=red!75!pink!15, draw=red!90!pink!35},
-    JunctionStyle/.style={fill=yellow!65!gray!15, draw=orange!80!black!40},
-    TPHTStyle/.style={fill=green!65!black!25, draw=green!80!black!55},
-    BlastStyle/.style={fill=violet!60!gray!20, draw=violet!75!gray!40}
+    CuckooStyle/.style={fill=blue!70!gray!15, draw=blue!85!gray!45},
+    IcebergStyle/.style={fill=red!75!pink!15, draw=red!90!pink!55},
+    JunctionStyle/.style={fill=yellow!65!gray!15, draw=orange!80!black!50},
+    TPHTStyle/.style={fill=green!65!black!15, draw=green!80!black!55},
+    BlastStyle/.style={fill=violet!60!gray!15, draw=violet!75!gray!50}
 }
 
 % Helper function for addplot commands
@@ -75,6 +75,7 @@
     ybar,
     bar width=5pt,
     xticklabels={},
+    xtick style={draw=none},
     axis lines=box,
     tick align=inside,
     scaled ticks=true,
@@ -107,6 +108,7 @@
     ybar,
     bar width=5pt,
     xticklabels={},
+    xtick style={draw=none},
     axis lines=box,
     tick align=inside,
     scaled ticks=true,
@@ -143,6 +145,7 @@
     ybar,
     bar width=5pt,
     xticklabels={},
+    xtick style={draw=none},
     axis lines=box,
     tick align=inside,
     scaled ticks=true,
@@ -179,6 +182,7 @@
     ybar,
     bar width=5pt,
     xticklabels={},
+    xtick style={draw=none},
     axis lines=box,
     tick align=inside,
     scaled ticks=true,
