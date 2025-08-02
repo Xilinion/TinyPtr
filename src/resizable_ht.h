@@ -114,10 +114,10 @@ class ResizableHT {
                             part_resizing_stride_done[part_index]++;
                         }
                     } else if (stage >= stride_num) {
-                        thread_working_lock[handle].store(part_id);
                         part_resizing_thread_num[part_index].fetch_sub(1);
                         while (part_resizing_thread_num[part_index].load() > 0)
                             ;
+                        thread_working_lock[handle].store(part_id);
                         break;
                     }
                 }
@@ -197,8 +197,17 @@ class ResizableHT {
 
                 // my_time[3] = std::chrono::high_resolution_clock::now();
 
-                delete partitions[part_id];
+                HTType* tmp = partitions[part_id];
                 partitions[part_id] = partitions_new[part_id];
+                
+                for (uint64_t i = 0; i < thread_num; i++) {
+                    while (thread_working_lock[i * (kCacheLineSize /
+                                                    sizeof(uint64_t))]
+                               .load() == part_id)
+                        ;
+                }
+
+                delete tmp;
                 partitions_new[part_id] = nullptr;
                 part_size[part_id] =
                     uint64_t(part_size[part_id] * resize_factor);
@@ -332,7 +341,7 @@ bool ResizableHT<HTType>::Query(uint64_t handle, uint64_t key,
     uint64_t part_id = get_part_id(key);
     thread_working_lock[handle].store(part_id);
 
-    check_join_resize(handle, part_id);
+    // check_join_resize(handle, part_id);
 
     auto res = partitions[part_id]->Query(key, value_ptr);
 
