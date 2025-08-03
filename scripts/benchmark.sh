@@ -348,6 +348,25 @@ for case_id in 17 18 19 20 21 22; do
 done
 thread_num=0
 
+# Hash Distribution Validation
+
+num_rep=10
+
+thread_num=16
+for case_id in 23; do
+    for object_id in 22; do
+        entry_id=0
+        for table_size in 67108864; do
+            opt_num=$table_size
+            for ((rep = 1; rep <= num_rep; rep++)); do
+                RunWithRetry "Run"
+                let "entry_id++"
+            done
+        done
+    done
+done
+thread_num=0
+
 # micro benchmark
 
 thread_num=16
@@ -406,13 +425,13 @@ for case_id in 1; do
         for table_size in 16777215; do
             for load_factor in 0.05 0.1 0.15 0.2 0.25 0.3 0.35 0.4 0.45 0.5 0.55 0.6 0.65 0.7 0.75 0.8 0.85 0.9 0.95; do
                 opt_num=$(printf "%.0f" $(echo "$table_size * $load_factor" | bc -l))
-                
+
                 # Run memory free only once per configuration
                 output=$(RunRandMemFree)
                 echo "$output"
-                
+
                 # Repeat the actual run 10 times
-                for ((rep=1; rep<=num_rep; rep++)); do
+                for ((rep = 1; rep <= num_rep; rep++)); do
                     RunWithRetry "Run"
                     let "entry_id++"
                 done

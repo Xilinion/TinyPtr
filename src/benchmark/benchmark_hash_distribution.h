@@ -9,7 +9,7 @@ class BenchmarkHashDistribution : public BenchmarkObject64 {
     static const BenchmarkObjectType TYPE;
 
    public:
-    BenchmarkHashDistribution(uint64_t op_cnt);
+    BenchmarkHashDistribution(uint64_t n);
     ~BenchmarkHashDistribution() = default;
 
    public:

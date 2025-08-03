@@ -8,7 +8,7 @@
 #include <iostream>
 #include <string>
 #include <vector>
-#include "../utils/rng.h"
+#include "utils/rng.h"
 #include "benchmark_case_type.h"
 #include "benchmark_cli_para.h"
 #include "benchmark_object_64.h"

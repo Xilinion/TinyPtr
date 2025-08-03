@@ -27,6 +27,7 @@
 #include "benchmark_conc_skulkerht.h"
 #include "benchmark_cuckoo.h"
 #include "benchmark_dereftab64.h"
+#include "benchmark_hash_distribution.h"
 // #include "benchmark_growt.h"
 #include "benchmark_iceberg.h"
 #include "benchmark_intarray64.h"
@@ -600,6 +601,9 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
             obj = new BenchmarkResizableBlastHT(table_size / part_num, part_num,
                                                 thread_num);
         } break;
+        case BenchmarkObjectType::HASH_DISTRIBUTION:
+            obj = new BenchmarkHashDistribution(table_size);
+            break;
         default:
             abort();
     }
@@ -1383,8 +1387,17 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
             break;
         case BenchmarkCaseType::HASH_DISTRUBUTION:
             run = [this, para]() {
-                std::vector<uint64_t> key_vec, value_vec;
-                obj_fill_vec_prepare(key_vec, value_vec, table_size);
+                dynamic_cast<BenchmarkHashDistribution*>(obj)
+                    ->Concurrent_Simulation(para.thread_num);
+                auto res = dynamic_cast<BenchmarkHashDistribution*>(obj)
+                               ->Occupancy_Distribution();
+                output_stream << "Occupancy Distribution: " << std::endl;
+                output_stream << "Operation Count: " << opt_num << std::endl;
+                output_stream << "Bin Occupancy, Count: " << std::endl;
+                for (auto& i : res) {
+                    output_stream << i.first << ", " << i.second << std::endl;
+                }
+                output_stream << std::endl;
             };
             break;
 
