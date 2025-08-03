@@ -1381,6 +1381,12 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
                     << " ops/s" << std::endl;
             };
             break;
+        case BenchmarkCaseType::HASH_DISTRUBUTION:
+            run = [this, para]() {
+                std::vector<uint64_t> key_vec, value_vec;
+                obj_fill_vec_prepare(key_vec, value_vec, table_size);
+            };
+            break;
 
         default:
             abort();
