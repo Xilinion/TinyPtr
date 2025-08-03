@@ -80,31 +80,31 @@
     "clangd.arguments": [
         "--query-driver=/usr/bin/g++*;/usr/bin/clang++*"
     ],
-  "latex-workshop.latex.outDir": "./build",
-  "latex-workshop.latex.recipes": [
-    {
-      "name": "latexmk (build folder)",
-      "tools": [
-        "latexmk"
-      ]
-    }
-  ],
-  "latex-workshop.latex.tools": [
-    {
-      "name": "latexmk",
-      "command": "latexmk",
-      "args": [
-        "-pdf",
-        "-synctex=1",
-        "-interaction=nonstopmode",
-        "-file-line-error",
-        "-outdir=build",
-        "%DOC%"
-      ]
-    }
-  ],
-  "latex-workshop.latex.autoBuild.run": "onSave",
-  "latex-workshop.synctex.afterBuild.enabled": true,
-  "latex-workshop.view.pdf.viewer": "tab",
-  "latex-workshop.view.pdf.internal.synctex.keybinding": "double-click"
+    "latex-workshop.latex.outDir": "./build",
+    "latex-workshop.latex.recipes": [
+        {
+            "name": "latexmk (build folder)",
+            "tools": [
+                "latexmk"
+            ]
+        }
+    ],
+    "latex-workshop.latex.tools": [
+        {
+            "name": "latexmk",
+            "command": "latexmk",
+            "args": [
+                "-pdf",
+                "-synctex=1",
+                "-interaction=nonstopmode",
+                "-file-line-error",
+                "-outdir=build",
+                "%DOC%"
+            ]
+        }
+    ],
+    "latex-workshop.latex.autoBuild.run": "onSave",
+    "latex-workshop.synctex.afterBuild.enabled": true,
+    "latex-workshop.view.pdf.viewer": "tab",
+    "latex-workshop.view.pdf.internal.synctex.keybinding": "double-click"
 }
