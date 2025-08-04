@@ -20,7 +20,7 @@ sudo apt install -y libssl-dev
 sudo apt install -y numactl
 sudo pip3 install psrecord
 sudo pip3 install seaborn
-sudo apt update && sudo apt install -y texlive-latex-recommended texlive-fonts-recommended texlive-latex-extra
+sudo apt update && sudo apt install -y texlive-latex-recommended texlive-fonts-recommended texlive-latex-extra latexmk texlive-pstricks
 
 # YCSB
 bash scripts/ycsb/ycsb.sh
