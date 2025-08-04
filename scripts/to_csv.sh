@@ -42,6 +42,7 @@ echo "Generated config_py.py with results directory: $results_dir"
 
 # Run all CSV generation scripts (they will import config_py.py)
 sudo python3 ./ycsb_to_csv.py
+sudo python3 ./occupancy_to_csv.py
 sudo python3 ./micro_to_csv.py
 sudo python3 ./scaling_to_csv.py
 sudo python3 ./progressive_latency_to_csv.py
