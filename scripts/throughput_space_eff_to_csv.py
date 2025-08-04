@@ -23,9 +23,9 @@ def extract_throughput(file_path):
 
 
 def extract_memory_usage(file_path):
-    """Extract max real and virtual memory usage from a memory usage file."""
-    max_real = 0.0
-    max_virtual = 0.0
+    """Extract max and min real and virtual memory usage from a memory usage file."""
+    real_values = []
+    virtual_values = []
 
     with open(file_path, 'r') as f:
         for line in f:
@@ -33,10 +33,17 @@ def extract_memory_usage(file_path):
             if match:
                 real = float(match.group(1))
                 virtual = float(match.group(2))
-                max_real = max(max_real, real)
-                max_virtual = max(max_virtual, virtual)
+                real_values.append(real)
+                virtual_values.append(virtual)
 
-    return max_real, max_virtual
+    if not real_values or not virtual_values:
+        return 0.0, 0.0
+
+    # Calculate max - min for both real and virtual memory
+    real_range = max(real_values) - min(real_values)
+    virtual_range = max(virtual_values) - min(virtual_values)
+
+    return real_range, virtual_range
 
 
 def main():
@@ -57,35 +64,55 @@ def main():
     valid_case_ids = [1]
     valid_object_ids = [6, 7, 15, 17, 20]
     load_factors = [0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95]
+    num_repetitions = 10
 
     # Process only the valid result files
     for case_id in valid_case_ids:
         for object_id in valid_object_ids:
-            entry_id = 100  # Starting entry_id
+            base_entry_id = 100  # Starting entry_id
             for load_factor in load_factors:
-                filename = f"object_{object_id}_case_{case_id}_entry_{entry_id}_.txt"
-                memuse_filename = f"object_{object_id}_case_{case_id}_entry_{entry_id}_memuse.txt"
-                file_path = os.path.join(base_dir, filename)
-                memuse_file_path = os.path.join(base_dir, memuse_filename)
+                throughputs = []
+                latencies = []
+                real_memories = []
+                virtual_memories = []
 
-                if os.path.exists(file_path) and os.path.exists(memuse_file_path):
-                    # Read throughput and latency data
-                    throughput, latency = extract_throughput(file_path)
+                # Collect data from all 10 repetitions
+                for rep in range(num_repetitions):
+                    entry_id = base_entry_id + rep
+                    filename = f"object_{object_id}_case_{case_id}_entry_{entry_id}_.txt"
+                    memuse_filename = f"object_{object_id}_case_{case_id}_entry_{entry_id}_memuse.txt"
+                    file_path = os.path.join(base_dir, filename)
+                    memuse_file_path = os.path.join(base_dir, memuse_filename)
 
-                    # Read memory usage data
-                    max_real, max_virtual = extract_memory_usage(memuse_file_path)
+                    if os.path.exists(file_path) and os.path.exists(memuse_file_path):
+                        # Read throughput and latency data
+                        throughput, latency = extract_throughput(file_path)
 
-                    # Skip if we couldn't extract the data
-                    if throughput is None or latency is None:
-                        print(
-                            f"Warning: Could not extract throughput data from {filename}")
-                        continue
+                        # Read memory usage data
+                        real_range, virtual_range = extract_memory_usage(memuse_file_path)
 
-                    # Store the data with load_factor, max_real, and max_virtual
+                        # Skip if we couldn't extract the data
+                        if throughput is None or latency is None:
+                            print(f"Warning: Could not extract throughput data from {filename}")
+                            continue
+
+                        throughputs.append(throughput)
+                        latencies.append(latency)
+                        real_memories.append(real_range)
+                        virtual_memories.append(virtual_range)
+
+                # Calculate averages if we have data
+                if throughputs:
+                    avg_throughput = sum(throughputs) / len(throughputs)
+                    avg_latency = sum(latencies) / len(latencies)
+                    avg_real_memory = sum(real_memories) / len(real_memories)
+                    avg_virtual_memory = sum(virtual_memories) / len(virtual_memories)
+
+                    # Store the averaged data
                     all_data.append(
-                        (case_id, object_id, load_factor, throughput, latency, max_real, max_virtual))
+                        (case_id, object_id, load_factor, avg_throughput, avg_latency, avg_real_memory, avg_virtual_memory))
 
-                entry_id += 1  # Increment entry_id for each load_factor
+                base_entry_id += num_repetitions  # Move to next load_factor
 
     # Write a single CSV file
     csv_filename = "throughput_space_eff_results.csv"
@@ -94,12 +121,13 @@ def main():
     with open(csv_path, 'w', newline='') as csvfile:
         writer = csv.writer(csvfile)
         # Write header
-        writer.writerow(['case_id', 'object_id', 'load_factor', 'throughput (ops/s)', 'latency (ns/op)', 'max_real (MB)', 'max_virtual (MB)'])
+        writer.writerow(['case_id', 'object_id', 'load_factor', 'avg_throughput (ops/s)', 'avg_latency (ns/op)', 'avg_real_memory (MB)', 'avg_virtual_memory (MB)'])
         # Write data
         for entry in all_data:
             writer.writerow(entry)
 
     print(f"Created {csv_path}")
+    print(f"Total data points: {len(all_data)}")
 
 
 if __name__ == "__main__":

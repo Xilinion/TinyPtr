@@ -26,6 +26,9 @@
 % Read the CSV data
 \pgfplotstableread[col sep=comma, sci]{../results/csv/ycsb_results.csv}{\data}
 \pgfplotstableread[col sep=comma, sci]{../results/csv/occupancy_results.csv}{\occupancydata}
+\pgfplotstableread[col sep=comma, sci]{../results/csv/throughput_space_eff_results.csv}{\throughputdata}
+\pgfplotstableread[col sep=comma, sci]{../results/csv/load_factor_support_results.csv}{\loadfactordata}
+\pgfplotstableread[col sep=comma, sci]{../results/csv/scaling_results.csv}{\scalingdata}
 
 % Dictionary reference table
 \section{Dictionary Mapping}
@@ -54,5 +57,14 @@
 
 % Include occupancy plots
 \input{occupancy_plots}
+
+% Include throughput vs space efficiency plots
+\input{throughput_space_plots}
+
+% Include load factor support plots
+\input{load_factor_plots}
+
+% Include scaling plots
+\input{scaling_plots}
 
 \end{document}

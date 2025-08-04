@@ -24,4 +24,4 @@ numactl_bind=""
 # numactl_bind="numactl --cpunodebind=0 --membind=0"
 
 # Timeout prefix (empty to disable)
-timeout_cmd="timeout 600"
+timeout_cmd="timeout 300"

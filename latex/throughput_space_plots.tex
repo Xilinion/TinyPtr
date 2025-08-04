@@ -1,0 +1,99 @@
+\section{Throughput vs Space Efficiency Analysis}
+
+\begin{figure}[p]
+    \centering
+    \begin{tikzpicture}
+        \begin{axis}[
+            width=12cm,
+            height=8cm,
+            xlabel={Space Efficiency (256 $\times$ Load Factor / Virtual Memory)},
+            ylabel={Throughput (M ops/s)},
+            xmin=0,
+            ymin=0,
+            grid=major,
+            grid style={gray!30},
+            legend pos=outer north east,
+            legend style={font=\small},
+            tick label style={font=\small},
+            label style={font=\small},
+            title={Throughput vs Space Efficiency},
+            title style={font=\small},
+            scaled ticks=true,
+            tick label style={/pgf/number format/fixed,/pgf/number format/precision=2}
+        ]
+
+        % Plot Cuckoo (object_id=6)
+        \addplot[
+            mark=o,
+            mark size=3pt,
+            color=exp1,
+            thick,
+            smooth
+        ] table[
+            x expr=256*\thisrow{load_factor}/\thisrow{avg_virtual_memory (MB)},
+            y expr=\thisrow{avg_throughput (ops/s)}/1000000,
+            restrict expr to domain={\thisrow{object_id}}{6:6}
+        ] {\throughputdata};
+        \addlegendentry{Cuckoo}
+
+        % Plot Iceberg (object_id=7)
+        \addplot[
+            mark=square,
+            mark size=3pt,
+            color=exp2,
+            thick,
+            smooth
+        ] table[
+            x expr=256*\thisrow{load_factor}/\thisrow{avg_virtual_memory (MB)},
+            y expr=\thisrow{avg_throughput (ops/s)}/1000000,
+            restrict expr to domain={\thisrow{object_id}}{7:7}
+        ] {\throughputdata};
+        \addlegendentry{Iceberg}
+
+        % Plot Junction (object_id=15)
+        \addplot[
+            mark=triangle,
+            mark size=3pt,
+            color=exp3,
+            thick,
+            smooth
+        ] table[
+            x expr=256*\thisrow{load_factor}/\thisrow{avg_virtual_memory (MB)},
+            y expr=\thisrow{avg_throughput (ops/s)}/1000000,
+            restrict expr to domain={\thisrow{object_id}}{15:15}
+        ] {\throughputdata};
+        \addlegendentry{Junction}
+
+        % Plot TPHT (object_id=17)
+        \addplot[
+            mark=diamond,
+            mark size=3pt,
+            color=exp4,
+            thick,
+            smooth
+        ] table[
+            x expr=256*\thisrow{load_factor}/\thisrow{avg_virtual_memory (MB)},
+            y expr=\thisrow{avg_throughput (ops/s)}/1000000,
+            restrict expr to domain={\thisrow{object_id}}{17:17}
+        ] {\throughputdata};
+        \addlegendentry{TPHT}
+
+        % Plot Blast (object_id=20)
+        \addplot[
+            mark=pentagon,
+            mark size=3pt,
+            color=poisson,
+            thick,
+            smooth
+        ] table[
+            x expr=256*\thisrow{load_factor}/\thisrow{avg_virtual_memory (MB)},
+            y expr=\thisrow{avg_throughput (ops/s)}/1000000,
+            restrict expr to domain={\thisrow{object_id}}{20:20}
+        ] {\throughputdata};
+        \addlegendentry{Blast}
+
+        \end{axis}
+    \end{tikzpicture}
+    \caption{Throughput vs Space Efficiency for different hash table implementations. Space efficiency is calculated as 256 $\times$ Load Factor / Virtual Memory (MB). Higher values indicate better space efficiency.}
+    \label{fig:throughput_space_efficiency}
+\end{figure} 
