@@ -1385,6 +1385,48 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
                     << " ops/s" << std::endl;
             };
             break;
+        case BenchmarkCaseType::YCSB_A_PERCENTILE:
+        case BenchmarkCaseType::YCSB_NEG_A_PERCENTILE:
+            run = [this, para]() {
+                std::vector<uint64_t> ycsb_keys;
+                ycsb_load(ycsb_keys, para.ycsb_load_path);
+
+                std::vector<std::pair<uint64_t, uint64_t>> ycsb_exe_vec;
+                ycsb_exe_load(ycsb_exe_vec, para.ycsb_run_path);
+
+                auto start = std::chrono::high_resolution_clock::now();
+
+                obj->YCSBFill(ycsb_keys, para.thread_num);
+
+                auto start_fill = std::chrono::high_resolution_clock::now();
+                auto fill_duration =
+                    std::chrono::duration_cast<std::chrono::milliseconds>(
+                        start_fill - start)
+                        .count();
+
+                uint64_t record_num = 10000;
+
+                auto latencies = obj->YCSBRunWithLatencyRecording(ycsb_exe_vec, para.thread_num, record_num);
+
+                auto start_run = std::chrono::high_resolution_clock::now();
+                auto run_duration =
+                    std::chrono::duration_cast<std::chrono::milliseconds>(
+                        start_run - start_fill)
+                        .count();
+
+                auto end = std::chrono::high_resolution_clock::now();
+                auto duration =
+                    std::chrono::duration_cast<std::chrono::milliseconds>(end -
+                                                                          start)
+                        .count();
+
+                output_stream << "Latency Records: " << std::endl;
+                output_stream << "Operation Type, Latency" << std::endl;
+                for (auto& latency : latencies) {
+                    output_stream << latency.first << ", " << latency.second << std::endl;
+                }
+            };
+            break;
         case BenchmarkCaseType::HASH_DISTRUBUTION:
             run = [this, para]() {
                 dynamic_cast<BenchmarkHashDistribution*>(obj)
