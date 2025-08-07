@@ -20,8 +20,23 @@ ycsb_neg_a_exe_file="$ycsb_workloads_dir/txnsa_neg_unif_int.dat"
 ycsb_neg_b_exe_file="$ycsb_workloads_dir/txnsb_neg_unif_int.dat"
 ycsb_neg_c_exe_file="$ycsb_workloads_dir/txnsc_neg_unif_int.dat"
 
-numactl_bind=""
-# numactl_bind="numactl --cpunodebind=0 --membind=0"
+# Define CPU ID array, ordered by logical core id preference
+cpu_id_array=(0 16 1 17 2 18 3 19 4 20 5 21 6 22 7 23 8 24 9 25 10 26 11 27 12 28 13 29 14 30 15 31)
+
+# Base NUMA command
+numactl_base="numactl"
+# numactl_base="numactl --cpunodebind=0 --membind=0"
+
+# Function to set numactl_bind based on thread_num
+declare -g numactl_bind
+set_numactl_bind() {
+    if [ "$thread_num" -eq 0 ]; then
+        numactl_bind="$numactl_base"
+    else
+        cpu_list=$(IFS=,; echo "${cpu_id_array[*]:0:$thread_num}")
+        numactl_bind="$numactl_base --physcpubind=$cpu_list"
+    fi
+}
 
 # Timeout prefix (empty to disable)
 timeout_cmd="timeout 300"

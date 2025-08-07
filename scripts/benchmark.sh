@@ -100,6 +100,7 @@ function CommonArgs() {
 }
 
 function WarmUp() {
+    set_numactl_bind
     echo "== begin warming up: $args"
     $timeout_cmd $numactl_bind ../build/tinyptr $args
 }
@@ -143,6 +144,8 @@ function Run() {
 
     echo "== begin benchmarking: $args"
 
+    set_numactl_bind
+
     output=$($timeout_cmd $numactl_bind ../build/tinyptr $args 2>&1)
     echo "$output"
 
@@ -185,6 +188,8 @@ function RunYCSB() {
 
     echo "== begin benchmarking: $args"
 
+    set_numactl_bind
+
     output=$($numactl_bind ../build/tinyptr $args 2>&1)
 
     echo "$output"
@@ -202,6 +207,8 @@ function RunRandMemFree() {
     WarmUp
 
     echo "== begin benchmarking: $args"
+
+    set_numactl_bind
 
     $numactl_bind ../build/tinyptr $args &
 
@@ -321,6 +328,35 @@ no_resize_object_ids=(6 7 15 17 20)
 resize_object_ids=(6 7 15 18 21)
 
 
+# Throughput / Space Efficiency
+
+# Number of repetitions for each configuration
+num_rep=10
+
+for case_id in 1 6 7; do
+    for object_id in "${no_resize_object_ids[@]}"; do
+        entry_id=100
+        for table_size in 16777215; do
+            for load_factor in 0.05 0.1 0.15 0.2 0.25 0.3 0.35 0.4 0.45 0.5 0.55 0.6 0.65 0.7 0.75 0.8 0.85 0.9 0.95 0.99; do
+                opt_num=$(printf "%.0f" $(echo "$table_size * $load_factor" | bc -l))
+
+                # Run memory free only once per configuration
+                output=$(RunRandMemFree)
+                echo "$output"
+
+                # Repeat the actual run 10 times
+                for ((rep = 1; rep <= num_rep; rep++)); do
+                    RunWithRetry "Run"
+                    let "entry_id++"
+                done
+            done
+        done
+    done
+done
+
+
+exit
+
 # YCSB with resize latency percentile
 
 thread_num=16
@@ -334,8 +370,6 @@ for case_id in 24 25; do
     done
 done
 thread_num=0
-
-exit
 
 # YCSB with resize
 
@@ -456,7 +490,7 @@ done
 # Number of repetitions for each configuration
 num_rep=10
 
-for case_id in 1; do
+for case_id in 1 6 7; do
     for object_id in "${no_resize_object_ids[@]}"; do
         entry_id=100
         for table_size in 16777215; do
