@@ -1,0 +1,56 @@
+\begin{table}[h!]
+    \centering
+    \tiny
+    \caption{Latency Percentiles for Insertion Operations}
+    \label{tab:latency_percentiles_insertion}
+    \begin{tabular}{|c|ccccc|}
+        \toprule
+        Percentile & Cuckoo & Iceberg & Junction & TPHT & Blast \\
+        \midrule
+        $50.0\%$ & 202 & 226 & 436 & 367 & 195 \\
+        $95.0\%$ & 914 & 555 & 36971 & 631 & 468 \\
+        $99.0\%$ & 2333 & 856 & 66098 & 812 & 608 \\
+        $99.9\%$ & 6270 & 13950 & 112224 & 1080 & 874 \\
+        $99.99\%$ & 124908 & 17488 & 293696 & 3630 & 3033 \\
+        max & 800721058 & 141461798 & 42000209 & 77782769 & 178965795 \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\begin{table}[h!]
+    \centering
+    \tiny
+    \caption{Latency Percentiles for Positive Query Operations}
+    \label{tab:latency_percentiles_positive_query}
+    \begin{tabular}{|c|ccccc|}
+        \toprule
+        Percentile & Cuckoo & Iceberg & Junction & TPHT & Blast \\
+        \midrule
+        $50.0\%$ & 114 & 231 & 152 & 283 & 189 \\
+        $95.0\%$ & 158 & 488 & 718 & 556 & 322 \\
+        $99.0\%$ & 187 & 648 & 1347 & 724 & 546 \\
+        $99.9\%$ & 431 & 892 & 2307 & 991 & 655 \\
+        $99.99\%$ & 125414 & 3508 & 3259 & 3446 & 1183 \\
+        max & 800572948 & 84186 & 84616 & 211481 & 76530 \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\begin{table}[h!]
+    \centering
+    \tiny
+    \caption{Latency Percentiles for Negative Query Operations}
+    \label{tab:latency_percentiles_negative_query}
+    \begin{tabular}{|c|ccccc|}
+        \toprule
+        Percentile & Cuckoo & Iceberg & Junction & TPHT & Blast \\
+        \midrule
+        $50.0\%$ & 107 & 174 & 153 & 137 & 125 \\
+        $95.0\%$ & 132 & 473 & 727 & 339 & 172 \\
+        $99.0\%$ & 173 & 652 & 1363 & 551 & 398 \\
+        $99.9\%$ & 373 & 1042 & 2327 & 783 & 565 \\
+        $99.99\%$ & 125436 & 2046 & 3281 & 1113 & 675 \\
+        max & 819076828 & 45610 & 290174 & 38802 & 34051 \\
+        \bottomrule
+    \end{tabular}
+\end{table}

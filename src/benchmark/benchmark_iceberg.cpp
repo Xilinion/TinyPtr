@@ -91,8 +91,9 @@ void BenchmarkIceberg::YCSBRun(std::vector<std::pair<uint64_t, uint64_t>>& ops,
     }
 }
 
-std::vector<std::pair<uint64_t, uint64_t>> BenchmarkIceberg::YCSBRunWithLatencyRecording(
-    std::vector<std::pair<uint64_t, uint64_t>>& ops, int num_threads, uint64_t record_num) {
+std::vector<std::tuple<uint64_t, double, uint64_t>> BenchmarkIceberg::YCSBRunWithLatencyRecording(
+    std::vector<std::pair<uint64_t, uint64_t>>& ops, int num_threads, uint64_t record_num,
+    const std::vector<double>& percentiles) {
     std::vector<std::vector<std::pair<uint64_t, uint64_t>>> thread_latencies(num_threads);
 
     std::vector<std::thread> threads;
@@ -157,27 +158,26 @@ std::vector<std::pair<uint64_t, uint64_t>> BenchmarkIceberg::YCSBRunWithLatencyR
     std::sort(std::execution::par, insert_latencies.begin(), insert_latencies.end());
     std::sort(std::execution::par, query_latencies.begin(), query_latencies.end());
     
-    // Sample evenly from both sorted vectors
-    std::vector<std::pair<uint64_t, uint64_t>> result;
-    result.reserve(record_num * 2);  // record_num for each operation type
+    // Calculate percentiles for both operation types
+    std::vector<std::tuple<uint64_t, double, uint64_t>> result;
     
-    // Sample insert latencies
+    // Calculate percentiles for insert latencies
     if (!insert_latencies.empty()) {
-        uint64_t insert_step = insert_latencies.size() / record_num;
-        if (insert_step == 0) insert_step = 1;
-        
-        for (uint64_t i = 0; i < record_num && i * insert_step < insert_latencies.size(); ++i) {
-            result.emplace_back(1, insert_latencies[i * insert_step]);
+        for (double percentile : percentiles) {
+            size_t index = (percentile == 100.0) ? 
+                          insert_latencies.size() - 1 : 
+                          static_cast<size_t>((percentile / 100.0) * (insert_latencies.size() - 1));
+            result.emplace_back(1, percentile, insert_latencies[index]);
         }
     }
     
-    // Sample query latencies
+    // Calculate percentiles for query latencies
     if (!query_latencies.empty()) {
-        uint64_t query_step = query_latencies.size() / record_num;
-        if (query_step == 0) query_step = 1;
-        
-        for (uint64_t i = 0; i < record_num && i * query_step < query_latencies.size(); ++i) {
-            result.emplace_back(0, query_latencies[i * query_step]);
+        for (double percentile : percentiles) {
+            size_t index = (percentile == 100.0) ? 
+                          query_latencies.size() - 1 : 
+                          static_cast<size_t>((percentile / 100.0) * (query_latencies.size() - 1));
+            result.emplace_back(0, percentile, query_latencies[index]);
         }
     }
     

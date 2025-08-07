@@ -1406,7 +1406,10 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
 
                 uint64_t record_num = 10000;
 
-                auto latencies = obj->YCSBRunWithLatencyRecording(ycsb_exe_vec, para.thread_num, record_num);
+                // Define the percentiles to calculate
+                std::vector<double> percentiles = {50.0, 95.0, 99.0, 99.9, 99.99, 100.0};
+
+                auto latencies = obj->YCSBRunWithLatencyRecording(ycsb_exe_vec, para.thread_num, record_num, percentiles);
 
                 auto start_run = std::chrono::high_resolution_clock::now();
                 auto run_duration =
@@ -1420,10 +1423,12 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
                                                                           start)
                         .count();
 
-                output_stream << "Latency Records: " << std::endl;
-                output_stream << "Operation Type, Latency" << std::endl;
+                output_stream << "Percentile Latency Records: " << std::endl;
+                output_stream << "Operation Type, Percentile, Latency (ns)" << std::endl;
                 for (auto& latency : latencies) {
-                    output_stream << latency.first << ", " << latency.second << std::endl;
+                    output_stream << std::get<0>(latency) << ", " 
+                                << std::get<1>(latency) << ", " 
+                                << std::get<2>(latency) << std::endl;
                 }
             };
             break;

@@ -25,8 +25,9 @@ class BenchmarkBlastHT : public BenchmarkObject64 {
     void YCSBFill(std::vector<uint64_t>& keys, int num_threads);
     void YCSBRun(std::vector<std::pair<uint64_t, uint64_t>>& ops,
                  int num_threads);
-    std::vector<std::pair<uint64_t, uint64_t>> YCSBRunWithLatencyRecording(
-        std::vector<std::pair<uint64_t, uint64_t>>& ops, int num_threads, uint64_t record_num);
+    std::vector<std::tuple<uint64_t, double, uint64_t>> YCSBRunWithLatencyRecording(
+        std::vector<std::pair<uint64_t, uint64_t>>& ops, int num_threads, uint64_t record_num,
+        const std::vector<double>& percentiles);
 
     void ConcurrentRun(
         std::vector<std::tuple<uint64_t, uint64_t, uint64_t>>& ops,

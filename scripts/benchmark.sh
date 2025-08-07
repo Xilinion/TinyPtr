@@ -106,7 +106,7 @@ function WarmUp() {
 
 function RunWithRetry() {
     local run_function="$1"
-    local max_retries=5
+    local max_retries=10
     local retry_count=0
     local expected_file="$res_path/object_${object_id}_case_${case_id}_entry_${entry_id}_.txt"
 
@@ -171,6 +171,12 @@ function RunYCSB() {
     elif [ $case_id -eq 22 ]; then
         ycsb_load_path=$ycsb_c_load_file
         ycsb_exe_path=$ycsb_neg_c_exe_file
+    elif [ $case_id -eq 24 ]; then
+        ycsb_load_path=$ycsb_a_load_file
+        ycsb_exe_path=$ycsb_a_exe_file
+    elif [ $case_id -eq 25 ]; then
+        ycsb_load_path=$ycsb_a_load_file
+        ycsb_exe_path=$ycsb_neg_a_exe_file
     fi
 
     args="-o $object_id -c $case_id -e $entry_id -t $table_size -p $opt_num -l $load_factor -h $hit_percent -b $bin_size -q $quotient_tail_length -y $ycsb_load_path -s $ycsb_exe_path -n $thread_num -f "$res_path""
@@ -314,12 +320,59 @@ bin_size=127
 no_resize_object_ids=(6 7 15 17 20)
 resize_object_ids=(6 7 15 18 21)
 
+
+# YCSB with resize latency percentile
+
+thread_num=16
+for case_id in 24 25; do
+    for object_id in "${resize_object_ids[@]}"; do
+        entry_id=0
+        for table_size in 33554432; do
+            RunWithRetry "RunYCSB"
+            let "entry_id++"
+        done
+    done
+done
+thread_num=0
+
+exit
+
 # YCSB with resize
 
 thread_num=16
 for case_id in 17 18 19 20 21 22; do
     for object_id in "${resize_object_ids[@]}"; do
         entry_id=1
+        for table_size in 33554432; do
+            RunWithRetry "RunYCSB"
+            let "entry_id++"
+        done
+    done
+done
+thread_num=0
+
+# scaling
+
+for case_id in 1 3 6 7; do
+    for object_id in "${no_resize_object_ids[@]}"; do
+        entry_id=10
+        for table_size in 67108863; do
+            opt_num=63753420
+            for thread_num in 1 2 4 8 16 32; do
+                RunWithRetry "Run"
+                let "entry_id++"
+            done
+        done
+    done
+done
+thread_num=0
+
+# YCSB with resize latency percentile
+
+thread_num=16
+for case_id in 24; do
+    for object_id in "${resize_object_ids[@]}"; do
+        entry_id=0
         for table_size in 33554432; do
             RunWithRetry "RunYCSB"
             let "entry_id++"
@@ -378,22 +431,6 @@ for case_id in 1 3 6 7; do
             opt_num=63753420
             RunWithRetry "Run"
             let "entry_id++"
-        done
-    done
-done
-thread_num=0
-
-# scaling
-
-for case_id in 1 3 6 7; do
-    for object_id in "${no_resize_object_ids[@]}"; do
-        entry_id=10
-        for table_size in 67108863; do
-            opt_num=63753420
-            for thread_num in 1 2 4 8 16 32; do
-                RunWithRetry "Run"
-                let "entry_id++"
-            done
         done
     done
 done
