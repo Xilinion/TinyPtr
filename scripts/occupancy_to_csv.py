@@ -126,8 +126,10 @@ def main():
         else:
             print(f"Warning: File not found: {filename}")
     
-    # List to store all data entries
-    all_data = []
+    # Lists to store data entries
+    all_data = []  # combined (back-compat)
+    experimental_box_rows = []  # occupancy, median, lower, upper, lower_whisker, upper_whisker
+    poisson_rows = []  # occupancy, probability
     
     # Add experimental box plot data
     for occupancy in sorted(experimental_data.keys()):
@@ -143,7 +145,16 @@ def main():
                 object_id, case_id, occupancy, 0,  # object_id, case_id, occupancy, count
                 0, stats['median'],  # total_bins, median
                 stats['upper'], stats['lower'],  # upper, lower
-                stats['upper_whisker'], stats['lower_whisker']  # upper_whisker, lower_whisker
+                stats['upper_whisker'], stats['lower_whisker'],  # upper_whisker, lower_whisker
+                occupancy  # draw_position
+            ])
+            experimental_box_rows.append([
+                occupancy,
+                stats['median'],
+                stats['lower'],
+                stats['upper'],
+                stats['lower_whisker'],
+                stats['upper_whisker']
             ])
             # all_data.append([
             #     object_id, case_id, occupancy, 0,  # object_id, case_id, occupancy, count
@@ -160,8 +171,10 @@ def main():
         all_data.append([
             -1, -1, occupancy, 0,  # object_id=-1, case_id=-1, occupancy, count
             0, poisson_prob,  # total_bins, exp_probability
-            0, 0, 0, 0  # upper, lower, upper_whisker, lower_whisker (not used for theoretical)
+            0, 0, 0, 0,  # upper, lower, upper_whisker, lower_whisker (not used for theoretical)
+            occupancy  # draw_position (not used for theoretical)
         ])
+        poisson_rows.append([occupancy, poisson_prob])
     
     # Write CSV file
     csv_filename = "occupancy_results.csv"
@@ -172,7 +185,8 @@ def main():
         # Write header
         writer.writerow([
             'object_id', 'case_id', 'occupancy', 'count', 
-            'total_bins', 'exp_probability', 'upper', 'lower', 'upper_whisker', 'lower_whisker'
+            'total_bins', 'exp_probability', 'upper', 'lower', 'upper_whisker', 'lower_whisker',
+            'draw_position'
         ])
         # Write data with regular float notation
         for entry in all_data:
@@ -187,6 +201,37 @@ def main():
     
     print(f"Created {csv_path}")
     print(f"Total data points: {len(all_data)}")
+
+    # Write simplified box plot CSV - exactly 12 rows (0-11), each with safe values
+    box_csv = os.path.join(output_dir, "occupancy_experimental_box.csv")
+    with open(box_csv, 'w', newline='') as csvfile:
+        writer = csv.writer(csvfile)
+        writer.writerow(['occupancy', 'median', 'lower', 'upper', 'lower_whisker', 'upper_whisker'])
+        # Ensure exactly 12 rows for occupancy 0-11, fill missing with safe defaults
+        experimental_box_dict = {o: (med, low, up, lw, uw) for o, med, low, up, lw, uw in experimental_box_rows}
+        for occ in range(12):  # 0 to 11
+            if occ in experimental_box_dict:
+                med, low, up, lw, uw = experimental_box_dict[occ]
+                # Clamp to safe positive values for log scale
+                med = max(med, 1e-12)
+                low = max(low, 1e-12)
+                up = max(up, 1e-12)
+                lw = max(lw, 1e-12)
+                uw = max(uw, 1e-12)
+            else:
+                # Default safe values for missing occupancy levels
+                med = low = up = lw = uw = 1e-12
+            writer.writerow([f"{occ}", f"{med:.15f}", f"{low:.15f}", f"{up:.15f}", f"{lw:.15f}", f"{uw:.15f}"])
+
+    poisson_csv = os.path.join(output_dir, "occupancy_poisson.csv")
+    with open(poisson_csv, 'w', newline='') as csvfile:
+        writer = csv.writer(csvfile)
+        writer.writerow(['x', 'y'])
+        for x, y in poisson_rows:
+            writer.writerow([f"{x}", f"{y:.15f}"])
+
+    print(f"Created {box_csv}")
+    print(f"Created {poisson_csv}")
     
     # Print summary statistics
     if all_data:

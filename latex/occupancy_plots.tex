@@ -1,5 +1,9 @@
 \section{Hash Function Occupancy Distribution Analysis}
 
+% Read split CSVs for easier plotting
+\pgfplotstableread[col sep=comma]{../results/csv/occupancy_experimental_box.csv}{\occbox}
+\pgfplotstableread[col sep=comma]{../results/csv/occupancy_poisson.csv}{\occpois}
+
 \begin{figure}[p]
     \centering
 
@@ -17,6 +21,8 @@
                     ymax=1,
                     xmin=-0.5,
                     xmax=10.5,
+                    xtick={0,1,2,3,4,5,6,7,8,9,10,11},
+                    xticklabels={0,1,2,3,4,5,6,7,8,9,10,11},
                     grid=major,
                     grid style={gray!30},
                     legend pos=south west,
@@ -27,33 +33,24 @@
                     title style={font=\small}
                 ]
 
-                % Plot experimental data as scatter points (10 repetitions)
-                \addplot[
-                    only marks,
-                    mark=o,
-                    mark size=2pt,
-                    color=exp1,
-                    opacity=0.8
-                ] table[
-                    x=occupancy,
-                    y=exp_probability,
-                    row filter/.code={\ifnum\pgfplotstablerow<12\else\pgfplotstableuserowfalse\fi}
-                ] {\occupancydata};
-                \addlegendentry{Experimental (10 runs)}
+                % Box plots for occupancy 0-11 using manual extraction
+                \foreach \i in {0,1,2,3,4,5,6,7,8,9,10,11} {
+                    \pgfplotstablegetelem{\i}{lower_whisker}\of{\occbox}\edef\lw{\pgfplotsretval}
+                    \pgfplotstablegetelem{\i}{lower}\of{\occbox}\edef\lq{\pgfplotsretval}
+                    \pgfplotstablegetelem{\i}{median}\of{\occbox}\edef\med{\pgfplotsretval}
+                    \pgfplotstablegetelem{\i}{upper}\of{\occbox}\edef\uq{\pgfplotsretval}
+                    \pgfplotstablegetelem{\i}{upper_whisker}\of{\occbox}\edef\uw{\pgfplotsretval}
+                    \edef\tempstyle{every boxplot/.style={fill=exp1!25, draw=exp1}, boxplot prepared={draw position=\i, lower whisker=\lw, lower quartile=\lq, median=\med, upper quartile=\uq, upper whisker=\uw}}
+                    \expandafter\addplot\expandafter+\expandafter[\tempstyle] coordinates {};
+                }
+                \addlegendentry{Experimental (box plot)}
 
-                % Plot smooth Poisson line (theoretical data from CSV)
-                \addplot[
-                    mark=none,
-                    thick,
-                    color=poisson,
-                    smooth
-                ] table[
-                        x=occupancy,
-                        y=exp_probability,
-                        row filter/.code={\ifnum\pgfplotstablerow>11\else\pgfplotstableuserowfalse\fi}
-                    ] {\occupancydata};
+                % Plot smooth Poisson line (theoretical data)
+                \addplot[PoissonLineStyle, mark=none] table[
+                        x=x,
+                        y=y
+                    ] {\occpois};
                 \addlegendentry{Poisson Theory ($\lambda=1$)}
-
             \end{axis}
         \end{tikzpicture}
         \caption{Distribution Comparison (Log Scale)}
@@ -71,6 +68,8 @@
                     xmin=-0.5,
                     xmax=5.5,
                     ymin=0,
+                    xtick={1,2,3,4,5,6},
+                    xticklabels={0,1,2,3,4,5},
                     grid=major,
                     grid style={gray!30},
                     legend pos=south west,
@@ -81,34 +80,25 @@
                     title style={font=\small}
                 ]
 
-                % Plot experimental data for common values as scatter points
-                \addplot[
-                    only marks,
-                    mark=o,
-                    mark size=2pt,
-                    color=exp1,
-                    opacity=0.8
-                ] table[
-                    x=occupancy,
-                    y=exp_probability,
-                    row filter/.code={\ifnum\pgfplotstablerow<12\else\pgfplotstableuserowfalse\fi}
-                ] {\occupancydata};
-                \addlegendentry{Experimental (10 runs)}
+                % Box plots for occupancy 0-5 using manual extraction
+                \foreach \i in {0,1,2,3,4,5} {
+                    \pgfplotstablegetelem{\i}{lower_whisker}\of{\occbox}\edef\lw{\pgfplotsretval}
+                    \pgfplotstablegetelem{\i}{lower}\of{\occbox}\edef\lq{\pgfplotsretval}
+                    \pgfplotstablegetelem{\i}{median}\of{\occbox}\edef\med{\pgfplotsretval}
+                    \pgfplotstablegetelem{\i}{upper}\of{\occbox}\edef\uq{\pgfplotsretval}
+                    \pgfplotstablegetelem{\i}{upper_whisker}\of{\occbox}\edef\uw{\pgfplotsretval}
+                    \edef\tempstyle{every boxplot/.style={fill=exp1!25, draw=exp1}, boxplot prepared={draw position=\i, lower whisker=\lw, lower quartile=\lq, median=\med, upper quartile=\uq, upper whisker=\uw}}
+                    \expandafter\addplot\expandafter+\expandafter[\tempstyle] coordinates {};
+                }
+                \addlegendentry{Experimental (box plot)}
 
-                % Plot smooth Poisson line (theoretical data from CSV)
-                \addplot[
-                    mark=none,
-                    thick,
-                    color=poisson,
-                    smooth
-                ] table[
-                        x=occupancy,
-                        y=exp_probability,
-                        restrict expr to domain={\thisrow{object_id}}{-1:-1},
-                        restrict expr to domain={\thisrow{occupancy}}{0:5}
-                    ] {\occupancydata};
+                % Plot smooth Poisson line (theoretical data)
+                \addplot[PoissonLineStyle, mark=none] table[
+                        x=x,
+                        y=y,
+                        restrict expr to domain={\thisrow{x}}{0:5}
+                    ] {\occpois};
                 \addlegendentry{Poisson Theory ($\lambda=1$)}
-
             \end{axis}
         \end{tikzpicture}
         \caption{Common Values (Linear Scale)}

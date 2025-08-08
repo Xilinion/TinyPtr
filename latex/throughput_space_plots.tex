@@ -1,99 +1,205 @@
 \section{Throughput vs Space Efficiency Analysis}
 
+% Local helper: add all object plots for a given case_id
+% #1 = case_id
+\newcommand{\AddAllObjectPlotsForCase}[1]{%
+    % Cuckoo (object_id=6)
+    \addplot[CuckooLineStyle] table[
+        x expr=256*\thisrow{load_factor}/\thisrow{avg_real_memory_case1 (MB)},
+        y expr=\thisrow{avg_throughput (ops/s)}/1000000,
+        restrict expr to domain={\thisrow{object_id}}{6:6},
+        restrict expr to domain={\thisrow{case_id}}{#1:#1}
+    ] {\throughputdata};
+
+    % Iceberg (object_id=7)
+    \addplot[IcebergLineStyle] table[
+        x expr=256*\thisrow{load_factor}/\thisrow{avg_real_memory_case1 (MB)},
+        y expr=\thisrow{avg_throughput (ops/s)}/1000000,
+        restrict expr to domain={\thisrow{object_id}}{7:7},
+        restrict expr to domain={\thisrow{case_id}}{#1:#1}
+    ] {\throughputdata};
+
+    % Junction (object_id=15)
+    \addplot[JunctionLineStyle] table[
+        x expr=256*\thisrow{load_factor}/\thisrow{avg_real_memory_case1 (MB)},
+        y expr=\thisrow{avg_throughput (ops/s)}/1000000,
+        restrict expr to domain={\thisrow{object_id}}{15:15},
+        restrict expr to domain={\thisrow{case_id}}{#1:#1}
+    ] {\throughputdata};
+
+    % TPHT (object_id=17)
+    \addplot[TPHTLineStyle] table[
+        x expr=256*\thisrow{load_factor}/\thisrow{avg_real_memory_case1 (MB)},
+        y expr=\thisrow{avg_throughput (ops/s)}/1000000,
+        restrict expr to domain={\thisrow{object_id}}{17:17},
+        restrict expr to domain={\thisrow{case_id}}{#1:#1}
+    ] {\throughputdata};
+
+    % Blast (object_id=20)
+    \addplot[BlastLineStyle] table[
+        x expr=256*\thisrow{load_factor}/\thisrow{avg_real_memory_case1 (MB)},
+        y expr=\thisrow{avg_throughput (ops/s)}/1000000,
+        restrict expr to domain={\thisrow{object_id}}{20:20},
+        restrict expr to domain={\thisrow{case_id}}{#1:#1}
+    ] {\throughputdata};
+}
+
 \begin{figure}[p]
     \centering
+
+    % Case 1
+    \begin{subfigure}[b]{0.45\textwidth}
+    \centering
     \begin{tikzpicture}
-        \begin{axis}[
-            width=12cm,
-            height=8cm,
-            xlabel={Space Efficiency (256 $\times$ Load Factor / Virtual Memory)},
-            ylabel={Throughput (M ops/s)},
-            xmin=0,
-            ymin=0,
-            grid=major,
-            grid style={gray!30},
-            legend pos=outer north east,
-            legend style={font=\small},
-            tick label style={font=\small},
-            label style={font=\small},
-            title={Throughput vs Space Efficiency},
-            title style={font=\small},
-            scaled ticks=true,
-            tick label style={/pgf/number format/fixed,/pgf/number format/precision=2}
-        ]
-
-        % Plot Cuckoo (object_id=6)
-        \addplot[
-            mark=o,
-            mark size=3pt,
-            color=exp1,
-            thick,
-            smooth
-        ] table[
-            x expr=256*\thisrow{load_factor}/\thisrow{avg_virtual_memory (MB)},
-            y expr=\thisrow{avg_throughput (ops/s)}/1000000,
-            restrict expr to domain={\thisrow{object_id}}{6:6}
-        ] {\throughputdata};
-        \addlegendentry{Cuckoo}
-
-        % Plot Iceberg (object_id=7)
-        \addplot[
-            mark=square,
-            mark size=3pt,
-            color=exp2,
-            thick,
-            smooth
-        ] table[
-            x expr=256*\thisrow{load_factor}/\thisrow{avg_virtual_memory (MB)},
-            y expr=\thisrow{avg_throughput (ops/s)}/1000000,
-            restrict expr to domain={\thisrow{object_id}}{7:7}
-        ] {\throughputdata};
-        \addlegendentry{Iceberg}
-
-        % Plot Junction (object_id=15)
-        \addplot[
-            mark=triangle,
-            mark size=3pt,
-            color=exp3,
-            thick,
-            smooth
-        ] table[
-            x expr=256*\thisrow{load_factor}/\thisrow{avg_virtual_memory (MB)},
-            y expr=\thisrow{avg_throughput (ops/s)}/1000000,
-            restrict expr to domain={\thisrow{object_id}}{15:15}
-        ] {\throughputdata};
-        \addlegendentry{Junction}
-
-        % Plot TPHT (object_id=17)
-        \addplot[
-            mark=diamond,
-            mark size=3pt,
-            color=exp4,
-            thick,
-            smooth
-        ] table[
-            x expr=256*\thisrow{load_factor}/\thisrow{avg_virtual_memory (MB)},
-            y expr=\thisrow{avg_throughput (ops/s)}/1000000,
-            restrict expr to domain={\thisrow{object_id}}{17:17}
-        ] {\throughputdata};
-        \addlegendentry{TPHT}
-
-        % Plot Blast (object_id=20)
-        \addplot[
-            mark=pentagon,
-            mark size=3pt,
-            color=poisson,
-            thick,
-            smooth
-        ] table[
-            x expr=256*\thisrow{load_factor}/\thisrow{avg_virtual_memory (MB)},
-            y expr=\thisrow{avg_throughput (ops/s)}/1000000,
-            restrict expr to domain={\thisrow{object_id}}{20:20}
-        ] {\throughputdata};
-        \addlegendentry{Blast}
-
-        \end{axis}
+    \begin{axis}[
+        width=7.5cm,
+        height=5.4cm,
+        xlabel={Space Efficiency (256 $\times$ LF / RM in MB)},
+        ylabel={Throughput (M ops/s)},
+        xmin=0,
+        ymin=0,
+        grid=major,
+        grid style={gray!30},
+        legend to name={spaceeff-legend},
+        legend entries={Cuckoo, Iceberg, Junction, TPHT, Blast},
+        legend cell align=left,
+        legend style={draw=none, /tikz/every even column/.style={column sep=0.8em}},
+        tick label style={font=\small},
+        label style={font=\small},
+        scaled ticks=true,
+        tick label style={/pgf/number format/fixed,/pgf/number format/precision=2}
+    ]
+    \AddAllObjectPlotsForCase{1}
+    \end{axis}
     \end{tikzpicture}
-    \caption{Throughput vs Space Efficiency for different hash table implementations. Space efficiency is calculated as 256 $\times$ Load Factor / Virtual Memory (MB). Higher values indicate better space efficiency.}
-    \label{fig:throughput_space_efficiency}
+    \caption{Case 1}
+    \end{subfigure}\hfill
+
+    % Case 6
+    \begin{subfigure}[b]{0.45\textwidth}
+    \centering
+    \begin{tikzpicture}
+    \begin{axis}[
+        width=7.5cm,
+        height=5.4cm,
+        xlabel={Space Efficiency (256 $\times$ LF / RM in MB)},
+        ylabel={Throughput (M ops/s)},
+        xmin=0,
+        ymin=0,
+        grid=major,
+        grid style={gray!30},
+        tick label style={font=\small},
+        label style={font=\small},
+        scaled ticks=true,
+        tick label style={/pgf/number format/fixed,/pgf/number format/precision=2}
+    ]
+    % No legend here; legend is separated below
+    \addplot[CuckooLineStyle] table[
+        x expr=256*\thisrow{load_factor}/\thisrow{avg_real_memory_case1 (MB)},
+        y expr=\thisrow{avg_throughput (ops/s)}/1000000,
+        restrict expr to domain={\thisrow{object_id}}{6:6},
+        restrict expr to domain={\thisrow{case_id}}{6:6}
+    ] {\throughputdata};
+
+    \addplot[IcebergLineStyle] table[
+        x expr=256*\thisrow{load_factor}/\thisrow{avg_real_memory_case1 (MB)},
+        y expr=\thisrow{avg_throughput (ops/s)}/1000000,
+        restrict expr to domain={\thisrow{object_id}}{7:7},
+        restrict expr to domain={\thisrow{case_id}}{6:6}
+    ] {\throughputdata};
+
+    \addplot[JunctionLineStyle] table[
+        x expr=256*\thisrow{load_factor}/\thisrow{avg_real_memory_case1 (MB)},
+        y expr=\thisrow{avg_throughput (ops/s)}/1000000,
+        restrict expr to domain={\thisrow{object_id}}{15:15},
+        restrict expr to domain={\thisrow{case_id}}{6:6}
+    ] {\throughputdata};
+
+    \addplot[TPHTLineStyle] table[
+        x expr=256*\thisrow{load_factor}/\thisrow{avg_real_memory_case1 (MB)},
+        y expr=\thisrow{avg_throughput (ops/s)}/1000000,
+        restrict expr to domain={\thisrow{object_id}}{17:17},
+        restrict expr to domain={\thisrow{case_id}}{6:6}
+    ] {\throughputdata};
+
+    \addplot[BlastLineStyle] table[
+        x expr=256*\thisrow{load_factor}/\thisrow{avg_real_memory_case1 (MB)},
+        y expr=\thisrow{avg_throughput (ops/s)}/1000000,
+        restrict expr to domain={\thisrow{object_id}}{20:20},
+        restrict expr to domain={\thisrow{case_id}}{6:6}
+    ] {\throughputdata};
+
+    \end{axis}
+    \end{tikzpicture}
+    \caption{Case 6}
+    \end{subfigure}
+
+    \vspace{0.6em}
+
+    % Case 7
+    \begin{subfigure}[b]{0.45\textwidth}
+    \centering
+    \begin{tikzpicture}
+    \begin{axis}[
+        width=7.5cm,
+        height=5.4cm,
+        xlabel={Space Efficiency (256 $\times$ LF / RM in MB)},
+        ylabel={Throughput (M ops/s)},
+        xmin=0,
+        ymin=0,
+        grid=major,
+        grid style={gray!30},
+        tick label style={font=\small},
+        label style={font=\small},
+        scaled ticks=true,
+        tick label style={/pgf/number format/fixed,/pgf/number format/precision=2}
+    ]
+    % No legend here; legend is separated below
+    \addplot[CuckooLineStyle] table[
+        x expr=256*\thisrow{load_factor}/\thisrow{avg_real_memory_case1 (MB)},
+        y expr=\thisrow{avg_throughput (ops/s)}/1000000,
+        restrict expr to domain={\thisrow{object_id}}{6:6},
+        restrict expr to domain={\thisrow{case_id}}{7:7}
+    ] {\throughputdata};
+
+    \addplot[IcebergLineStyle] table[
+        x expr=256*\thisrow{load_factor}/\thisrow{avg_real_memory_case1 (MB)},
+        y expr=\thisrow{avg_throughput (ops/s)}/1000000,
+        restrict expr to domain={\thisrow{object_id}}{7:7},
+        restrict expr to domain={\thisrow{case_id}}{7:7}
+    ] {\throughputdata};
+
+    \addplot[JunctionLineStyle] table[
+        x expr=256*\thisrow{load_factor}/\thisrow{avg_real_memory_case1 (MB)},
+        y expr=\thisrow{avg_throughput (ops/s)}/1000000,
+        restrict expr to domain={\thisrow{object_id}}{15:15},
+        restrict expr to domain={\thisrow{case_id}}{7:7}
+    ] {\throughputdata};
+
+    \addplot[TPHTLineStyle] table[
+        x expr=256*\thisrow{load_factor}/\thisrow{avg_real_memory_case1 (MB)},
+        y expr=\thisrow{avg_throughput (ops/s)}/1000000,
+        restrict expr to domain={\thisrow{object_id}}{17:17},
+        restrict expr to domain={\thisrow{case_id}}{7:7}
+    ] {\throughputdata};
+
+    \addplot[BlastLineStyle] table[
+        x expr=256*\thisrow{load_factor}/\thisrow{avg_real_memory_case1 (MB)},
+        y expr=\thisrow{avg_throughput (ops/s)}/1000000,
+        restrict expr to domain={\thisrow{object_id}}{20:20},
+        restrict expr to domain={\thisrow{case_id}}{7:7}
+    ] {\throughputdata};
+
+    \end{axis}
+    \end{tikzpicture}
+    \caption{Case 7}
+    \end{subfigure}
+
+    % Separated legend below
+    \vspace{0.6em}
+
+    {\footnotesize \pgfplotslegendfromname{spaceeff-legend}}
+
+    \caption{Throughput vs Space Efficiency across cases 1, 6, and 7. Space efficiency is 256 $\times$ Load Factor divided by Real Memory (MB), using real memory from case 1 for all cases. Legend shown below for clarity.}
+    \label{fig:throughput_space_efficiency_cases}
 \end{figure} 

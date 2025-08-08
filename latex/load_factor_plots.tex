@@ -26,13 +26,7 @@
         ]
 
         % Plot insertion data (from CSV)
-        \addplot[
-            mark=o,
-            mark size=3pt,
-            color=exp1,
-            thick,
-            smooth
-        ] table[
+        \addplot[CuckooLineStyle] table[
             x=bin_size,
             y index=3,
             col sep=comma,
@@ -41,13 +35,7 @@
         \addlegendentry{Insertion Only}
 
         % Plot deletion data (hardcoded)
-        \addplot[
-            mark=square,
-            mark size=3pt,
-            color=exp2,
-            thick,
-            smooth
-        ] coordinates {
+        \addplot[IcebergLineStyle] coordinates {
             (3,7)
             (7,43)
             (15,71)

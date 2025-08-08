@@ -333,6 +333,8 @@ resize_object_ids=(6 7 15 18 21)
 # Number of repetitions for each configuration
 num_rep=10
 
+thread_num=1
+
 for case_id in 1 6 7; do
     for object_id in "${no_resize_object_ids[@]}"; do
         entry_id=100
@@ -354,6 +356,7 @@ for case_id in 1 6 7; do
     done
 done
 
+thread_num=0
 
 exit
 

@@ -57,13 +57,13 @@ def main():
     # Create output directory if it doesn't exist
     os.makedirs(output_dir, exist_ok=True)
 
-    # List to store all data entries
-    all_data = []
+    # Temporarily store all rows before writing
+    collected_rows = []
 
     # Define valid IDs based on the updated bash script
-    valid_case_ids = [1]
+    valid_case_ids = [1, 6, 7]
     valid_object_ids = [6, 7, 15, 17, 20]
-    load_factors = [0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95]
+    load_factors = [0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 0.99]
     num_repetitions = 10
 
     # Process only the valid result files
@@ -73,61 +73,81 @@ def main():
             for load_factor in load_factors:
                 throughputs = []
                 latencies = []
-                real_memories = []
-                virtual_memories = []
 
-                # Collect data from all 10 repetitions
+                # Per-load-factor memuse is recorded once at base_entry_id
+                memuse_filename = f"object_{object_id}_case_{case_id}_entry_{base_entry_id}_memuse.txt"
+                memuse_file_path = os.path.join(base_dir, memuse_filename)
+                if os.path.exists(memuse_file_path):
+                    real_range, virtual_range = extract_memory_usage(memuse_file_path)
+                else:
+                    real_range, virtual_range = 0.0, 0.0
+
+                # Collect data from all repetitions (result files only)
                 for rep in range(num_repetitions):
                     entry_id = base_entry_id + rep
                     filename = f"object_{object_id}_case_{case_id}_entry_{entry_id}_.txt"
-                    memuse_filename = f"object_{object_id}_case_{case_id}_entry_{entry_id}_memuse.txt"
                     file_path = os.path.join(base_dir, filename)
-                    memuse_file_path = os.path.join(base_dir, memuse_filename)
 
-                    if os.path.exists(file_path) and os.path.exists(memuse_file_path):
-                        # Read throughput and latency data
+                    if os.path.exists(file_path):
                         throughput, latency = extract_throughput(file_path)
-
-                        # Read memory usage data
-                        real_range, virtual_range = extract_memory_usage(memuse_file_path)
-
-                        # Skip if we couldn't extract the data
                         if throughput is None or latency is None:
-                            print(f"Warning: Could not extract throughput data from {filename}")
+                            print(f"Warning: Could not extract throughput/latency from {filename}")
                             continue
-
                         throughputs.append(throughput)
                         latencies.append(latency)
-                        real_memories.append(real_range)
-                        virtual_memories.append(virtual_range)
 
                 # Calculate averages if we have data
                 if throughputs:
                     avg_throughput = sum(throughputs) / len(throughputs)
                     avg_latency = sum(latencies) / len(latencies)
-                    avg_real_memory = sum(real_memories) / len(real_memories)
-                    avg_virtual_memory = sum(virtual_memories) / len(virtual_memories)
+                    avg_real_memory = real_range
+                    avg_virtual_memory = virtual_range
 
-                    # Store the averaged data
-                    all_data.append(
-                        (case_id, object_id, load_factor, avg_throughput, avg_latency, avg_real_memory, avg_virtual_memory))
+                    collected_rows.append({
+                        'case_id': case_id,
+                        'object_id': object_id,
+                        'load_factor': load_factor,
+                        'avg_throughput (ops/s)': avg_throughput,
+                        'avg_latency (ns/op)': avg_latency,
+                        'avg_real_memory (MB)': avg_real_memory,
+                        'avg_virtual_memory (MB)': avg_virtual_memory,
+                    })
 
-                base_entry_id += num_repetitions  # Move to next load_factor
+                base_entry_id += num_repetitions  # Next load_factor starts at the next entry_id block
 
-    # Write a single CSV file
+    # Build lookup for case 1 real memory by (object_id, load_factor)
+    real_mem_case1 = {}
+    for row in collected_rows:
+        if row['case_id'] == 1:
+            key = (row['object_id'], row['load_factor'])
+            real_mem_case1[key] = row['avg_real_memory (MB)']
+
+    # Write a single CSV file with additional column: avg_real_memory_case1 (MB)
     csv_filename = "throughput_space_eff_results.csv"
     csv_path = os.path.join(output_dir, csv_filename)
 
     with open(csv_path, 'w', newline='') as csvfile:
         writer = csv.writer(csvfile)
-        # Write header
-        writer.writerow(['case_id', 'object_id', 'load_factor', 'avg_throughput (ops/s)', 'avg_latency (ns/op)', 'avg_real_memory (MB)', 'avg_virtual_memory (MB)'])
-        # Write data
-        for entry in all_data:
-            writer.writerow(entry)
+        # Header
+        writer.writerow([
+            'case_id', 'object_id', 'load_factor',
+            'avg_throughput (ops/s)', 'avg_latency (ns/op)',
+            'avg_real_memory (MB)', 'avg_virtual_memory (MB)',
+            'avg_real_memory_case1 (MB)'
+        ])
+        # Rows
+        for row in collected_rows:
+            key = (row['object_id'], row['load_factor'])
+            real_case1 = real_mem_case1.get(key, row['avg_real_memory (MB)'])
+            writer.writerow([
+                row['case_id'], row['object_id'], row['load_factor'],
+                row['avg_throughput (ops/s)'], row['avg_latency (ns/op)'],
+                row['avg_real_memory (MB)'], row['avg_virtual_memory (MB)'],
+                real_case1
+            ])
 
     print(f"Created {csv_path}")
-    print(f"Total data points: {len(all_data)}")
+    print(f"Total data points: {len(collected_rows)}")
 
 
 if __name__ == "__main__":

@@ -5,11 +5,35 @@
 \definecolor{exp4}{RGB}{214, 39, 40}
 \definecolor{poisson}{RGB}{148, 103, 189}
 
-% Define styles for each object
+% Define bar styles for each object (used in bar charts)
 \pgfplotsset{
-    CuckooStyle/.style={fill=blue!70!gray!15, draw=blue!85!gray!45},
-    IcebergStyle/.style={fill=red!75!pink!15, draw=red!90!pink!55},
-    JunctionStyle/.style={fill=yellow!65!gray!15, draw=orange!80!black!50},
-    TPHTStyle/.style={fill=green!65!black!15, draw=green!80!black!55},
-    BlastStyle/.style={fill=violet!60!gray!15, draw=violet!75!gray!50}
+    CuckooBarStyle/.style={fill=exp1!35, draw=exp1!80},
+    IcebergBarStyle/.style={fill=exp2!35, draw=exp2!80},
+    JunctionBarStyle/.style={fill=exp3!35, draw=exp3!80},
+    TPHTBarStyle/.style={fill=exp4!35, draw=exp4!80},
+    BlastBarStyle/.style={fill=poisson!35, draw=poisson!80}
 } 
+
+% Define line styles for each object (used in line/scatter charts)
+\pgfplotsset{
+    CuckooLineStyle/.style={color=exp1, mark=o, mark size=3pt, thick, smooth},
+    IcebergLineStyle/.style={color=exp2, mark=square, mark size=3pt, thick, smooth},
+    JunctionLineStyle/.style={color=exp3, mark=triangle, mark size=3.2pt, thick, smooth},
+    TPHTLineStyle/.style={color=exp4, mark=diamond, mark size=3pt, thick, smooth},
+    BlastLineStyle/.style={color=poisson, mark=pentagon, mark size=3.2pt, thick, smooth}
+}
+
+% Additional utility styles
+\pgfplotsset{
+    PoissonLineStyle/.style={color=poisson, thick, smooth},
+    OccScatterStyle/.style={only marks, mark=o, mark size=2.2pt, color=exp1, opacity=0.85}
+}
+
+% Backward-compatible aliases for existing macros expecting these names (bar plots)
+\pgfplotsset{
+    CuckooStyle/.style={CuckooBarStyle},
+    IcebergStyle/.style={IcebergBarStyle},
+    JunctionStyle/.style={JunctionBarStyle},
+    TPHTStyle/.style={TPHTBarStyle},
+    BlastStyle/.style={BlastBarStyle}
+}

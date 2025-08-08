@@ -8,6 +8,49 @@
     \ifnum#1=7 Negative Query\fi%
 }
 
+% Helper macro to plot all objects for a given case
+\newcommand{\AddAllObjectPlotsForScaling}[1]{%
+    % Cuckoo (object_id=6)
+    \addplot[CuckooLineStyle] table[
+        x=thread_num,
+        y expr=\thisrow{throughput (ops/s)}/1000000,
+        restrict expr to domain={\thisrow{case_id}}{#1:#1},
+        restrict expr to domain={\thisrow{object_id}}{6:6}
+    ] {\scalingdata};
+    
+    % Iceberg (object_id=7)
+    \addplot[IcebergLineStyle] table[
+        x=thread_num,
+        y expr=\thisrow{throughput (ops/s)}/1000000,
+        restrict expr to domain={\thisrow{case_id}}{#1:#1},
+        restrict expr to domain={\thisrow{object_id}}{7:7}
+    ] {\scalingdata};
+    
+    % Junction (object_id=15)
+    \addplot[JunctionLineStyle] table[
+        x=thread_num,
+        y expr=\thisrow{throughput (ops/s)}/1000000,
+        restrict expr to domain={\thisrow{case_id}}{#1:#1},
+        restrict expr to domain={\thisrow{object_id}}{15:15}
+    ] {\scalingdata};
+    
+    % TPHT (object_id=17)
+    \addplot[TPHTLineStyle] table[
+        x=thread_num,
+        y expr=\thisrow{throughput (ops/s)}/1000000,
+        restrict expr to domain={\thisrow{case_id}}{#1:#1},
+        restrict expr to domain={\thisrow{object_id}}{17:17}
+    ] {\scalingdata};
+    
+    % Blast (object_id=20)
+    \addplot[BlastLineStyle] table[
+        x=thread_num,
+        y expr=\thisrow{throughput (ops/s)}/1000000,
+        restrict expr to domain={\thisrow{case_id}}{#1:#1},
+        restrict expr to domain={\thisrow{object_id}}{20:20}
+    ] {\scalingdata};
+}
+
 % Shared legend above all graphs
 \begin{figure}[p]
     \centering
@@ -18,14 +61,14 @@
                 hide axis,
                 legend entries={Cuckoo, Iceberg, Junction, TPHT, Blast},
                 legend columns=5,
-                legend style={font=\small},
+                legend style={font=\small, column sep=15pt, /tikz/every even column/.append style={column sep=15pt}},
                 legend to name={scaling-legend}
             ]
-            \addplot[mark=o, color=exp1, thick] coordinates {(0,0)};
-            \addplot[mark=square, color=exp2, thick] coordinates {(0,0)};
-            \addplot[mark=triangle, color=exp3, thick] coordinates {(0,0)};
-            \addplot[mark=diamond, color=exp4, thick] coordinates {(0,0)};
-            \addplot[mark=pentagon, color=poisson, thick] coordinates {(0,0)};
+            \addplot[CuckooLineStyle] coordinates {(0,0)};
+            \addplot[IcebergLineStyle] coordinates {(0,0)};
+            \addplot[JunctionLineStyle] coordinates {(0,0)};
+            \addplot[TPHTLineStyle] coordinates {(0,0)};
+            \addplot[BlastLineStyle] coordinates {(0,0)};
         \end{axis}
     \end{tikzpicture}
     \vspace{0.5cm}
@@ -33,6 +76,10 @@
 
 \begin{figure}[p]
     \centering
+    
+    % Display shared legend
+    {\footnotesize \pgfplotslegendfromname{scaling-legend}}
+    \vspace{0.3cm}
 
     % Case 1
     \begin{subfigure}[b]{0.48\textwidth}
@@ -63,75 +110,7 @@
                     tick label style={/pgf/number format/fixed,/pgf/number format/precision=1}
                 ]
 
-                % Cuckoo (object_id=6)
-                \addplot[
-                    mark=o,
-                    mark size=2pt,
-                    color=exp1,
-                    thick,
-                    smooth
-                ] table[
-                        x=thread_num,
-                        y expr=\thisrow{throughput (ops/s)}/1000000,
-                        restrict expr to domain={\thisrow{case_id}}{1:1},
-                        restrict expr to domain={\thisrow{object_id}}{6:6}
-                    ] {\scalingdata};
-
-                % Iceberg (object_id=7)
-                \addplot[
-                    mark=square,
-                    mark size=2pt,
-                    color=exp2,
-                    thick,
-                    smooth
-                ] table[
-                        x=thread_num,
-                        y expr=\thisrow{throughput (ops/s)}/1000000,
-                        restrict expr to domain={\thisrow{case_id}}{1:1},
-                        restrict expr to domain={\thisrow{object_id}}{7:7}
-                    ] {\scalingdata};
-
-                % Junction (object_id=15)
-                \addplot[
-                    mark=triangle,
-                    mark size=2pt,
-                    color=exp3,
-                    thick,
-                    smooth
-                ] table[
-                        x=thread_num,
-                        y expr=\thisrow{throughput (ops/s)}/1000000,
-                        restrict expr to domain={\thisrow{case_id}}{1:1},
-                        restrict expr to domain={\thisrow{object_id}}{15:15}
-                    ] {\scalingdata};
-
-                % TPHT (object_id=17)
-                \addplot[
-                    mark=diamond,
-                    mark size=2pt,
-                    color=exp4,
-                    thick,
-                    smooth
-                ] table[
-                        x=thread_num,
-                        y expr=\thisrow{throughput (ops/s)}/1000000,
-                        restrict expr to domain={\thisrow{case_id}}{1:1},
-                        restrict expr to domain={\thisrow{object_id}}{17:17}
-                    ] {\scalingdata};
-
-                % Blast (object_id=20)
-                \addplot[
-                    mark=pentagon,
-                    mark size=2pt,
-                    color=poisson,
-                    thick,
-                    smooth
-                ] table[
-                        x=thread_num,
-                        y expr=\thisrow{throughput (ops/s)}/1000000,
-                        restrict expr to domain={\thisrow{case_id}}{1:1},
-                        restrict expr to domain={\thisrow{object_id}}{20:20}
-                    ] {\scalingdata};
+                \AddAllObjectPlotsForScaling{1}
 
             \end{axis}
         \end{tikzpicture}
@@ -167,75 +146,7 @@
                     tick label style={/pgf/number format/fixed,/pgf/number format/precision=1}
                 ]
 
-                % Cuckoo (object_id=6)
-                \addplot[
-                    mark=o,
-                    mark size=2pt,
-                    color=exp1,
-                    thick,
-                    smooth
-                ] table[
-                        x=thread_num,
-                        y expr=\thisrow{throughput (ops/s)}/1000000,
-                        restrict expr to domain={\thisrow{case_id}}{3:3},
-                        restrict expr to domain={\thisrow{object_id}}{6:6}
-                    ] {\scalingdata};
-
-                % Iceberg (object_id=7)
-                \addplot[
-                    mark=square,
-                    mark size=2pt,
-                    color=exp2,
-                    thick,
-                    smooth
-                ] table[
-                        x=thread_num,
-                        y expr=\thisrow{throughput (ops/s)}/1000000,
-                        restrict expr to domain={\thisrow{case_id}}{3:3},
-                        restrict expr to domain={\thisrow{object_id}}{7:7}
-                    ] {\scalingdata};
-
-                % Junction (object_id=15)
-                \addplot[
-                    mark=triangle,
-                    mark size=2pt,
-                    color=exp3,
-                    thick,
-                    smooth
-                ] table[
-                        x=thread_num,
-                        y expr=\thisrow{throughput (ops/s)}/1000000,
-                        restrict expr to domain={\thisrow{case_id}}{3:3},
-                        restrict expr to domain={\thisrow{object_id}}{15:15}
-                    ] {\scalingdata};
-
-                % TPHT (object_id=17)
-                \addplot[
-                    mark=diamond,
-                    mark size=2pt,
-                    color=exp4,
-                    thick,
-                    smooth
-                ] table[
-                        x=thread_num,
-                        y expr=\thisrow{throughput (ops/s)}/1000000,
-                        restrict expr to domain={\thisrow{case_id}}{3:3},
-                        restrict expr to domain={\thisrow{object_id}}{17:17}
-                    ] {\scalingdata};
-
-                % Blast (object_id=20)
-                \addplot[
-                    mark=pentagon,
-                    mark size=2pt,
-                    color=poisson,
-                    thick,
-                    smooth
-                ] table[
-                        x=thread_num,
-                        y expr=\thisrow{throughput (ops/s)}/1000000,
-                        restrict expr to domain={\thisrow{case_id}}{3:3},
-                        restrict expr to domain={\thisrow{object_id}}{20:20}
-                    ] {\scalingdata};
+                \AddAllObjectPlotsForScaling{3}
 
             \end{axis}
         \end{tikzpicture}
@@ -271,75 +182,7 @@
                     tick label style={/pgf/number format/fixed,/pgf/number format/precision=1}
                 ]
 
-                % Cuckoo (object_id=6)
-                \addplot[
-                    mark=o,
-                    mark size=2pt,
-                    color=exp1,
-                    thick,
-                    smooth
-                ] table[
-                        x=thread_num,
-                        y expr=\thisrow{throughput (ops/s)}/1000000,
-                        restrict expr to domain={\thisrow{case_id}}{6:6},
-                        restrict expr to domain={\thisrow{object_id}}{6:6}
-                    ] {\scalingdata};
-
-                % Iceberg (object_id=7)
-                \addplot[
-                    mark=square,
-                    mark size=2pt,
-                    color=exp2,
-                    thick,
-                    smooth
-                ] table[
-                        x=thread_num,
-                        y expr=\thisrow{throughput (ops/s)}/1000000,
-                        restrict expr to domain={\thisrow{case_id}}{6:6},
-                        restrict expr to domain={\thisrow{object_id}}{7:7}
-                    ] {\scalingdata};
-
-                % Junction (object_id=15)
-                \addplot[
-                    mark=triangle,
-                    mark size=2pt,
-                    color=exp3,
-                    thick,
-                    smooth
-                ] table[
-                        x=thread_num,
-                        y expr=\thisrow{throughput (ops/s)}/1000000,
-                        restrict expr to domain={\thisrow{case_id}}{6:6},
-                        restrict expr to domain={\thisrow{object_id}}{15:15}
-                    ] {\scalingdata};
-
-                % TPHT (object_id=17)
-                \addplot[
-                    mark=diamond,
-                    mark size=2pt,
-                    color=exp4,
-                    thick,
-                    smooth
-                ] table[
-                        x=thread_num,
-                        y expr=\thisrow{throughput (ops/s)}/1000000,
-                        restrict expr to domain={\thisrow{case_id}}{6:6},
-                        restrict expr to domain={\thisrow{object_id}}{17:17}
-                    ] {\scalingdata};
-
-                % Blast (object_id=20)
-                \addplot[
-                    mark=pentagon,
-                    mark size=2pt,
-                    color=poisson,
-                    thick,
-                    smooth
-                ] table[
-                        x=thread_num,
-                        y expr=\thisrow{throughput (ops/s)}/1000000,
-                        restrict expr to domain={\thisrow{case_id}}{6:6},
-                        restrict expr to domain={\thisrow{object_id}}{20:20}
-                    ] {\scalingdata};
+                \AddAllObjectPlotsForScaling{6}
 
             \end{axis}
         \end{tikzpicture}
@@ -375,75 +218,7 @@
                     tick label style={/pgf/number format/fixed,/pgf/number format/precision=1}
                 ]
 
-                % Cuckoo (object_id=6)
-                \addplot[
-                    mark=o,
-                    mark size=2pt,
-                    color=exp1,
-                    thick,
-                    smooth
-                ] table[
-                        x=thread_num,
-                        y expr=\thisrow{throughput (ops/s)}/1000000,
-                        restrict expr to domain={\thisrow{case_id}}{7:7},
-                        restrict expr to domain={\thisrow{object_id}}{6:6}
-                    ] {\scalingdata};
-
-                % Iceberg (object_id=7)
-                \addplot[
-                    mark=square,
-                    mark size=2pt,
-                    color=exp2,
-                    thick,
-                    smooth
-                ] table[
-                        x=thread_num,
-                        y expr=\thisrow{throughput (ops/s)}/1000000,
-                        restrict expr to domain={\thisrow{case_id}}{7:7},
-                        restrict expr to domain={\thisrow{object_id}}{7:7}
-                    ] {\scalingdata};
-
-                % Junction (object_id=15)
-                \addplot[
-                    mark=triangle,
-                    mark size=2pt,
-                    color=exp3,
-                    thick,
-                    smooth
-                ] table[
-                        x=thread_num,
-                        y expr=\thisrow{throughput (ops/s)}/1000000,
-                        restrict expr to domain={\thisrow{case_id}}{7:7},
-                        restrict expr to domain={\thisrow{object_id}}{15:15}
-                    ] {\scalingdata};
-
-                % TPHT (object_id=17)
-                \addplot[
-                    mark=diamond,
-                    mark size=2pt,
-                    color=exp4,
-                    thick,
-                    smooth
-                ] table[
-                        x=thread_num,
-                        y expr=\thisrow{throughput (ops/s)}/1000000,
-                        restrict expr to domain={\thisrow{case_id}}{7:7},
-                        restrict expr to domain={\thisrow{object_id}}{17:17}
-                    ] {\scalingdata};
-
-                % Blast (object_id=20)
-                \addplot[
-                    mark=pentagon,
-                    mark size=2pt,
-                    color=poisson,
-                    thick,
-                    smooth
-                ] table[
-                        x=thread_num,
-                        y expr=\thisrow{throughput (ops/s)}/1000000,
-                        restrict expr to domain={\thisrow{case_id}}{7:7},
-                        restrict expr to domain={\thisrow{object_id}}{20:20}
-                    ] {\scalingdata};
+                \AddAllObjectPlotsForScaling{7}
 
             \end{axis}
         \end{tikzpicture}
