@@ -328,7 +328,7 @@ no_resize_object_ids=(6 7 15 17 20)
 resize_object_ids=(6 7 15 18 21)
 
 
-# scaling
+# data size scaling
 
 for case_id in 1 3 6 7; do
     for object_id in "${no_resize_object_ids[@]}"; do

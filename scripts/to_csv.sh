@@ -46,6 +46,8 @@ sudo python3 ./occupancy_to_csv.py
 sudo python3 ./throughput_space_eff_to_csv.py
 sudo python3 ./load_factor_support_to_csv.py
 sudo python3 ./scaling_to_csv.py
+sudo python3 ./data_size_scaling_to_csv.py
+exit
 sudo python3 ./percentile_to_csv.py
 sudo python3 ./micro_to_csv.py
 sudo python3 ./progressive_latency_to_csv.py
