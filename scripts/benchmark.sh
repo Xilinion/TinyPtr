@@ -328,6 +328,24 @@ no_resize_object_ids=(6 7 15 17 20)
 resize_object_ids=(6 7 15 18 21)
 
 
+# scaling
+
+for case_id in 1 3 6 7; do
+    for object_id in "${no_resize_object_ids[@]}"; do
+        entry_id=1000
+        for table_size in 32767 262143 2097151 16777215 134217727; do
+            opt_num=$table_size
+            for thread_num in 1; do
+                RunWithRetry "Run"
+                let "entry_id++"
+            done
+        done
+    done
+done
+thread_num=0
+
+exit
+
 # Throughput / Space Efficiency
 
 # Number of repetitions for each configuration
