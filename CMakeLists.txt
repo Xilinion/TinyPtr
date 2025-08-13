@@ -37,6 +37,11 @@ add_library(tinyptr_lib ${SOURCES})
 target_include_directories(tinyptr_lib PRIVATE ${SOURCE_DIR})
 target_compile_options(tinyptr_lib INTERFACE -march=native -flto)
 
+# Enable parallel STL with oneTBB backend
+find_package(TBB REQUIRED)
+target_link_libraries(tinyptr_lib PUBLIC TBB::tbb)
+target_compile_definitions(tinyptr_lib PUBLIC _GLIBCXX_USE_TBB_PAR_BACKEND=1)
+
 # Add preprocessor definition based on resizing option
 if(DISABLE_RESIZING)
     target_compile_definitions(tinyptr_lib PUBLIC CUCKOO_DISABLE_RESIZING)
@@ -44,6 +49,7 @@ endif()
 
 add_executable(${PROJECT_NAME} src/main.cpp)
 target_link_libraries(${PROJECT_NAME} PRIVATE tinyptr_lib)
+target_link_libraries(${PROJECT_NAME} PRIVATE TBB::tbb)
 
 # Add external dependencies
 include(CLHT)
