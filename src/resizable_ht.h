@@ -21,7 +21,33 @@ template <typename HTType>
 class ResizableHT {
    public:
     const uint64_t kHashSeed;
-    const uint64_t kCacheLineSize = 64;
+    static constexpr uint64_t kCacheLineSize = 64;
+
+    // Cache line calculations - must be compile-time constants
+    static constexpr uint64_t kCacheLineUint64Count = 8;
+    static constexpr uint64_t kCacheLineInt64Count = 8;
+    static constexpr uint64_t kInt64toCacheLineShift = 3;
+
+    // Dynamic hash multiplier - randomized per instance for attack resistance
+    uint64_t partition_hash_multiplier;
+    uint64_t partition_mask;  // part_num - 1, for fast bitwise AND
+
+    // Compile-time assertions to ensure compatibility
+    static_assert(
+        kCacheLineSize == 64,
+        "Cache line size must be 64 bytes for current implementation");
+    static_assert(sizeof(uint64_t) == 8, "uint64_t must be 8 bytes");
+    static_assert(sizeof(int64_t) == 8, "int64_t must be 8 bytes");
+    static_assert((1ULL << kInt64toCacheLineShift) == kCacheLineUint64Count,
+                  "Cache line shift must match uint64 count");
+
+    // Fast partition hash function - uses randomized multiplier and bitwise operations
+    __attribute__((always_inline)) inline uint64_t FastPartitionHash(
+        uint64_t key) const {
+        key ^= kHashSeed;                  // First layer of attack resistance
+        key *= partition_hash_multiplier;  // Randomized per instance
+        return (key >> 32) & partition_mask;  // Fast bitwise AND for power-of-2
+    }
 
    public:
     ResizableHT(uint64_t initial_size_per_part = 40000, uint64_t part_num = 0,
@@ -60,16 +86,16 @@ class ResizableHT {
         std::lock_guard<std::mutex> lock(handle_mutex);
         uint64_t handle = *free_handle.begin();
         free_handle.erase(handle);
-        thread_part_cnt[handle] =
-            new int64_t[part_num + kCacheLineSize / sizeof(int64_t)];
-        memset(thread_part_cnt[handle], 0, (part_num + kCacheLineSize));
+        thread_part_cnt[handle] = new int64_t[part_num + kCacheLineInt64Count];
+        memset(thread_part_cnt[handle], 0,
+               (part_num + kCacheLineInt64Count) * sizeof(int64_t));
         return handle;
     }
 
     __attribute__((always_inline)) inline void FreeHandle(uint64_t handle) {
 
         for (uint64_t part_id = 0; part_id < part_num; part_id++) {
-            uint64_t part_index = part_id * (kCacheLineSize / sizeof(uint64_t));
+            uint64_t part_index = part_id << kInt64toCacheLineShift;
             part_cnt[part_index].fetch_add(thread_part_cnt[handle][part_id]);
         }
 
@@ -87,7 +113,7 @@ class ResizableHT {
     __attribute__((always_inline)) inline void check_join_resize(
         uint64_t handle, uint64_t part_id) {
 
-        uint64_t part_index = part_id * (kCacheLineSize / sizeof(uint64_t));
+        uint64_t part_index = part_id << kInt64toCacheLineShift;
 
         while (true) {
             uint64_t resizing_thread_num =
@@ -128,7 +154,7 @@ class ResizableHT {
     __attribute__((always_inline)) inline void check_start_resize(
         uint64_t handle, uint64_t part_id) {
 
-        uint64_t part_index = part_id * (kCacheLineSize / sizeof(uint64_t));
+        uint64_t part_index = part_id << kInt64toCacheLineShift;
 
         if (std::abs(thread_part_cnt[handle][part_id]) >
             thread_num * thread_num) {
@@ -162,17 +188,19 @@ class ResizableHT {
                 thread_working_lock[handle].store(uint64_t(-1));
 
                 for (uint64_t i = 0; i < thread_num; i++) {
-                    while (thread_working_lock[i * (kCacheLineSize /
-                                                    sizeof(uint64_t))]
+                    while (thread_working_lock[i << kInt64toCacheLineShift]
                                .load() == part_id)
                         ;
                 }
 
-                std::chrono::high_resolution_clock::time_point my_time[10];
+                // std::chrono::high_resolution_clock::time_point my_time[10];
                 // my_time[0] = std::chrono::high_resolution_clock::now();
 
                 partitions_new[part_id] = new HTType(
                     uint64_t(part_size[part_id] * resize_factor), true);
+
+                // std::cerr << "allocated partitions_new[" << part_id
+                //   << "]: " << partitions_new[part_id] << std::endl;
 
                 partitions[part_id]->SetResizeStride(stride_num);
 
@@ -199,13 +227,15 @@ class ResizableHT {
 
                 HTType* tmp = partitions[part_id];
                 partitions[part_id] = partitions_new[part_id];
-                
+
                 for (uint64_t i = 0; i < thread_num; i++) {
-                    while (thread_working_lock[i * (kCacheLineSize /
-                                                    sizeof(uint64_t))]
+                    while (thread_working_lock[i << kInt64toCacheLineShift]
                                .load() == part_id)
                         ;
                 }
+
+                // std::cerr << "delete old partitions[" << part_id << "]: " << tmp
+                //           << std::endl;
 
                 delete tmp;
                 partitions_new[part_id] = nullptr;
@@ -280,6 +310,13 @@ ResizableHT<HTType>::ResizableHT(uint64_t initial_size_per_part_,
     }
     part_num = tmp_part_num;
 
+    // Initialize hash parameters - randomized multiplier for attack resistance
+    partition_hash_multiplier =
+        kHashSeed | 1;  // Ensure odd number for good distribution
+    partition_hash_multiplier = (partition_hash_multiplier << 32) |
+                                (rand() | 1);  // 64-bit odd multiplier
+    partition_mask = part_num - 1;  // Fast bitwise mask for power-of-2
+
     partitions = new HTType*[part_num];
     partitions_new = new HTType*[part_num];
     part_size = new uint64_t[part_num];
@@ -291,31 +328,27 @@ ResizableHT<HTType>::ResizableHT(uint64_t initial_size_per_part_,
         part_resize_threshold[i] = initial_size_per_part * resize_threshold;
     }
 
-    part_cnt =
-        new std::atomic<int64_t>[part_num * kCacheLineSize / sizeof(int64_t)];
+    part_cnt = new std::atomic<int64_t>[part_num << kInt64toCacheLineShift];
     part_resizing_thread_num =
-        new std::atomic<uint64_t>[part_num * kCacheLineSize / sizeof(uint64_t)];
+        new std::atomic<uint64_t>[part_num << kInt64toCacheLineShift];
     part_resizing_stage =
-        new std::atomic<uint64_t>[part_num * kCacheLineSize / sizeof(uint64_t)];
+        new std::atomic<uint64_t>[part_num << kInt64toCacheLineShift];
     part_resizing_stride_done =
-        new std::atomic<uint64_t>[part_num * kCacheLineSize / sizeof(uint64_t)];
+        new std::atomic<uint64_t>[part_num << kInt64toCacheLineShift];
     thread_working_lock =
-        new std::atomic<uint64_t>[thread_num * kCacheLineSize /
-                                  sizeof(uint64_t)];
-    thread_part_cnt =
-        new int64_t*[thread_num * kCacheLineSize / sizeof(uint64_t)];
+        new std::atomic<uint64_t>[thread_num << kInt64toCacheLineShift];
+    thread_part_cnt = new int64_t*[thread_num << kInt64toCacheLineShift];
 
     for (uint64_t i = 0; i < part_num; i++) {
-        part_cnt[i * (kCacheLineSize / sizeof(int64_t))] = 0;
-        part_resizing_thread_num[i * (kCacheLineSize / sizeof(uint64_t))] = 0;
-        part_resizing_stride_done[i * (kCacheLineSize / sizeof(uint64_t))] = 0;
-        part_resizing_stage[i * (kCacheLineSize / sizeof(uint64_t))] = 0;
+        part_cnt[i << kInt64toCacheLineShift] = 0;
+        part_resizing_thread_num[i << kInt64toCacheLineShift] = 0;
+        part_resizing_stride_done[i << kInt64toCacheLineShift] = 0;
+        part_resizing_stage[i << kInt64toCacheLineShift] = 0;
     }
 
     for (uint64_t i = 0; i < thread_num; i++) {
-        thread_working_lock[i * (kCacheLineSize / sizeof(uint64_t))] =
-            uint64_t(-1);
-        free_handle.insert(i * (kCacheLineSize / sizeof(uint64_t)));
+        thread_working_lock[i << kInt64toCacheLineShift] = uint64_t(-1);
+        free_handle.insert(i << kInt64toCacheLineShift);
     }
 }
 
