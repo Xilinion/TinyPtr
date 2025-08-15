@@ -116,6 +116,7 @@ class BlastHT {
     void Scan4Stats();
 
    protected:
+    void* combined_mem;
     uint8_t* cloud_tab;
     uint8_t* byte_array;
     uint8_t* bin_cnt_head;

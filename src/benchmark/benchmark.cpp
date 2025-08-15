@@ -597,7 +597,7 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
             obj = new BenchmarkBlastHT(table_size, para.bin_size);
             break;
         case BenchmarkObjectType::RESIZABLE_BLAST: {
-            uint64_t part_num = 5;
+            uint64_t part_num = 16;
             obj = new BenchmarkResizableBlastHT(table_size / part_num, part_num,
                                                 thread_num);
         } break;
@@ -1407,9 +1407,11 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
                 uint64_t record_num = 10000;
 
                 // Define the percentiles to calculate
-                std::vector<double> percentiles = {50.0, 95.0, 99.0, 99.9, 99.99, 100.0};
+                std::vector<double> percentiles = {50.0, 95.0,  99.0,
+                                                   99.9, 99.99, 100.0};
 
-                auto latencies = obj->YCSBRunWithLatencyRecording(ycsb_exe_vec, para.thread_num, record_num, percentiles);
+                auto latencies = obj->YCSBRunWithLatencyRecording(
+                    ycsb_exe_vec, para.thread_num, record_num, percentiles);
 
                 auto start_run = std::chrono::high_resolution_clock::now();
                 auto run_duration =
@@ -1424,11 +1426,12 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
                         .count();
 
                 output_stream << "Percentile Latency Records: " << std::endl;
-                output_stream << "Operation Type, Percentile, Latency (ns)" << std::endl;
+                output_stream << "Operation Type, Percentile, Latency (ns)"
+                              << std::endl;
                 for (auto& latency : latencies) {
-                    output_stream << std::get<0>(latency) << ", " 
-                                << std::get<1>(latency) << ", " 
-                                << std::get<2>(latency) << std::endl;
+                    output_stream << std::get<0>(latency) << ", "
+                                  << std::get<1>(latency) << ", "
+                                  << std::get<2>(latency) << std::endl;
                 }
             };
             break;
