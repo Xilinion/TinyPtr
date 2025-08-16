@@ -99,6 +99,37 @@ function CommonArgs() {
     echo "-o $object_id -c $case_id -e $entry_id -t $table_size -p $opt_num -l $load_factor -h $hit_percent -b $bin_size -q $quotient_tail_length -n $thread_num -z $zipfian_skew -f "$res_path""
 }
 
+function CommonArgsWithYCSB() {
+
+    if [ $case_id -eq 17 ]; then
+        ycsb_load_path=$ycsb_a_load_file
+        ycsb_exe_path=$ycsb_a_exe_file
+    elif [ $case_id -eq 18 ]; then
+        ycsb_load_path=$ycsb_b_load_file
+        ycsb_exe_path=$ycsb_b_exe_file
+    elif [ $case_id -eq 19 ]; then
+        ycsb_load_path=$ycsb_c_load_file
+        ycsb_exe_path=$ycsb_c_exe_file
+    elif [ $case_id -eq 20 ]; then
+        ycsb_load_path=$ycsb_a_load_file
+        ycsb_exe_path=$ycsb_neg_a_exe_file
+    elif [ $case_id -eq 21 ]; then
+        ycsb_load_path=$ycsb_b_load_file
+        ycsb_exe_path=$ycsb_neg_b_exe_file
+    elif [ $case_id -eq 22 ]; then
+        ycsb_load_path=$ycsb_c_load_file
+        ycsb_exe_path=$ycsb_neg_c_exe_file
+    elif [ $case_id -eq 24 ]; then
+        ycsb_load_path=$ycsb_a_load_file
+        ycsb_exe_path=$ycsb_a_exe_file
+    elif [ $case_id -eq 25 ]; then
+        ycsb_load_path=$ycsb_a_load_file
+        ycsb_exe_path=$ycsb_neg_a_exe_file
+    fi
+    
+    echo "-o $object_id -c $case_id -e $entry_id -t $table_size -p $opt_num -l $load_factor -h $hit_percent -b $bin_size -q $quotient_tail_length -y $ycsb_load_path -s $ycsb_exe_path -n $thread_num -f "$res_path""
+}
+
 function WarmUp() {
     set_numactl_bind
     echo "== begin warming up: $args"
@@ -156,33 +187,7 @@ function Run() {
 
 function RunYCSB() {
 
-    if [ $case_id -eq 17 ]; then
-        ycsb_load_path=$ycsb_a_load_file
-        ycsb_exe_path=$ycsb_a_exe_file
-    elif [ $case_id -eq 18 ]; then
-        ycsb_load_path=$ycsb_b_load_file
-        ycsb_exe_path=$ycsb_b_exe_file
-    elif [ $case_id -eq 19 ]; then
-        ycsb_load_path=$ycsb_c_load_file
-        ycsb_exe_path=$ycsb_c_exe_file
-    elif [ $case_id -eq 20 ]; then
-        ycsb_load_path=$ycsb_a_load_file
-        ycsb_exe_path=$ycsb_neg_a_exe_file
-    elif [ $case_id -eq 21 ]; then
-        ycsb_load_path=$ycsb_b_load_file
-        ycsb_exe_path=$ycsb_neg_b_exe_file
-    elif [ $case_id -eq 22 ]; then
-        ycsb_load_path=$ycsb_c_load_file
-        ycsb_exe_path=$ycsb_neg_c_exe_file
-    elif [ $case_id -eq 24 ]; then
-        ycsb_load_path=$ycsb_a_load_file
-        ycsb_exe_path=$ycsb_a_exe_file
-    elif [ $case_id -eq 25 ]; then
-        ycsb_load_path=$ycsb_a_load_file
-        ycsb_exe_path=$ycsb_neg_a_exe_file
-    fi
-
-    args="-o $object_id -c $case_id -e $entry_id -t $table_size -p $opt_num -l $load_factor -h $hit_percent -b $bin_size -q $quotient_tail_length -y $ycsb_load_path -s $ycsb_exe_path -n $thread_num -f "$res_path""
+    args=$(CommonArgsWithYCSB)
 
     WarmUp
 
@@ -241,8 +246,13 @@ function RunPerf() {
 }
 
 function FlameGraph() {
+    local use_ycsb=${1:-false}
 
-    args=$(CommonArgs)
+    if [ "$use_ycsb" = "true" ]; then
+        args=$(CommonArgsWithYCSB)
+    else
+        args=$(CommonArgs)
+    fi
 
     perf record -F 499 -a -g -- ../build/tinyptr $args
 
