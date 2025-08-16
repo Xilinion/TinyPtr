@@ -824,6 +824,8 @@ bool BlastHT::ResizeMoveStride(uint64_t stride_id, BlastHT* new_ht) {
                 (*reinterpret_cast<uint64_t*>(entry + kKeyOffset)), cloud_id,
                 fp);
 
+            new_ht->prefetch_key(ins_key);
+
             ins_queue.push(std::make_pair(
                 ins_key, *reinterpret_cast<uint64_t*>(entry + kValueOffset)));
 
@@ -842,12 +844,15 @@ bool BlastHT::ResizeMoveStride(uint64_t stride_id, BlastHT* new_ht) {
             uint64_t ins_key = hash_key_rebuild(
                 (*reinterpret_cast<uint64_t*>(entry + kKeyOffset)), cloud_id,
                 fp);
+            
+            new_ht->prefetch_key(ins_key);
+            
             ins_queue.push(std::make_pair(
                 ins_key, *reinterpret_cast<uint64_t*>(entry + kValueOffset)));
             new_ht->prefetch_key(ins_key);
         }
 
-        if (ins_queue.get_size() >= 10) {
+        if (ins_queue.get_size() >= 20) {
             while (!ins_queue.empty()) {
                 auto ins_pair = ins_queue.pop();
                 if (!new_ht->Insert(ins_pair.first, ins_pair.second)) {

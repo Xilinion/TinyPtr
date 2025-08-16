@@ -369,7 +369,7 @@ class BlastHT {
         //                kFastDivisionShift[0];
         // }
         __builtin_prefetch(
-            (const void*)(cloud_tab + (cloud_id << kCloudIdShiftOffset)));
+            (const void*)(cloud_tab + (cloud_id << kCloudIdShiftOffset)), 1, 3);
     }
 };
 

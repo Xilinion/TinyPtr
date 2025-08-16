@@ -41,14 +41,6 @@ class ResizableHT {
     static_assert((1ULL << kInt64toCacheLineShift) == kCacheLineUint64Count,
                   "Cache line shift must match uint64 count");
 
-    // Fast partition hash function - uses randomized multiplier and bitwise operations
-    __attribute__((always_inline)) inline uint64_t FastPartitionHash(
-        uint64_t key) const {
-        key ^= kHashSeed;                  // First layer of attack resistance
-        key *= partition_hash_multiplier;  // Randomized per instance
-        return (key >> 32) & partition_mask;  // Fast bitwise AND for power-of-2
-    }
-
    public:
     ResizableHT(uint64_t initial_size_per_part = 40000, uint64_t part_num = 0,
                 uint32_t thread_num = 0, double resize_threshold = 0.75,
@@ -107,7 +99,10 @@ class ResizableHT {
 
    private:
     __attribute__((always_inline)) inline uint64_t get_part_id(uint64_t key) {
-        return XXH64(&key, sizeof(uint64_t), kHashSeed) & (part_num - 1);
+        // return XXH64(&key, sizeof(uint64_t), kHashSeed) & (part_num - 1);
+        key ^= kHashSeed;
+        key *= partition_hash_multiplier;
+        return (key >> 32) & partition_mask;
     }
 
     __attribute__((always_inline)) inline void check_join_resize(
