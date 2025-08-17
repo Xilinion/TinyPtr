@@ -3,6 +3,8 @@ exp_dir="."
 exp_dir="$(realpath $exp_dir)"
 echo "exp_dir: $exp_dir"
 
+latex_dir="$(./latex)"
+
 # Define base directory for workloads
 tmp_dir="$HOME/tmp"
 index_microbench_dir="$HOME/tmp/index-microbench"

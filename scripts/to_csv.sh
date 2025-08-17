@@ -29,7 +29,7 @@ import os
 
 # Results directory from config.sh
 RESULTS_DIR = "$results_dir"
-CSV_OUTPUT_DIR = os.path.join(RESULTS_DIR, "csv")
+CSV_OUTPUT_DIR = os.path.join("$latex_dir", "csv")
 
 # Other config variables if needed
 EXP_DIR = "$exp_dir"
