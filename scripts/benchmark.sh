@@ -363,7 +363,7 @@ num_rep=10
 
 thread_num=1
 
-for case_id in 1 6 7; do
+for case_id in 1 9 10; do
     for object_id in "${no_resize_object_ids[@]}"; do
         entry_id=100
         for table_size in 16777215; do
@@ -371,10 +371,12 @@ for case_id in 1 6 7; do
                 opt_num=$(printf "%.0f" $(echo "$table_size * $load_factor" | bc -l))
 
                 # Run memory free only once per configuration
+                thread_num=0
                 output=$(RunRandMemFree)
                 echo "$output"
+                thread_num=1
 
-                # Repeat the actual run 10 times
+                # Repeat the actual run num_rep times
                 for ((rep = 1; rep <= num_rep; rep++)); do
                     RunWithRetry "Run"
                     let "entry_id++"
@@ -424,6 +426,22 @@ for case_id in 1 3 6 7; do
         for table_size in 67108863; do
             opt_num=63753420
             for thread_num in 1 2 4 8 16 32; do
+                RunWithRetry "Run"
+                let "entry_id++"
+            done
+        done
+    done
+done
+thread_num=0
+
+# data size scaling
+
+for case_id in 1 3 6 7; do
+    for object_id in "${no_resize_object_ids[@]}"; do
+        entry_id=1000
+        for table_size in 32767 262143 2097151 16777215 134217727; do
+            opt_num=$table_size
+            for thread_num in 1; do
                 RunWithRetry "Run"
                 let "entry_id++"
             done
@@ -521,18 +539,22 @@ done
 # Number of repetitions for each configuration
 num_rep=10
 
-for case_id in 1 6 7; do
+thread_num=1
+
+for case_id in 1 9 10; do
     for object_id in "${no_resize_object_ids[@]}"; do
         entry_id=100
         for table_size in 16777215; do
-            for load_factor in 0.05 0.1 0.15 0.2 0.25 0.3 0.35 0.4 0.45 0.5 0.55 0.6 0.65 0.7 0.75 0.8 0.85 0.9 0.95; do
+            for load_factor in 0.05 0.1 0.15 0.2 0.25 0.3 0.35 0.4 0.45 0.5 0.55 0.6 0.65 0.7 0.75 0.8 0.85 0.9 0.95 0.99; do
                 opt_num=$(printf "%.0f" $(echo "$table_size * $load_factor" | bc -l))
 
                 # Run memory free only once per configuration
+                thread_num=0
                 output=$(RunRandMemFree)
                 echo "$output"
+                thread_num=1
 
-                # Repeat the actual run 10 times
+                # Repeat the actual run num_rep times
                 for ((rep = 1; rep <= num_rep; rep++)); do
                     RunWithRetry "Run"
                     let "entry_id++"
@@ -541,6 +563,8 @@ for case_id in 1 6 7; do
         done
     done
 done
+
+thread_num=0
 
 # load factor support
 
