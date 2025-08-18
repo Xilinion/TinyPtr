@@ -4,15 +4,23 @@ import csv
 import config_py  # Import the shared configuration
 
 
-def extract_throughput(file_path):
+def extract_throughput(file_path, case_id):
     """Extract Throughput and Latency from a result file."""
     with open(file_path, 'r') as f:
         content = f.read()
 
-        throughput_match = re.search(
-            r'Throughput: (\d+) ops/s', content)
-        latency_match = re.search(
-            r'Latency: (\d+) ns/op', content)
+        # For cases 9 and 10, extract Query metrics specifically
+        if case_id in [9, 10]:
+            throughput_match = re.search(
+                r'Query Throughput: (\d+) ops/s', content)
+            latency_match = re.search(
+                r'Query Latency: (\d+) ns/op', content)
+        else:
+            # For other cases (like case 1), use the old format
+            throughput_match = re.search(
+                r'Throughput: (\d+) ops/s', content)
+            latency_match = re.search(
+                r'Latency: (\d+) ns/op', content)
 
         throughput = int(throughput_match.group(
             1)) if throughput_match else None
@@ -61,7 +69,7 @@ def main():
     collected_rows = []
 
     # Define valid IDs based on the updated bash script
-    valid_case_ids = [1, 6, 7]
+    valid_case_ids = [1, 9, 10]
     valid_object_ids = [6, 7, 15, 17, 20]
     load_factors = [0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 0.99]
     num_repetitions = 10
@@ -70,7 +78,16 @@ def main():
     for case_id in valid_case_ids:
         for object_id in valid_object_ids:
             base_entry_id = 100  # Starting entry_id
-            for load_factor in load_factors:
+            
+            # Determine which load factors to process based on object_id
+            if object_id == 6:  # Cuckoo - exclude last 4 points
+                current_load_factors = load_factors[:-4]
+            elif object_id == 15:  # Junction - exclude last 5 points
+                current_load_factors = load_factors[:-5]
+            else:
+                current_load_factors = load_factors
+                
+            for load_factor in current_load_factors:
                 throughputs = []
                 latencies = []
 
@@ -89,7 +106,7 @@ def main():
                     file_path = os.path.join(base_dir, filename)
 
                     if os.path.exists(file_path):
-                        throughput, latency = extract_throughput(file_path)
+                        throughput, latency = extract_throughput(file_path, case_id)
                         if throughput is None or latency is None:
                             print(f"Warning: Could not extract throughput/latency from {filename}")
                             continue
@@ -115,14 +132,14 @@ def main():
 
                 base_entry_id += num_repetitions  # Next load_factor starts at the next entry_id block
 
-    # Build lookup for case 1 real memory by (object_id, load_factor)
-    real_mem_case1 = {}
+    # Build lookup for case 1 virtual memory by (object_id, load_factor)
+    virtual_mem_case1 = {}
     for row in collected_rows:
         if row['case_id'] == 1:
             key = (row['object_id'], row['load_factor'])
-            real_mem_case1[key] = row['avg_real_memory (MB)']
+            virtual_mem_case1[key] = row['avg_virtual_memory (MB)']
 
-    # Write a single CSV file with additional column: avg_real_memory_case1 (MB)
+    # Write a single CSV file with additional columns
     csv_filename = "throughput_space_eff_results.csv"
     csv_path = os.path.join(output_dir, csv_filename)
 
@@ -133,17 +150,29 @@ def main():
             'case_id', 'object_id', 'load_factor',
             'avg_throughput (ops/s)', 'avg_latency (ns/op)',
             'avg_real_memory (MB)', 'avg_virtual_memory (MB)',
-            'avg_real_memory_case1 (MB)'
+            'avg_virtual_memory_case1 (MB)', 'space_efficiency',
+            'throughput_millions'
         ])
         # Rows
         for row in collected_rows:
             key = (row['object_id'], row['load_factor'])
-            real_case1 = real_mem_case1.get(key, row['avg_real_memory (MB)'])
+            virtual_case1 = virtual_mem_case1.get(key, row['avg_virtual_memory (MB)'])
+            
+            # Calculate space efficiency: 256 * load_factor / virtual_memory_case1
+            # Avoid division by zero
+            if virtual_case1 > 0:
+                space_efficiency = 256 * row['load_factor'] / virtual_case1
+            else:
+                space_efficiency = 0.0
+            
+            # Calculate throughput in millions for easier plotting
+            throughput_millions = row['avg_throughput (ops/s)'] / 1000000
+            
             writer.writerow([
                 row['case_id'], row['object_id'], row['load_factor'],
                 row['avg_throughput (ops/s)'], row['avg_latency (ns/op)'],
                 row['avg_real_memory (MB)'], row['avg_virtual_memory (MB)'],
-                real_case1
+                virtual_case1, space_efficiency, throughput_millions
             ])
 
     print(f"Created {csv_path}")
