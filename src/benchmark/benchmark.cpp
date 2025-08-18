@@ -15,6 +15,7 @@
 #include <unordered_set>
 #include "../chained_ht_64.h"
 #include "../dereference_table_64.h"
+#include "benchmark/benchmark_nonconc_blast_ht.h"
 #include "benchmark_bin_aware_chainedht.h"
 #include "benchmark_blast_ht.h"
 #include "benchmark_bolt_ht.h"
@@ -603,6 +604,9 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
         } break;
         case BenchmarkObjectType::HASH_DISTRIBUTION:
             obj = new BenchmarkHashDistribution(table_size);
+            break;
+        case BenchmarkObjectType::NONCONC_BLAST:
+            obj = new BenchmarkNonConcBlastHT(table_size, para.bin_size);
             break;
         default:
             abort();
