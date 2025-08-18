@@ -29,7 +29,8 @@ struct BenchmarkObjectType {
         BOLT = 19,
         BLAST = 20,
         RESIZABLE_BLAST = 21,
-        COUNT = 22
+        NONCONC_BLAST = 22,
+        COUNT = 23
     };
 
     BenchmarkObjectType(const BenchmarkObjectType& b) = default;
