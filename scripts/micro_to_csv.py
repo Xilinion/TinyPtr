@@ -1,6 +1,7 @@
 import os
 import re
 import csv
+import config_py  # Import the shared configuration
 
 
 def extract_throughput(file_path):
@@ -22,9 +23,9 @@ def extract_throughput(file_path):
 
 
 def main():
-    # Base directory for results
-    base_dir = "/home/xt253/TinyPtr/results"
-    output_dir = os.path.join(base_dir, "csv")
+    # Use the shared configuration
+    base_dir = config_py.RESULTS_DIR
+    output_dir = config_py.CSV_OUTPUT_DIR
 
     print(f"Processing results from {base_dir}")
     print(f"Output will be saved to {output_dir}")
@@ -37,7 +38,7 @@ def main():
 
     # Define valid IDs based on the updated bash script
     valid_ids = {
-        0: [6, 7, 14, 15, 17]  # entry_id = 0
+        0: [6, 7, 15, 17, 20]  # entry_id = 0
     }
     valid_case_ids = [1, 3, 6, 7]
 

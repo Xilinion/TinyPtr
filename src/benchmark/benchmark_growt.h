@@ -1,5 +1,7 @@
 #pragma once
 
+#if 0
+
 #include <atomic>
 #include <cstdint>
 #include <random>
@@ -49,3 +51,4 @@ class BenchmarkGrowt : public BenchmarkObject64 {
 };
 
 }  // namespace tinyptr
+#endif

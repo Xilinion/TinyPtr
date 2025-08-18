@@ -1,6 +1,8 @@
 #pragma once
 
+#include <algorithm>
 #include <cstdint>
+#include <execution>
 #include <mutex>
 #include <thread>
 #include <tuple>
@@ -28,6 +30,13 @@ class BenchmarkObject64 {
 
     virtual void YCSBRun(std::vector<std::pair<uint64_t, uint64_t>>& ops,
                          int num_threads) {}
+
+    virtual std::vector<std::tuple<uint64_t, double, uint64_t>>
+    YCSBRunWithLatencyRecording(std::vector<std::pair<uint64_t, uint64_t>>& ops,
+                                int num_threads, uint64_t record_num,
+                                const std::vector<double>& percentiles) {
+        return {};
+    }
 
     virtual void ConcurrentRun(
         std::vector<std::tuple<uint64_t, uint64_t, uint64_t>>& ops,

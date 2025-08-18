@@ -7,6 +7,15 @@ function(build_iceberg)
         set(ICEBERG_DEBUG_DEFINES "")
     endif()
 
+    # Set NORESIZE based on DISABLE_RESIZING option
+    if(DISABLE_RESIZING)
+        set(ICEBERG_RESIZE_FLAG "NORESIZE=1")
+        set(ICEBERG_INTERFACE "ENABLE_BLOCK_LOCKING")
+    else()
+        set(ICEBERG_RESIZE_FLAG "")
+        set(ICEBERG_INTERFACE "ENABLE_RESIZE;ENABLE_BLOCK_LOCKING")  # Use semicolon for list
+    endif()
+
     # Add ExternalProject for iceberg
     ExternalProject_Add(
         iceberg
@@ -15,7 +24,7 @@ function(build_iceberg)
         PREFIX ${CMAKE_BINARY_DIR}/iceberg
         BUILD_IN_SOURCE 1
         BUILD_COMMAND
-        COMMAND ${CMAKE_MAKE_PROGRAM} CC=gcc CPP=g++ ${ICEBERG_DEBUG_DEFINES} all
+        COMMAND ${CMAKE_MAKE_PROGRAM} ${ICEBERG_RESIZE_FLAG} CC=gcc CPP=g++ ${ICEBERG_DEBUG_DEFINES} main
         COMMAND ${CMAKE_COMMAND} -E env sh -c "cp <SOURCE_DIR>/include/* <SOURCE_DIR>/"
         COMMAND ${CMAKE_COMMAND} -E env sh -c "cp <BINARY_DIR>/obj/*.o <BINARY_DIR>/"
         COMMAND ${CMAKE_COMMAND} -E env sh -c "gcc-ar -rs libiceberg.a <BINARY_DIR>/obj/*.o"
@@ -33,6 +42,6 @@ function(build_iceberg)
         INTERFACE_INCLUDE_DIRECTORIES ${SOURCE_DIR}
     )
 
-    target_compile_definitions(iceberg_lib INTERFACE ENABLE_RESIZE ENABLE_BLOCK_LOCKING)
+    target_compile_definitions(iceberg_lib INTERFACE ${ICEBERG_INTERFACE})
     target_compile_options(iceberg_lib INTERFACE -march=native)
 endfunction()

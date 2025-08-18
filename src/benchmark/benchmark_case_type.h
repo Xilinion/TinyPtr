@@ -29,7 +29,10 @@ struct BenchmarkCaseType {
         YCSB_NEG_A = 20,
         YCSB_NEG_B = 21,
         YCSB_NEG_C = 22,
-        COUNT = 23
+        HASH_DISTRUBUTION = 23,
+        YCSB_A_PERCENTILE = 24,
+        YCSB_NEG_A_PERCENTILE = 25,
+        COUNT = 26
     };
 
     BenchmarkCaseType() = default;

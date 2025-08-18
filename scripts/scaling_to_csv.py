@@ -1,7 +1,7 @@
 import os
 import re
 import csv
-
+import config_py  # Import the shared configuration
 
 def extract_throughput(file_path):
     """Extract Throughput and Latency from a result file."""
@@ -23,8 +23,8 @@ def extract_throughput(file_path):
 
 def main():
     # Base directory for results
-    base_dir = "/home/xt253/TinyPtr/results"
-    output_dir = os.path.join(base_dir, "csv")
+    base_dir = config_py.RESULTS_DIR
+    output_dir = config_py.CSV_OUTPUT_DIR
 
     print(f"Processing results from {base_dir}")
     print(f"Output will be saved to {output_dir}")
@@ -36,7 +36,7 @@ def main():
     all_data = []
 
     # Define valid IDs based on the updated bash script
-    valid_object_ids = [6, 7, 14, 15, 17]
+    valid_object_ids = [6, 7, 15, 17, 20]
     valid_case_ids = [1, 3, 6, 7]
     thread_nums = [1, 2, 4, 8, 16, 32]
 

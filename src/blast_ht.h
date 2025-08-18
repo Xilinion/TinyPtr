@@ -116,6 +116,7 @@ class BlastHT {
     void Scan4Stats();
 
    protected:
+    void* combined_mem;
     uint8_t* cloud_tab;
     uint8_t* byte_array;
     uint8_t* bin_cnt_head;
@@ -359,6 +360,8 @@ class BlastHT {
         uint64_t cloud_id =
             ((XXH64(&truncated_key, sizeof(uint64_t), kHashSeed1) ^ key) &
              kBlastQuotientingMask);
+        cloud_id = cloud_id & kQuotientingTailMask;
+
         // do fast division
         // uint64_t cloud_id;
         // if (cloud_id > kFastDivisionUpperBound) {
@@ -368,7 +371,7 @@ class BlastHT {
         //                kFastDivisionShift[0];
         // }
         __builtin_prefetch(
-            (const void*)(cloud_tab + (cloud_id << kCloudIdShiftOffset)));
+            (const void*)(cloud_tab + (cloud_id << kCloudIdShiftOffset)), 1, 3);
     }
 };
 

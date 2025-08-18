@@ -1,0 +1,3 @@
+[submodule "latex"]
+	path = latex
+	url = git@github.com:BlackJackTone/TPHT-Figure-Tex.git

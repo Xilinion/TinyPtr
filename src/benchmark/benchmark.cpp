@@ -28,7 +28,8 @@
 #include "benchmark_conc_skulkerht.h"
 #include "benchmark_cuckoo.h"
 #include "benchmark_dereftab64.h"
-#include "benchmark_growt.h"
+#include "benchmark_hash_distribution.h"
+// #include "benchmark_growt.h"
 #include "benchmark_iceberg.h"
 #include "benchmark_intarray64.h"
 #include "benchmark_junction.h"
@@ -567,9 +568,9 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
         case BenchmarkObjectType::SKULKERHT:
             obj = new BenchmarkSkulkerHT(table_size, para.bin_size);
             break;
-        case BenchmarkObjectType::GROWT:
-            obj = new BenchmarkGrowt(table_size);
-            break;
+        // case BenchmarkObjectType::GROWT:
+        //     obj = new BenchmarkGrowt(table_size);
+        //     break;
         case BenchmarkObjectType::CONCURRENT_SKULKERHT:
             obj = new BenchmarkConcSkulkerHT(table_size, para.bin_size);
             break;
@@ -597,10 +598,13 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
             obj = new BenchmarkBlastHT(table_size, para.bin_size);
             break;
         case BenchmarkObjectType::RESIZABLE_BLAST: {
-            uint64_t part_num = 10;
+            uint64_t part_num = 16;
             obj = new BenchmarkResizableBlastHT(table_size / part_num, part_num,
                                                 thread_num);
         } break;
+        case BenchmarkObjectType::HASH_DISTRIBUTION:
+            obj = new BenchmarkHashDistribution(table_size);
+            break;
         case BenchmarkObjectType::NONCONC_BLAST:
             obj = new BenchmarkNonConcBlastHT(table_size, para.bin_size);
             break;
@@ -1323,8 +1327,11 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
             };
             break;
         case BenchmarkCaseType::YCSB_A:
+        case BenchmarkCaseType::YCSB_NEG_A:
         case BenchmarkCaseType::YCSB_B:
+        case BenchmarkCaseType::YCSB_NEG_B:
         case BenchmarkCaseType::YCSB_C:
+        case BenchmarkCaseType::YCSB_NEG_C:
             run = [this, para]() {
                 std::vector<uint64_t> ycsb_keys;
                 ycsb_load(ycsb_keys, para.ycsb_load_path);
@@ -1380,6 +1387,71 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
                     << "Run Throughput: "
                     << int(double(run_op_cnt) / (run_duration / 1000.0))
                     << " ops/s" << std::endl;
+            };
+            break;
+        case BenchmarkCaseType::YCSB_A_PERCENTILE:
+        case BenchmarkCaseType::YCSB_NEG_A_PERCENTILE:
+            run = [this, para]() {
+                std::vector<uint64_t> ycsb_keys;
+                ycsb_load(ycsb_keys, para.ycsb_load_path);
+
+                std::vector<std::pair<uint64_t, uint64_t>> ycsb_exe_vec;
+                ycsb_exe_load(ycsb_exe_vec, para.ycsb_run_path);
+
+                auto start = std::chrono::high_resolution_clock::now();
+
+                obj->YCSBFill(ycsb_keys, para.thread_num);
+
+                auto start_fill = std::chrono::high_resolution_clock::now();
+                auto fill_duration =
+                    std::chrono::duration_cast<std::chrono::milliseconds>(
+                        start_fill - start)
+                        .count();
+
+                uint64_t record_num = 10000;
+
+                // Define the percentiles to calculate
+                std::vector<double> percentiles = {50.0, 95.0,  99.0,
+                                                   99.9, 99.99, 100.0};
+
+                auto latencies = obj->YCSBRunWithLatencyRecording(
+                    ycsb_exe_vec, para.thread_num, record_num, percentiles);
+
+                auto start_run = std::chrono::high_resolution_clock::now();
+                auto run_duration =
+                    std::chrono::duration_cast<std::chrono::milliseconds>(
+                        start_run - start_fill)
+                        .count();
+
+                auto end = std::chrono::high_resolution_clock::now();
+                auto duration =
+                    std::chrono::duration_cast<std::chrono::milliseconds>(end -
+                                                                          start)
+                        .count();
+
+                output_stream << "Percentile Latency Records: " << std::endl;
+                output_stream << "Operation Type, Percentile, Latency (ns)"
+                              << std::endl;
+                for (auto& latency : latencies) {
+                    output_stream << std::get<0>(latency) << ", "
+                                  << std::get<1>(latency) << ", "
+                                  << std::get<2>(latency) << std::endl;
+                }
+            };
+            break;
+        case BenchmarkCaseType::HASH_DISTRUBUTION:
+            run = [this, para]() {
+                dynamic_cast<BenchmarkHashDistribution*>(obj)
+                    ->Concurrent_Simulation(para.thread_num);
+                auto res = dynamic_cast<BenchmarkHashDistribution*>(obj)
+                               ->Occupancy_Distribution();
+                output_stream << "Occupancy Distribution: " << std::endl;
+                output_stream << "Operation Count: " << opt_num << std::endl;
+                output_stream << "Bin Occupancy, Count: " << std::endl;
+                for (auto& i : res) {
+                    output_stream << i.first << ", " << i.second << std::endl;
+                }
+                output_stream << std::endl;
             };
             break;
 

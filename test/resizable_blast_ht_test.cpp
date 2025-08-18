@@ -61,9 +61,9 @@ void concurrent_query(ResizableBlastHT& ht,
         uint64_t val = 0;
         // std::cout << i - start << std::endl;
         // ht.Query(data[i].first + 1000000000000000000ull, &val);
-        ht.Query(handle, data[i].first, &val);
-        // ASSERT_TRUE(ht.Query(handle, data[i].first, &val));
-        // ASSERT_EQ(val, data[i].second);
+        // ht.Query(handle, data[i].first, &val);
+        ASSERT_TRUE(ht.Query(handle, data[i].first, &val));
+        ASSERT_EQ(val, data[i].second);
     }
     ht.FreeHandle(handle);
 }
