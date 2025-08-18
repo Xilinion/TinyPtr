@@ -130,8 +130,10 @@ BlastHT::BlastHT(uint64_t size, uint8_t quotienting_tail_length,
     //           << " total_size: " << total_size << std::endl;
 
     if (if_resize) {
+        // combined_mem = mmap(NULL, total_size, PROT_READ | PROT_WRITE,
+        //                     MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
         combined_mem = mmap(NULL, total_size, PROT_READ | PROT_WRITE,
-                            MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
+                            MAP_ANONYMOUS | MAP_PRIVATE | MAP_POPULATE, -1, 0);
     } else {
         combined_mem = mmap(NULL, total_size, PROT_READ | PROT_WRITE,
                             MAP_ANONYMOUS | MAP_PRIVATE | MAP_POPULATE, -1, 0);
@@ -411,18 +413,18 @@ query_again:
         expected_version = concurrent_version.load();
     } while ((expected_version & 1));
 
+    // __m256i revert_mask = _mm256_set_epi8(
+    //     31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, 16, 15, 14,
+    //     13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0);
+    __m256i fp_vec = _mm256_loadu_si256(
+        reinterpret_cast<__m256i*>(cloud + kFingerprintOffset));
+
     uint8_t& control_info = cloud[kControlOffset];
     uint8_t crystal_cnt = control_info & kControlCrystalMask;
     uint8_t tp_cnt = (control_info >> kControlTinyPtrShift);
     uint8_t fp_cnt = crystal_cnt + tp_cnt;
 
     uint8_t crystal_begin = kControlOffset - kEntryByteLength;
-
-    // __m256i revert_mask = _mm256_set_epi8(
-    //     31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, 16, 15, 14,
-    //     13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0);
-    __m256i fp_vec = _mm256_loadu_si256(
-        reinterpret_cast<__m256i*>(cloud + kFingerprintOffset));
 
     // fp_vec = _mm256_xor_si256(fp_vec, revert_mask);
     __mmask32 mask = _mm256_cmpeq_epi8_mask(fp_vec, _mm256_set1_epi8(fp));
@@ -844,15 +846,15 @@ bool BlastHT::ResizeMoveStride(uint64_t stride_id, BlastHT* new_ht) {
             uint64_t ins_key = hash_key_rebuild(
                 (*reinterpret_cast<uint64_t*>(entry + kKeyOffset)), cloud_id,
                 fp);
-            
+
             new_ht->prefetch_key(ins_key);
-            
+
             ins_queue.push(std::make_pair(
                 ins_key, *reinterpret_cast<uint64_t*>(entry + kValueOffset)));
             new_ht->prefetch_key(ins_key);
         }
 
-        if (ins_queue.get_size() >= 20) {
+        if (ins_queue.get_size() >= 10) {
             while (!ins_queue.empty()) {
                 auto ins_pair = ins_queue.pop();
                 if (!new_ht->Insert(ins_pair.first, ins_pair.second)) {

@@ -360,6 +360,8 @@ class BlastHT {
         uint64_t cloud_id =
             ((XXH64(&truncated_key, sizeof(uint64_t), kHashSeed1) ^ key) &
              kBlastQuotientingMask);
+        cloud_id = cloud_id & kQuotientingTailMask;
+
         // do fast division
         // uint64_t cloud_id;
         // if (cloud_id > kFastDivisionUpperBound) {
