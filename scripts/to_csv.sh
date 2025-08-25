@@ -42,6 +42,7 @@ EOF
 echo "Generated config_py.py with results directory: $results_dir"
 
 # Run all CSV generation scripts (they will import config_py.py)
+python3 ./intro_to_csv.py
 python3 ./throughput_space_eff_to_csv.py
 exit
 python3 ./ycsb_to_csv.py
