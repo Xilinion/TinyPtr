@@ -12,7 +12,7 @@ const BenchmarkObjectType BenchmarkNonConcBlastHT::TYPE = BenchmarkObjectType::N
 
 BenchmarkNonConcBlastHT::BenchmarkNonConcBlastHT(uint64_t size, uint16_t bin_size)
     : BenchmarkObject64(TYPE) {
-    tab = new NonConcBlastHT(size, bin_size);
+    tab = new NonConcBlastHT(size, bin_size, false);
 }
 
 uint8_t BenchmarkNonConcBlastHT::Insert(uint64_t key, uint64_t value) {
