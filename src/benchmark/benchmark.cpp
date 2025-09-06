@@ -1441,17 +1441,27 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
             break;
         case BenchmarkCaseType::HASH_DISTRUBUTION:
             run = [this, para]() {
-                dynamic_cast<BenchmarkHashDistribution*>(obj)
-                    ->Concurrent_Simulation(para.thread_num);
-                auto res = dynamic_cast<BenchmarkHashDistribution*>(obj)
-                               ->Occupancy_Distribution();
-                output_stream << "Occupancy Distribution: " << std::endl;
-                output_stream << "Operation Count: " << opt_num << std::endl;
-                output_stream << "Bin Occupancy, Count: " << std::endl;
-                for (auto& i : res) {
-                    output_stream << i.first << ", " << i.second << std::endl;
+                auto* hash_dist = dynamic_cast<BenchmarkHashDistribution*>(obj);
+                
+                // Test different key generation strategies
+                std::vector<std::pair<std::string, std::vector<uint64_t>>> key_sets = {
+                    {"Random Keys", hash_dist->Generate_Random_Keys(opt_num, para.thread_num)},
+                    {"Sequential Keys", hash_dist->Generate_Sequential_Keys(opt_num, para.thread_num)},
+                    {"Low Hamming Weight Keys", hash_dist->Generate_Low_Hamming_Weight_Keys(opt_num, para.thread_num)},
+                    {"High Hamming Weight Keys", hash_dist->Generate_High_Hamming_Weight_Keys(opt_num, para.thread_num)}
+                };
+                
+                for (const auto& key_set : key_sets) {
+                    output_stream << "=== " << key_set.first << " ===" << std::endl;
+                    hash_dist->Concurrent_Simulation(key_set.second, para.thread_num);
+                    auto res = hash_dist->Occupancy_Distribution();
+                    output_stream << "Operation Count: " << key_set.second.size() << std::endl;
+                    output_stream << "Bin Occupancy, Count: " << std::endl;
+                    for (auto& i : res) {
+                        output_stream << i.first << ", " << i.second << std::endl;
+                    }
+                    output_stream << std::endl;
                 }
-                output_stream << std::endl;
             };
             break;
 
