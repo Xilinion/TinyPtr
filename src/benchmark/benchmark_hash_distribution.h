@@ -38,6 +38,7 @@ class BenchmarkHashDistribution : public BenchmarkObject64 {
     // Helper functions for combinatorial key generation
     uint64_t binomial_coefficient(int n, int k);
     uint64_t kth_combination(int n, int k, uint64_t index);
+    std::pair<int, uint64_t> find_weight_and_index(uint64_t global_index, bool high_weight = false);
    private:
     uint64_t op_cnt;
     uint64_t kHashSeed1;

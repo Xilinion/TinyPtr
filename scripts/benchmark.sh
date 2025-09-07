@@ -468,7 +468,7 @@ thread_num=0
 
 # Hash Distribution Validation
 
-num_rep=10
+num_rep=100
 
 thread_num=16
 for case_id in 23; do

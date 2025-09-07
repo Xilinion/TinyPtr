@@ -1,7 +1,8 @@
 #include "benchmark_hash_distribution.h"
-#include <cstdint>
 #include <bitset>
+#include <cstdint>
 #include <iostream>
+#include <unordered_set>
 #include "utils/rng.h"
 
 namespace tinyptr {
@@ -40,7 +41,8 @@ void BenchmarkHashDistribution::Update(uint64_t key, uint8_t ptr,
 
 void BenchmarkHashDistribution::Erase(uint64_t key, uint8_t ptr) {}
 
-void BenchmarkHashDistribution::Concurrent_Simulation(const std::vector<uint64_t>& keys, int num_threads) {
+void BenchmarkHashDistribution::Concurrent_Simulation(
+    const std::vector<uint64_t>& keys, int num_threads) {
     op_cnt = keys.size();  // Update operation count to match key count
     std::vector<std::thread> threads;
 
@@ -130,10 +132,13 @@ BenchmarkHashDistribution::Occupancy_Distribution() {
 }
 
 uint64_t BenchmarkHashDistribution::binomial_coefficient(int n, int k) {
-    if (k > n || k < 0) return 0;
-    if (k == 0 || k == n) return 1;
-    if (k > n - k) k = n - k; // Take advantage of symmetry
-    
+    if (k > n || k < 0)
+        return 0;
+    if (k == 0 || k == n)
+        return 1;
+    if (k > n - k)
+        k = n - k;  // Take advantage of symmetry
+
     uint64_t result = 1;
     for (int i = 0; i < k; ++i) {
         result = result * (n - i) / (i + 1);
@@ -141,14 +146,16 @@ uint64_t BenchmarkHashDistribution::binomial_coefficient(int n, int k) {
     return result;
 }
 
-uint64_t BenchmarkHashDistribution::kth_combination(int n, int k, uint64_t index) {
+uint64_t BenchmarkHashDistribution::kth_combination(int n, int k,
+                                                    uint64_t index) {
     uint64_t combination = 0;
     int remaining_bits = k;
     uint64_t remaining_index = index;
-    
+
     for (int bit_pos = 0; bit_pos < n && remaining_bits > 0; ++bit_pos) {
-        uint64_t ways_without_this_bit = binomial_coefficient(n - bit_pos - 1, remaining_bits - 1);
-        
+        uint64_t ways_without_this_bit =
+            binomial_coefficient(n - bit_pos - 1, remaining_bits - 1);
+
         if (remaining_index < ways_without_this_bit) {
             // Include this bit in the combination
             combination |= (1ULL << bit_pos);
@@ -158,20 +165,58 @@ uint64_t BenchmarkHashDistribution::kth_combination(int n, int k, uint64_t index
             remaining_index -= ways_without_this_bit;
         }
     }
-    
+
     return combination;
 }
 
-std::vector<uint64_t> BenchmarkHashDistribution::Generate_Random_Keys(uint64_t count, int num_threads) {
+std::pair<int, uint64_t> BenchmarkHashDistribution::find_weight_and_index(
+    uint64_t global_index, bool high_weight) {
+    uint64_t cumulative_count = 0;
+
+    if (high_weight) {
+        // For high weight: start from weight 64 and go down
+        for (int weight = 64; weight >= 0; --weight) {
+            uint64_t count_for_weight =
+                (weight == 64) ? 1 : binomial_coefficient(64, 64 - weight);
+
+            if (global_index < cumulative_count + count_for_weight) {
+                uint64_t local_index = global_index - cumulative_count;
+                return std::make_pair(weight, local_index);
+            }
+
+            cumulative_count += count_for_weight;
+        }
+    } else {
+        // For low weight: start from weight 0 and go up
+        for (int weight = 0; weight <= 64; ++weight) {
+            uint64_t count_for_weight =
+                (weight == 0) ? 1 : binomial_coefficient(64, weight);
+
+            if (global_index < cumulative_count + count_for_weight) {
+                uint64_t local_index = global_index - cumulative_count;
+                return std::make_pair(weight, local_index);
+            }
+
+            cumulative_count += count_for_weight;
+        }
+    }
+
+    // Fallback (shouldn't reach here with valid input)
+    return std::make_pair(high_weight ? 0 : 64, 0);
+}
+
+std::vector<uint64_t> BenchmarkHashDistribution::Generate_Random_Keys(
+    uint64_t count, int num_threads) {
     std::vector<uint64_t> keys(count);
     std::vector<std::thread> threads;
-    
+
     size_t chunk_size = count / num_threads;
-    
+
     for (int i = 0; i < num_threads; ++i) {
         size_t start_index = i * chunk_size;
-        size_t end_index = (i == num_threads - 1) ? count : start_index + chunk_size;
-        
+        size_t end_index =
+            (i == num_threads - 1) ? count : start_index + chunk_size;
+
         threads.emplace_back([&keys, start_index, end_index]() {
             rng::rng64 rgen64(rng::random_device_seed{}());
             for (size_t j = start_index; j < end_index; ++j) {
@@ -179,153 +224,131 @@ std::vector<uint64_t> BenchmarkHashDistribution::Generate_Random_Keys(uint64_t c
             }
         });
     }
-    
+
     for (auto& thread : threads) {
         thread.join();
     }
-    
+
     return keys;
 }
 
-std::vector<uint64_t> BenchmarkHashDistribution::Generate_Sequential_Keys(uint64_t count, int num_threads) {
+std::vector<uint64_t> BenchmarkHashDistribution::Generate_Sequential_Keys(
+    uint64_t count, int num_threads) {
     std::vector<uint64_t> keys(count);
     std::vector<std::thread> threads;
-    
+
     size_t chunk_size = count / num_threads;
-    
+
     for (int i = 0; i < num_threads; ++i) {
         size_t start_index = i * chunk_size;
-        size_t end_index = (i == num_threads - 1) ? count : start_index + chunk_size;
-        
+        size_t end_index =
+            (i == num_threads - 1) ? count : start_index + chunk_size;
+
         threads.emplace_back([&keys, start_index, end_index]() {
             for (size_t j = start_index; j < end_index; ++j) {
                 keys[j] = j;
             }
         });
     }
-    
+
     for (auto& thread : threads) {
         thread.join();
     }
-    
+
     return keys;
 }
 
-std::vector<uint64_t> BenchmarkHashDistribution::Generate_Low_Hamming_Weight_Keys(uint64_t count, int num_threads) {
-    std::vector<uint64_t> keys(count);
-    std::vector<std::thread> threads;
+std::vector<uint64_t>
+BenchmarkHashDistribution::Generate_Low_Hamming_Weight_Keys(uint64_t count,
+                                                            int num_threads) {
+    // Generate all keys sequentially first, then distribute to threads for copying
+    std::vector<uint64_t> all_keys;
+    all_keys.reserve(count);
     
-    // Calculate total available keys and distribute work
-    uint64_t total_generated = 0;
-    std::vector<std::pair<int, std::pair<uint64_t, uint64_t>>> weight_ranges; // weight, (start_idx, count)
-    
-    // Calculate how many keys we need from each weight
-    for (int weight = 0; weight <= 64 && total_generated < count; ++weight) {
-        uint64_t available_for_weight = (weight == 0) ? 1 : binomial_coefficient(64, weight);
-        uint64_t needed_for_weight = std::min(available_for_weight, count - total_generated);
-        
-        if (needed_for_weight > 0) {
-            weight_ranges.emplace_back(weight, std::make_pair(total_generated, needed_for_weight));
-            total_generated += needed_for_weight;
+    // Generate keys sequentially to ensure correctness
+    uint64_t generated = 0;
+    for (int weight = 0; weight <= 64 && generated < count; ++weight) {
+        if (weight == 0) {
+            // Weight 0: single key
+            all_keys.push_back(0);
+            generated++;
+        } else {
+            // Generate all combinations for this weight
+            uint64_t combination = (1ULL << weight) - 1; // First combination
+            
+            while (combination != 0 && generated < count) {
+                all_keys.push_back(combination);
+                generated++;
+                
+                if (generated >= count) break;
+                
+                // Generate next combination using fast bit manipulation
+                uint64_t c0 = __builtin_ctzll(combination);
+                uint64_t temp = combination >> c0;
+                uint64_t c1 = __builtin_ctzll(~temp);
+                
+                if (c0 + c1 >= 64) break;
+                
+                int pos = c0 + c1;
+                combination |= (1ULL << pos);
+                combination &= ~((1ULL << pos) - 1);
+                if (c1 > 1) {
+                    combination |= (1ULL << (c1 - 1)) - 1;
+                }
+            }
         }
     }
     
-    // Distribute ranges across threads
-    size_t total_work = count;
-    size_t work_per_thread = total_work / num_threads;
-    
-    for (int thread_id = 0; thread_id < num_threads; ++thread_id) {
-        size_t start_idx = thread_id * work_per_thread;
-        size_t end_idx = (thread_id == num_threads - 1) ? total_work : (thread_id + 1) * work_per_thread;
-        
-        threads.emplace_back([&, thread_id, start_idx, end_idx]() {
-            for (size_t global_idx = start_idx; global_idx < end_idx; ++global_idx) {
-                // Find which weight this index belongs to
-                for (const auto& weight_range : weight_ranges) {
-                    int weight = weight_range.first;
-                    uint64_t range_start = weight_range.second.first;
-                    uint64_t range_count = weight_range.second.second;
-                    
-                    if (global_idx >= range_start && global_idx < range_start + range_count) {
-                        uint64_t local_idx = global_idx - range_start;
-                        
-                        if (weight == 0) {
-                            keys[global_idx] = 0;
-                        } else {
-                            keys[global_idx] = kth_combination(64, weight, local_idx);
-                        }
-                        break;
-                    }
-                }
-            }
-        });
-    }
-    
-    for (auto& thread : threads) {
-        thread.join();
-    }
-    
-    return keys;
+    // Now just return the sequential keys (no parallel needed for correctness)
+    all_keys.resize(count);
+    return all_keys;
 }
 
-std::vector<uint64_t> BenchmarkHashDistribution::Generate_High_Hamming_Weight_Keys(uint64_t count, int num_threads) {
-    std::vector<uint64_t> keys(count);
-    std::vector<std::thread> threads;
+std::vector<uint64_t>
+BenchmarkHashDistribution::Generate_High_Hamming_Weight_Keys(uint64_t count,
+                                                             int num_threads) {
+    // Generate all keys sequentially first, then distribute to threads for copying
+    std::vector<uint64_t> all_keys;
+    all_keys.reserve(count);
     
-    // Calculate total available keys and distribute work (high weight first)
-    uint64_t total_generated = 0;
-    std::vector<std::pair<int, std::pair<uint64_t, uint64_t>>> weight_ranges; // weight, (start_idx, count)
-    
-    // Calculate how many keys we need from each weight (64, 63, 62, ...)
-    for (int weight = 64; weight >= 0 && total_generated < count; --weight) {
-        uint64_t available_for_weight = (weight == 64) ? 1 : binomial_coefficient(64, 64 - weight);
-        uint64_t needed_for_weight = std::min(available_for_weight, count - total_generated);
-        
-        if (needed_for_weight > 0) {
-            weight_ranges.emplace_back(weight, std::make_pair(total_generated, needed_for_weight));
-            total_generated += needed_for_weight;
-        }
-    }
-    
-    // Distribute ranges across threads
-    size_t total_work = count;
-    size_t work_per_thread = total_work / num_threads;
-    
-    for (int thread_id = 0; thread_id < num_threads; ++thread_id) {
-        size_t start_idx = thread_id * work_per_thread;
-        size_t end_idx = (thread_id == num_threads - 1) ? total_work : (thread_id + 1) * work_per_thread;
-        
-        threads.emplace_back([&, thread_id, start_idx, end_idx]() {
-            for (size_t global_idx = start_idx; global_idx < end_idx; ++global_idx) {
-                // Find which weight this index belongs to
-                for (const auto& weight_range : weight_ranges) {
-                    int weight = weight_range.first;
-                    uint64_t range_start = weight_range.second.first;
-                    uint64_t range_count = weight_range.second.second;
-                    
-                    if (global_idx >= range_start && global_idx < range_start + range_count) {
-                        uint64_t local_idx = global_idx - range_start;
-                        
-                        if (weight == 64) {
-                            keys[global_idx] = ~0ULL;
-                        } else {
-                            // Generate by clearing bits: use kth_combination for bits to clear
-                            int bits_to_clear = 64 - weight;
-                            uint64_t clear_mask = kth_combination(64, bits_to_clear, local_idx);
-                            keys[global_idx] = ~clear_mask;
-                        }
-                        break;
-                    }
+    // Generate keys sequentially to ensure correctness
+    uint64_t generated = 0;
+    for (int weight = 64; weight >= 0 && generated < count; --weight) {
+        if (weight == 64) {
+            // Weight 64: single key (all bits set)
+            all_keys.push_back(~0ULL);
+            generated++;
+        } else {
+            // Generate by clearing bits
+            int bits_to_clear = 64 - weight;
+            uint64_t clear_mask = (1ULL << bits_to_clear) - 1; // First combination
+            
+            while (clear_mask != 0 && generated < count) {
+                all_keys.push_back(~clear_mask);
+                generated++;
+                
+                if (generated >= count) break;
+                
+                // Generate next combination using fast bit manipulation
+                uint64_t c0 = __builtin_ctzll(clear_mask);
+                uint64_t temp = clear_mask >> c0;
+                uint64_t c1 = __builtin_ctzll(~temp);
+                
+                if (c0 + c1 >= 64) break;
+                
+                int pos = c0 + c1;
+                clear_mask |= (1ULL << pos);
+                clear_mask &= ~((1ULL << pos) - 1);
+                if (c1 > 1) {
+                    clear_mask |= (1ULL << (c1 - 1)) - 1;
                 }
             }
-        });
+        }
     }
-    
-    for (auto& thread : threads) {
-        thread.join();
-    }
-    
-    return keys;
+
+    // Now just return the sequential keys (no parallel needed for correctness)
+    all_keys.resize(count);
+    return all_keys;
 }
 
 }  // namespace tinyptr
