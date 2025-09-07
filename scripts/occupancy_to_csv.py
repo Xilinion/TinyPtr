@@ -158,8 +158,8 @@ def main():
     # Add theoretical Poisson data points (lambda=1) with fine granularity
     lambda_val = 1.0
     poisson_rows = []
-    for i in range(0, 101):  # 101 points from 0 to 10
-        occupancy = i / 10.0  # Steps of 0.1 from 0 to 10
+    for i in range(0, 111):  # 111 points from 0 to 11
+        occupancy = i / 10.0  # Steps of 0.1 from 0 to 11
         poisson_prob = calculate_poisson_probability(occupancy, lambda_val)
         poisson_rows.append([occupancy, poisson_prob])
     
