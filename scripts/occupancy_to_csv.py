@@ -215,11 +215,16 @@ def main():
             for occ in range(12):  # 0 to 11
                 if occ in experimental_box_dict:
                     med, low, up, lw, uw = experimental_box_dict[occ]
-                    # Keep actual values, including zeros
-                    writer.writerow([f"{occ}", f"{med:.15f}", f"{low:.15f}", f"{up:.15f}", f"{lw:.15f}", f"{uw:.15f}"])
+                    # Clamp to safe positive values for log scale
+                    med = max(med, 1e-12)
+                    low = max(low, 1e-12)
+                    up = max(up, 1e-12)
+                    lw = max(lw, 1e-12)
+                    uw = max(uw, 1e-12)
                 else:
-                    # Missing occupancy levels should be actual zeros, not tiny values
-                    writer.writerow([f"{occ}", "0.000000000000000", "0.000000000000000", "0.000000000000000", "0.000000000000000", "0.000000000000000"])
+                    # Default safe values for missing occupancy levels
+                    med = low = up = lw = uw = 1e-12
+                writer.writerow([f"{occ}", f"{med:.15f}", f"{low:.15f}", f"{up:.15f}", f"{lw:.15f}", f"{uw:.15f}"])
         
         print(f"Created {box_csv}")
     
