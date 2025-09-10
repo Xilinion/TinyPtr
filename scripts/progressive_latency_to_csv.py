@@ -42,7 +42,7 @@ def main():
 
     # Define valid IDs based on the updated bash script
     valid_case_ids = [9, 10]
-    valid_object_ids = [6, 7, 15, 17, 20]
+    valid_object_ids = [6, 7, 15, 17, 20, 24]
     load_factors = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.95]
 
     # Process only the valid result files

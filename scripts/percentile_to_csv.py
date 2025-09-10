@@ -53,7 +53,7 @@ def main():
 
     # Define valid IDs for percentile cases (24, 25)
     valid_case_ids = [24, 25]  # YCSB_A_PERCENTILE, YCSB_NEG_A_PERCENTILE
-    valid_object_ids = [6, 7, 15, 18, 21]  # Resizable objects
+    valid_object_ids = [6, 7, 15, 18, 21, 24]  # Resizable objects
 
     # Process only the valid result files
     for case_id in valid_case_ids:

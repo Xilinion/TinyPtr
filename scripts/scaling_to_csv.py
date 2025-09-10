@@ -36,7 +36,7 @@ def main():
     all_data = []
 
     # Define valid IDs based on the updated bash script
-    valid_object_ids = [6, 7, 15, 17, 20]
+    valid_object_ids = [6, 7, 15, 17, 20, 24]
     valid_case_ids = [1, 3, 6, 7]
     thread_nums = [1, 2, 4, 8, 16, 32]
 

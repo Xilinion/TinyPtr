@@ -23,7 +23,7 @@ def main():
 
     # Cases and objects used in data-size scaling (see benchmark.sh)
     case_ids = [1, 3, 6, 7]
-    object_ids = [6, 7, 15, 17, 20]
+    object_ids = [6, 7, 15, 17, 20, 24]
 
     # Entry id range and sizes order as defined in benchmark.sh
     entry_start = 1000

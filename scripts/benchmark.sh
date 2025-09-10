@@ -334,57 +334,13 @@ bin_size=127
 
 # RunCTest
 
-no_resize_object_ids=(6 7 15 17 20)
-space_eff_object_ids=(6 7 15 17 23)
-resize_object_ids=(6 7 15 18 21)
+# no_resize_object_ids=(6 7 15 17 20)
+# space_eff_object_ids=(6 7 15 17 23)
+# resize_object_ids=(6 7 15 18 21)
 
-
-# Throughput / Space Efficiency
-
-# Number of repetitions for each configuration
-num_rep=10
-
-thread_num=1
-
-for case_id in 1 9 10; do
-    for object_id in "${space_eff_object_ids[@]}"; do
-    # for object_id in 23; do
-        entry_id=100
-        for table_size in 16777215; do
-            for load_factor in 0.05 0.1 0.15 0.2 0.25 0.3 0.35 0.4 0.45 0.5 0.55 0.6 0.65 0.7 0.75 0.8 0.85 0.9 0.95 0.99; do
-                opt_num=$(printf "%.0f" $(echo "$table_size * $load_factor" | bc -l))
-
-                # Run memory free only once per configuration
-                thread_num=0
-                output=$(RunRandMemFree)
-                echo "$output"
-                thread_num=1
-
-                # Repeat the actual run num_rep times
-                for ((rep = 1; rep <= num_rep; rep++)); do
-                    RunWithRetry "Run"
-                    let "entry_id++"
-                done
-            done
-        done
-    done
-done
-
-exit
-
-# YCSB with resize latency percentile
-
-thread_num=16
-for case_id in 24; do
-    for object_id in "${resize_object_ids[@]}"; do
-        entry_id=0
-        for table_size in 33554432; do
-            RunWithRetry "RunYCSB"
-            let "entry_id++"
-        done
-    done
-done
-thread_num=0
+no_resize_object_ids=(24)
+space_eff_object_ids=(24)
+resize_object_ids=(24)
 
 # YCSB with resize
 
@@ -466,56 +422,6 @@ for case_id in 17 18 19 20 21 22; do
 done
 thread_num=0
 
-# Hash Distribution Validation
-
-num_rep=100
-
-thread_num=16
-for case_id in 23; do
-    for object_id in 22; do
-        entry_id=0
-        for table_size in 67108864; do
-            opt_num=$table_size
-            for ((rep = 1; rep <= num_rep; rep++)); do
-                RunWithRetry "Run"
-                let "entry_id++"
-            done
-        done
-    done
-done
-thread_num=0
-
-# micro benchmark
-
-thread_num=16
-for case_id in 1 3 6 7; do
-    for object_id in "${no_resize_object_ids[@]}"; do
-        entry_id=0
-        for table_size in 67108863; do
-            # 0.95
-            opt_num=63753420
-            RunWithRetry "Run"
-            let "entry_id++"
-        done
-    done
-done
-thread_num=0
-
-# progressive latency
-
-for case_id in 9 10; do
-    for object_id in "${no_resize_object_ids[@]}"; do
-        entry_id=0
-        for table_size in 16777215; do
-            for load_factor in 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 0.95; do
-                opt_num=$table_size
-                RunWithRetry "Run"
-                let "entry_id++"
-            done
-        done
-    done
-done
-
 # Throughput / Space Efficiency
 
 # Number of repetitions for each configuration
@@ -548,6 +454,28 @@ done
 
 thread_num=0
 
+exit
+
+
+# Hash Distribution Validation
+
+num_rep=100
+
+thread_num=16
+for case_id in 23; do
+    for object_id in 22; do
+        entry_id=0
+        for table_size in 67108864; do
+            opt_num=$table_size
+            for ((rep = 1; rep <= num_rep; rep++)); do
+                RunWithRetry "Run"
+                let "entry_id++"
+            done
+        done
+    done
+done
+thread_num=0
+
 # load factor support
 
 for case_id in 0; do
@@ -563,7 +491,42 @@ for case_id in 0; do
     done
 done
 
+thread_num=0
+
 exit
+
+# micro benchmark
+
+thread_num=16
+for case_id in 1 3 6 7; do
+    for object_id in "${no_resize_object_ids[@]}"; do
+        entry_id=0
+        for table_size in 67108863; do
+            # 0.95
+            opt_num=63753420
+            RunWithRetry "Run"
+            let "entry_id++"
+        done
+    done
+done
+thread_num=0
+
+
+# progressive latency
+
+for case_id in 9 10; do
+    for object_id in "${no_resize_object_ids[@]}"; do
+        entry_id=0
+        for table_size in 16777215; do
+            for load_factor in 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 0.95; do
+                opt_num=$table_size
+                RunWithRetry "Run"
+                let "entry_id++"
+            done
+        done
+    done
+done
+
 
 # load factor with deletion
 
