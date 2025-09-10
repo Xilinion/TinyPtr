@@ -41,6 +41,7 @@
 #include "benchmark_skulkerht.h"
 #include "benchmark_std_unordered_map_64.h"
 #include "benchmark_yarded_tp_ht.h"
+#include "benchmark_tbb.h"
 
 namespace tinyptr {
 
@@ -607,6 +608,9 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
             break;
         case BenchmarkObjectType::NONCONC_BLAST:
             obj = new BenchmarkNonConcBlastHT(table_size, para.bin_size);
+            break;
+        case BenchmarkObjectType::TBB:
+            obj = new BenchmarkTBB(table_size);
             break;
         default:
             abort();
