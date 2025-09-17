@@ -190,7 +190,7 @@ bool BlastHT::Insert(uint64_t key, uint64_t value) {
 
     uint64_t truncated_key = key >> kBlastQuotientingLength;
     uint64_t cloud_id =
-        ((XXH64(&truncated_key, sizeof(uint64_t), kHashSeed1) ^ key) &
+        ((HASH_FUNCTION(&truncated_key, sizeof(uint64_t), kHashSeed1) ^ key) &
          kBlastQuotientingMask);
     uint8_t fp = cloud_id >> kCloudQuotientingLength;
     cloud_id = cloud_id & kQuotientingTailMask;
@@ -315,7 +315,7 @@ bool BlastHT::Query(uint64_t key, uint64_t* value_ptr) {
     uint64_t truncated_key = key >> kBlastQuotientingLength;
     uint64_t masked_key = truncated_key << kBlastQuotientingLength;
     uint64_t cloud_id =
-        ((XXH64(&truncated_key, sizeof(uint64_t), kHashSeed1) ^ key) &
+        ((HASH_FUNCTION(&truncated_key, sizeof(uint64_t), kHashSeed1) ^ key) &
          kBlastQuotientingMask);
     uint8_t fp = cloud_id >> kCloudQuotientingLength;
     cloud_id = cloud_id & kQuotientingTailMask;
@@ -394,7 +394,7 @@ bool BlastHT::Query(uint64_t key, uint64_t* value_ptr) {
     uint64_t truncated_key = key >> kBlastQuotientingLength;
     uint64_t masked_key = truncated_key << kBlastQuotientingLength;
     uint64_t cloud_id =
-        ((XXH64(&truncated_key, sizeof(uint64_t), kHashSeed1) ^ key) &
+        ((HASH_FUNCTION(&truncated_key, sizeof(uint64_t), kHashSeed1) ^ key) &
          kBlastQuotientingMask);
     uint8_t fp = cloud_id >> kCloudQuotientingLength;
     cloud_id = cloud_id & kQuotientingTailMask;
@@ -508,7 +508,7 @@ bool BlastHT::Update(uint64_t key, uint64_t value) {
     uint64_t truncated_key = key >> kBlastQuotientingLength;
     uint64_t masked_key = truncated_key << kBlastQuotientingLength;
     uint64_t cloud_id =
-        ((XXH64(&truncated_key, sizeof(uint64_t), kHashSeed1) ^ key) &
+        ((HASH_FUNCTION(&truncated_key, sizeof(uint64_t), kHashSeed1) ^ key) &
          kBlastQuotientingMask);
     uint8_t fp = cloud_id >> kCloudQuotientingLength;
     cloud_id = cloud_id & kQuotientingTailMask;
@@ -590,7 +590,7 @@ void BlastHT::Free(uint64_t key) {
     uint64_t truncated_key = key >> kBlastQuotientingLength;
     uint64_t masked_key = truncated_key << kBlastQuotientingLength;
     uint64_t cloud_id =
-        ((XXH64(&truncated_key, sizeof(uint64_t), kHashSeed1) ^ key) &
+        ((HASH_FUNCTION(&truncated_key, sizeof(uint64_t), kHashSeed1) ^ key) &
          kBlastQuotientingMask);
     uint8_t fp = cloud_id >> kCloudQuotientingLength;
     cloud_id = cloud_id & kQuotientingTailMask;

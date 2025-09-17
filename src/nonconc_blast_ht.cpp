@@ -143,7 +143,7 @@ bool NonConcBlastHT::Insert(uint64_t key, uint64_t value) {
 
     uint64_t truncated_key = key >> kBlastQuotientingLength;
     uint64_t cloud_id =
-        ((XXH64(&truncated_key, sizeof(uint64_t), kHashSeed1) ^ key) &
+        ((HASH_FUNCTION(&truncated_key, sizeof(uint64_t), kHashSeed1) ^ key) &
          kBlastQuotientingMask);
     uint8_t fp = cloud_id >> kCloudQuotientingLength;
     cloud_id = cloud_id & kQuotientingTailMask;
@@ -250,7 +250,7 @@ bool NonConcBlastHT::Query(uint64_t key, uint64_t* value_ptr) {
     uint64_t truncated_key = key >> kBlastQuotientingLength;
     uint64_t masked_key = truncated_key << kBlastQuotientingLength;
     uint64_t cloud_id =
-        ((XXH64(&truncated_key, sizeof(uint64_t), kHashSeed1) ^ key) &
+        ((HASH_FUNCTION(&truncated_key, sizeof(uint64_t), kHashSeed1) ^ key) &
          kBlastQuotientingMask);
     uint8_t fp = cloud_id >> kCloudQuotientingLength;
     cloud_id = cloud_id & kQuotientingTailMask;
@@ -329,7 +329,7 @@ bool NonConcBlastHT::Query(uint64_t key, uint64_t* value_ptr) {
     uint64_t truncated_key = key >> kBlastQuotientingLength;
     uint64_t masked_key = truncated_key << kBlastQuotientingLength;
     uint64_t cloud_id =
-        ((XXH64(&truncated_key, sizeof(uint64_t), kHashSeed1) ^ key) &
+        ((HASH_FUNCTION(&truncated_key, sizeof(uint64_t), kHashSeed1) ^ key) &
          kBlastQuotientingMask);
     uint8_t fp = cloud_id >> kCloudQuotientingLength;
     cloud_id = cloud_id & kQuotientingTailMask;
@@ -425,7 +425,7 @@ bool NonConcBlastHT::Update(uint64_t key, uint64_t value) {
     uint64_t truncated_key = key >> kBlastQuotientingLength;
     uint64_t masked_key = truncated_key << kBlastQuotientingLength;
     uint64_t cloud_id =
-        ((XXH64(&truncated_key, sizeof(uint64_t), kHashSeed1) ^ key) &
+        ((HASH_FUNCTION(&truncated_key, sizeof(uint64_t), kHashSeed1) ^ key) &
          kBlastQuotientingMask);
     uint8_t fp = cloud_id >> kCloudQuotientingLength;
     cloud_id = cloud_id & kQuotientingTailMask;
@@ -492,7 +492,7 @@ void NonConcBlastHT::Free(uint64_t key) {
     uint64_t truncated_key = key >> kBlastQuotientingLength;
     uint64_t masked_key = truncated_key << kBlastQuotientingLength;
     uint64_t cloud_id =
-        ((XXH64(&truncated_key, sizeof(uint64_t), kHashSeed1) ^ key) &
+        ((HASH_FUNCTION(&truncated_key, sizeof(uint64_t), kHashSeed1) ^ key) &
          kBlastQuotientingMask);
     uint8_t fp = cloud_id >> kCloudQuotientingLength;
     cloud_id = cloud_id & kQuotientingTailMask;

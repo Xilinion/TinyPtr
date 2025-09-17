@@ -10,6 +10,7 @@ const BenchmarkObjectType BenchmarkTBB::TYPE =
     BenchmarkObjectType::TBB;
 
 BenchmarkTBB::BenchmarkTBB(int n) : BenchmarkObject64(TYPE), tab(n) {
+    tab.max_load_factor(0.99);
 }
 
 uint8_t BenchmarkTBB::Insert(uint64_t key, uint64_t value) {

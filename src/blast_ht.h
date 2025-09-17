@@ -129,13 +129,13 @@ class BlastHT {
 
    protected:
     __attribute__((always_inline)) inline uint64_t hash_1(uint64_t key) {
-        return XXH64(&key, sizeof(uint64_t), kHashSeed1);
+        return HASH_FUNCTION(&key, sizeof(uint64_t), kHashSeed1);
     }
 
     __attribute__((always_inline)) inline uint64_t hash_1_bin(uint64_t key) {
-        // uint64_t hash = XXH64(&key, sizeof(uint64_t), kHashSeed1) >>
+        // uint64_t hash = HASH_FUNCTION(&key, sizeof(uint64_t), kHashSeed1) >>
         //                 (8 * sizeof(uint64_t) - kFastDivisionUpperBoundLog);
-        uint64_t hash = XXH64(&key, sizeof(uint64_t), kHashSeed1) >> 33;
+        uint64_t hash = HASH_FUNCTION(&key, sizeof(uint64_t), kHashSeed1) >> 33;
 
         return hash -
                ((hash * kFastDivisionReciprocal[1]) >> kFastDivisionShift[1]) *
@@ -155,11 +155,11 @@ class BlastHT {
 
         uint64_t tmp = key >> kCloudQuotientingLength;
 
-        // return (((XXH64(&tmp, sizeof(uint64_t), kHashSeed1) ^ key) &
+        // return (((HASH_FUNCTION(&tmp, sizeof(uint64_t), kHashSeed1) ^ key) &
         //          kQuotientingTailMask) *
         //         kBaseHashFactor) &
         //        kQuotientingTailMask;
-        return ((XXH64(&tmp, sizeof(uint64_t), kHashSeed1) ^ key) &
+        return ((HASH_FUNCTION(&tmp, sizeof(uint64_t), kHashSeed1) ^ key) &
                 kQuotientingTailMask);
     }
 
@@ -173,11 +173,11 @@ class BlastHT {
         uint64_t tmp = (quotiented_key << kCloudQuotientingLength) >>
                        kCloudQuotientingLength;
 
-        // return ((XXH64(&tmp, sizeof(uint64_t), kHashSeed1) ^
+        // return ((HASH_FUNCTION(&tmp, sizeof(uint64_t), kHashSeed1) ^
         //          ((cloud_id * kBaseHashInverse) & kQuotientingTailMask)) &
         //         kQuotientingTailMask) |
         //        (tmp << kQuotientingTailLength);
-        return ((XXH64(&tmp, sizeof(uint64_t), kHashSeed1) ^ cloud_id) &
+        return ((HASH_FUNCTION(&tmp, sizeof(uint64_t), kHashSeed1) ^ cloud_id) &
                 kQuotientingTailMask) |
                (tmp << kCloudQuotientingLength);
     }
@@ -191,21 +191,21 @@ class BlastHT {
         fp_64 <<= kCloudQuotientingLength;
         fp_64 |= cloud_id;
 
-        // return ((XXH64(&tmp, sizeof(uint64_t), kHashSeed1) ^
+        // return ((HASH_FUNCTION(&tmp, sizeof(uint64_t), kHashSeed1) ^
         //          ((cloud_id * kBaseHashInverse) & kQuotientingTailMask)) &
         //         kQuotientingTailMask) |
         //        (tmp << kQuotientingTailLength);
-        return ((XXH64(&tmp, sizeof(uint64_t), kHashSeed1) ^ fp_64) &
+        return ((HASH_FUNCTION(&tmp, sizeof(uint64_t), kHashSeed1) ^ fp_64) &
                 kBlastQuotientingMask) |
                (tmp << kBlastQuotientingLength);
     }
 
     __attribute__((always_inline)) inline uint64_t hash_2(uint64_t key) {
-        return XXH64(&key, sizeof(uint64_t), kHashSeed2);
+        return HASH_FUNCTION(&key, sizeof(uint64_t), kHashSeed2);
     }
 
     __attribute__((always_inline)) inline uint64_t hash_2_bin(uint64_t key) {
-        uint64_t hash = XXH64(&key, sizeof(uint64_t), kHashSeed2) >> 33;
+        uint64_t hash = HASH_FUNCTION(&key, sizeof(uint64_t), kHashSeed2) >> 33;
 
         // std::cout << "hash_2_bin: "
         //           << hash - ((hash * kFastDivisionReciprocal[1]) >>
@@ -358,7 +358,7 @@ class BlastHT {
     __attribute__((always_inline)) inline void prefetch_key(uint64_t key) {
         uint64_t truncated_key = key >> kBlastQuotientingLength;
         uint64_t cloud_id =
-            ((XXH64(&truncated_key, sizeof(uint64_t), kHashSeed1) ^ key) &
+            ((HASH_FUNCTION(&truncated_key, sizeof(uint64_t), kHashSeed1) ^ key) &
              kBlastQuotientingMask);
         cloud_id = cloud_id & kQuotientingTailMask;
 
