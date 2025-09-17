@@ -396,7 +396,11 @@ bool BlastHT::Query(uint64_t key, uint64_t* value_ptr) {
     uint64_t cloud_id =
         ((HASH_FUNCTION(&truncated_key, sizeof(uint64_t), kHashSeed1) ^ key) &
          kBlastQuotientingMask);
+
     uint8_t fp = cloud_id >> kCloudQuotientingLength;
+    
+    __m256i fp_dup_vec = _mm256_set1_epi8(fp);
+
     cloud_id = cloud_id & kQuotientingTailMask;
 
     uint8_t* cloud = &cloud_tab[(cloud_id << kCloudIdShiftOffset)];
@@ -427,7 +431,7 @@ query_again:
     uint8_t crystal_begin = kControlOffset - kEntryByteLength;
 
     // fp_vec = _mm256_xor_si256(fp_vec, revert_mask);
-    __mmask32 mask = _mm256_cmpeq_epi8_mask(fp_vec, _mm256_set1_epi8(fp));
+    __mmask32 mask = _mm256_cmpeq_epi8_mask(fp_vec, fp_dup_vec);
 
     mask &= ((1u << (fp_cnt)) - 1u);
 
