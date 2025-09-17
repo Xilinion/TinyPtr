@@ -428,6 +428,7 @@ thread_num=0
 num_rep=10
 
 thread_num=1
+enable_core_binding=true
 
 for case_id in 1 9 10; do
     for object_id in "${space_eff_object_ids[@]}"; do
@@ -453,6 +454,7 @@ for case_id in 1 9 10; do
 done
 
 thread_num=0
+enable_core_binding=false
 
 exit
 
