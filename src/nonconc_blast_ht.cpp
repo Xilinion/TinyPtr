@@ -332,6 +332,9 @@ bool NonConcBlastHT::Query(uint64_t key, uint64_t* value_ptr) {
         ((HASH_FUNCTION(&truncated_key, sizeof(uint64_t), kHashSeed1) ^ key) &
          kBlastQuotientingMask);
     uint8_t fp = cloud_id >> kCloudQuotientingLength;
+    
+    __m256i fp_dup_vec = _mm256_set1_epi8(fp);
+
     cloud_id = cloud_id & kQuotientingTailMask;
 
     uint8_t* cloud = &cloud_tab[(cloud_id << kCloudIdShiftOffset)];
@@ -339,6 +342,9 @@ bool NonConcBlastHT::Query(uint64_t key, uint64_t* value_ptr) {
 
 query_again:
 
+    __m256i fp_vec = _mm256_loadu_si256(
+        reinterpret_cast<__m256i*>(cloud + kFingerprintOffset));
+    
     uint8_t& control_info = cloud[kControlOffset];
     uint8_t crystal_cnt = control_info & kControlCrystalMask;
     uint8_t tp_cnt = (control_info >> kControlTinyPtrShift);
@@ -349,11 +355,9 @@ query_again:
     // __m256i revert_mask = _mm256_set_epi8(
     //     31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, 16, 15, 14,
     //     13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0);
-    __m256i fp_vec = _mm256_loadu_si256(
-        reinterpret_cast<__m256i*>(cloud + kFingerprintOffset));
 
     // fp_vec = _mm256_xor_si256(fp_vec, revert_mask);
-    __mmask32 mask = _mm256_cmpeq_epi8_mask(fp_vec, _mm256_set1_epi8(fp));
+    __mmask32 mask = _mm256_cmpeq_epi8_mask(fp_vec, fp_dup_vec);
 
     mask &= ((1u << (fp_cnt)) - 1u);
 

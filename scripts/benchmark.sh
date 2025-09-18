@@ -334,17 +334,14 @@ bin_size=127
 
 # RunCTest
 
-# no_resize_object_ids=(6 7 15 17 20)
-# space_eff_object_ids=(6 7 15 17 23)
-# resize_object_ids=(6 7 15 18 21)
-
-no_resize_object_ids=(24)
-space_eff_object_ids=(24)
-resize_object_ids=(24)
+no_resize_object_ids=(6 7 15 17 20 24)
+space_eff_object_ids=(6 7 15 17 23 24)
+resize_object_ids=(6 7 15 18 21 24)
 
 # YCSB with resize
 
 thread_num=16
+enable_core_binding=true
 for case_id in 17 18 19 20 21 22; do
     for object_id in "${resize_object_ids[@]}"; do
         entry_id=1
@@ -355,6 +352,7 @@ for case_id in 17 18 19 20 21 22; do
     done
 done
 thread_num=0
+enable_core_binding=false
 
 # scaling
 
