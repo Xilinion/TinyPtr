@@ -39,6 +39,9 @@ class BenchmarkIceberg : public BenchmarkObject64 {
     void ConcurrentRun(
         std::vector<std::tuple<uint64_t, uint64_t, uint64_t>>& ops,
         int num_threads);
+    std::vector<std::tuple<uint64_t, double, uint64_t>> ConcurrentRunWithLatencyRecording(
+        std::vector<std::tuple<uint64_t, uint64_t, uint64_t>>& ops, int num_threads, uint64_t record_num,
+        const std::vector<double>& percentiles);
 
    private:
     pid_t tid;

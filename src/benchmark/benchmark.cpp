@@ -1468,6 +1468,89 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
                 }
             };
             break;
+        case BenchmarkCaseType::QUERY_HIT_CUSTOM_LOAD_FACTOR_ONLY_PERCENTILE:
+            run = [this, para]() {
+                std::vector<uint64_t> key_vec, value_vec;
+                obj_fill_vec_prepare(key_vec, value_vec,
+                                     int(floor(table_size * load_factor)));
+
+                std::vector<std::tuple<uint64_t, uint64_t, uint64_t>> ops;
+                if (thread_num) {
+                    vec_to_ops(key_vec, value_vec, ops, ConcOptType::INSERT);
+                }
+
+                auto start = std::chrono::high_resolution_clock::now();
+
+                if (thread_num) {
+                    obj->ConcurrentRun(ops, thread_num);
+                } else {
+                    obj_fill(key_vec, value_vec);
+                }
+
+                auto end = std::chrono::high_resolution_clock::now();
+                auto duration =
+                    std::chrono::duration_cast<std::chrono::milliseconds>(end -
+                                                                          start)
+                        .count();
+
+                output_stream << "Insert CPU Time: " << duration << " ms"
+                              << std::endl;
+
+                output_stream << "Insert Throughput: "
+                              << int(double(table_size * load_factor) /
+                                     (duration / 1000.0))
+                              << " ops/s" << std::endl;
+
+                output_stream << "Insert Latency: "
+                              << int(duration * 1000000.0 /
+                                     double(table_size * load_factor))
+                              << " ns/op" << std::endl;
+
+                std::vector<uint64_t> query_key_vec;
+                std::vector<uint8_t> query_ptr_vec;
+                batch_query_vec_prepare(key_vec, query_key_vec, opt_num, 1);
+
+                if (thread_num) {
+                    vec_to_ops(query_key_vec, ops, ConcOptType::QUERY);
+                }
+
+                uint64_t record_num = 10000;
+
+                // Define the percentiles to calculate
+                std::vector<double> percentiles = {50.0, 95.0, 99.0, 99.9, 99.99, 100.0};
+
+                start = std::chrono::high_resolution_clock::now();
+
+                auto latencies = obj->ConcurrentRunWithLatencyRecording(
+                    ops, thread_num, record_num, percentiles);
+
+                end = std::chrono::high_resolution_clock::now();
+                duration =
+                    std::chrono::duration_cast<std::chrono::milliseconds>(end -
+                                                                          start)
+                        .count();
+
+                output_stream << "Query CPU Time: " << duration << " ms"
+                              << std::endl;
+
+                output_stream << "Query Throughput: "
+                              << int(double(opt_num) / (duration / 1000.0))
+                              << " ops/s" << std::endl;
+
+                output_stream << "Query Latency: "
+                              << int(duration * 1000000.0 / double(opt_num))
+                              << " ns/op" << std::endl;
+
+                output_stream << "Percentile Latency Records: " << std::endl;
+                output_stream << "Operation Type, Percentile, Latency (ns)"
+                              << std::endl;
+                for (auto& latency : latencies) {
+                    output_stream << std::get<0>(latency) << ", "
+                                  << std::get<1>(latency) << ", "
+                                  << std::get<2>(latency) << std::endl;
+                }
+            };
+            break;
 
         default:
             abort();
