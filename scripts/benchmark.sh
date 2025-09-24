@@ -454,6 +454,25 @@ done
 thread_num=0
 enable_core_binding=false
 
+# Positive Query Latency Percentile
+
+thread_num=1
+enable_core_binding=true
+for case_id in 26; do
+    for object_id in "${no_resize_object_ids[@]}"; do
+        entry_id=0
+        for table_size in 16777215; do
+            for load_factor in 0.7 0.8 0.9 0.95; do
+                opt_num=$(printf "%.0f" $(echo "$table_size * $load_factor" | bc -l))
+                RunWithRetry "Run"
+                let "entry_id++"
+            done
+        done
+    done
+done
+thread_num=0
+enable_core_binding=false
+
 exit
 
 
