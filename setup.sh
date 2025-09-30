@@ -24,6 +24,8 @@ sudo apt install -y texlive-latex-recommended texlive-fonts-recommended texlive-
 sudo apt install -y libtbb-dev
 sudo apt install -y screen
 sudo apt install -y linux-tools-common linux-tools-generic linux-tools-$(uname -r)
+sudo apt install -y golang-go
+sudo apt install -y shfmt
 
 # YCSB
 bash scripts/ycsb/ycsb.sh
