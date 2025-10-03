@@ -1,5 +1,6 @@
 import os
 import csv
+import config_py  # Import the shared configuration
 
 # Mapping from case_id to names
 case_id_map = {
@@ -22,7 +23,10 @@ case_id_map = {
     16: "INSERT_DELETE_LOAD_FACTOR_SUPPORT",
     17: "YCSB_A",
     18: "YCSB_B",
-    19: "YCSB_C"
+    19: "YCSB_C",
+    20: "YCSB_NEG_A",
+    21: "YCSB_NEG_B",
+    22: "YCSB_NEG_C",
 }
 
 # Mapping from object_id to names
@@ -46,12 +50,14 @@ object_id_map = {
     16: "RESIZABLE_SKULKERHT",
     17: "CONCURRENT_BYTEARRAYCHAINEDHT",
     18: "RESIZABLE_BYTEARRAYCHAINEDHT",
-    19: "BOLT"
+    19: "BOLT",
+    20: "BLAST",
+    21: "RESIZABLE_BLAST",
 }
 
 def tag_csv_files():
     # Base directory for CSV files
-    base_dir = "/home/xt253/TinyPtr/results/csv"
+    base_dir = config_py.CSV_OUTPUT_DIR
     output_dir = os.path.join(base_dir, "../tagged_csv")
 
     print(f"Processing CSV files from {base_dir}")

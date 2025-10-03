@@ -48,18 +48,18 @@ class ConcurrentByteArrayChainedHT {
 
    protected:
     __attribute__((always_inline)) inline uint64_t hash_1(uint64_t key) {
-        return XXH64(&key, sizeof(uint64_t), kHashSeed1);
+        return HASH_FUNCTION(&key, sizeof(uint64_t), kHashSeed1);
     }
 
     __attribute__((always_inline)) inline uint64_t hash_1_bin(uint64_t key) {
-        return (XXH64(&key, sizeof(uint64_t), kHashSeed1)) % kBinNum;
+        return (HASH_FUNCTION(&key, sizeof(uint64_t), kHashSeed1)) % kBinNum;
         // return 0;
     }
 
     __attribute__((always_inline)) inline uint64_t hash_1_base_id(
         uint64_t key) {
         uint64_t tmp = key >> kQuotientingTailLength;
-        return (XXH64(&tmp, sizeof(uint64_t), kHashSeed1) ^ key) &
+        return (HASH_FUNCTION(&tmp, sizeof(uint64_t), kHashSeed1) ^ key) &
                kQuotientingTailMask;
     }
 
@@ -67,17 +67,17 @@ class ConcurrentByteArrayChainedHT {
         uint64_t quotiented_key, uint64_t base_id) {
         uint64_t tmp = (quotiented_key << kQuotientingTailLength) >>
                        kQuotientingTailLength;
-        return ((XXH64(&tmp, sizeof(uint64_t), kHashSeed1) ^ base_id) &
+        return ((HASH_FUNCTION(&tmp, sizeof(uint64_t), kHashSeed1) ^ base_id) &
                 kQuotientingTailMask) |
                (tmp << kQuotientingTailLength);
     }
 
     __attribute__((always_inline)) inline uint64_t hash_2(uint64_t key) {
-        return XXH64(&key, sizeof(uint64_t), kHashSeed2);
+        return HASH_FUNCTION(&key, sizeof(uint64_t), kHashSeed2);
     }
 
     __attribute__((always_inline)) inline uint64_t hash_2_bin(uint64_t key) {
-        return (XXH64(&key, sizeof(uint64_t), kHashSeed2)) % kBinNum;
+        return (HASH_FUNCTION(&key, sizeof(uint64_t), kHashSeed2)) % kBinNum;
         // return 0;
     }
 

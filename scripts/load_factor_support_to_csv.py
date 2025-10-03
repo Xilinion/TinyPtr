@@ -1,7 +1,7 @@
 import os
 import re
 import csv
-
+import config_py  # Import the shared configuration
 
 def extract_load_factor(file_path):
     """Extract Load Factor from a result file."""
@@ -19,8 +19,8 @@ def extract_load_factor(file_path):
 
 def main():
     # Base directory for results
-    base_dir = "/home/xt253/TinyPtr/results"
-    output_dir = os.path.join(base_dir, "csv")
+    base_dir = config_py.RESULTS_DIR
+    output_dir = config_py.CSV_OUTPUT_DIR
 
     print(f"Processing results from {base_dir}")
     print(f"Output will be saved to {output_dir}")

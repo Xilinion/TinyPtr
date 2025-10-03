@@ -5,6 +5,7 @@ import seaborn as sns
 import numpy as np
 import re
 from pathlib import Path
+import config_py  # Import the shared configuration
 
 # Set the style for the plots
 plt.style.use('ggplot')
@@ -13,8 +14,8 @@ plt.rcParams['figure.figsize'] = (12, 8)
 plt.rcParams['pdf.fonttype'] = 42  # Ensure text is editable in the PDF
 
 # Define input and output directories
-input_dir = "/home/xt253/TinyPtr/results/tagged_csv"
-output_dir = os.path.join(os.path.dirname(input_dir), "figure")
+input_dir = os.path.join(config_py.RESULTS_DIR, "tagged_csv")
+output_dir = os.path.join(config_py.RESULTS_DIR, "figure")
 
 # Create output directory if it doesn't exist
 os.makedirs(output_dir, exist_ok=True)

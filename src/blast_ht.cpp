@@ -119,19 +119,29 @@ BlastHT::BlastHT(uint64_t size, uint8_t quotienting_tail_length,
         cloud_size_aligned + byte_array_size_aligned + bin_cnt_size_aligned;
 
     // Allocate a single aligned block
-    void* combined_mem;
     // if (posix_memalign(&combined_mem, 64, total_size) != 0) {
     //     // Handle allocation failure
     //     abort();
     // }
 
+    // std::cerr << " cloud_size_aligned: " << cloud_size_aligned
+    //           << " byte_array_size_aligned: " << byte_array_size_aligned
+    //           << " bin_cnt_size_aligned: " << bin_cnt_size_aligned
+    //           << " total_size: " << total_size << std::endl;
+
     if (if_resize) {
+        // combined_mem = mmap(NULL, total_size, PROT_READ | PROT_WRITE,
+        //                     MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
         combined_mem = mmap(NULL, total_size, PROT_READ | PROT_WRITE,
-                            MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
+                            MAP_ANONYMOUS | MAP_PRIVATE | MAP_POPULATE, -1, 0);
     } else {
         combined_mem = mmap(NULL, total_size, PROT_READ | PROT_WRITE,
                             MAP_ANONYMOUS | MAP_PRIVATE | MAP_POPULATE, -1, 0);
     }
+
+    // std::cerr << "allocated combined_mem: " << combined_mem << " end at: "
+    //           << (void*)((uint64_t)combined_mem + total_size) << " with size: "
+    //           << total_size << std::endl;
 
     // Assign pointers to their respective regions
     uint8_t* base =
@@ -152,16 +162,35 @@ BlastHT::BlastHT(uint64_t size, bool if_resize)
     : BlastHT(size, 0, 127, if_resize) {}
 
 BlastHT::~BlastHT() {
-    munmap(cloud_tab, kCloudNum * kCloudByteLength);
-    munmap(byte_array, kBinNum * kBinSize * kEntryByteLength);
-    munmap(bin_cnt_head, kBinNum << 1);
+    // Calculate individual sizes
+    uint64_t cloud_size = kCloudNum * kCloudByteLength;
+    uint64_t byte_array_size = kBinNum * kBinSize * kEntryByteLength;
+    uint64_t bin_cnt_size = kBinNum << 1;
+
+    // Align each section to 64 bytes
+    uint64_t cloud_size_aligned =
+        (cloud_size + 63) & ~static_cast<uint64_t>(63);
+    uint64_t byte_array_size_aligned =
+        (byte_array_size + 63) & ~static_cast<uint64_t>(63);
+    uint64_t bin_cnt_size_aligned =
+        (bin_cnt_size + 63) & ~static_cast<uint64_t>(63);
+
+    // Total size for combined allocation
+    uint64_t total_size =
+        cloud_size_aligned + byte_array_size_aligned + bin_cnt_size_aligned;
+
+    munmap(combined_mem, total_size);
+
+    // std::cerr << "unallocated combined_mem: " << combined_mem << " end at: "
+    //           << (void*)((uint64_t)(combined_mem) + total_size) << " with size: "
+    //           << total_size << std::endl;
 }
 
 bool BlastHT::Insert(uint64_t key, uint64_t value) {
 
     uint64_t truncated_key = key >> kBlastQuotientingLength;
     uint64_t cloud_id =
-        ((XXH64(&truncated_key, sizeof(uint64_t), kHashSeed1) ^ key) &
+        ((HASH_FUNCTION(&truncated_key, sizeof(uint64_t), kHashSeed1) ^ key) &
          kBlastQuotientingMask);
     uint8_t fp = cloud_id >> kCloudQuotientingLength;
     cloud_id = cloud_id & kQuotientingTailMask;
@@ -286,7 +315,7 @@ bool BlastHT::Query(uint64_t key, uint64_t* value_ptr) {
     uint64_t truncated_key = key >> kBlastQuotientingLength;
     uint64_t masked_key = truncated_key << kBlastQuotientingLength;
     uint64_t cloud_id =
-        ((XXH64(&truncated_key, sizeof(uint64_t), kHashSeed1) ^ key) &
+        ((HASH_FUNCTION(&truncated_key, sizeof(uint64_t), kHashSeed1) ^ key) &
          kBlastQuotientingMask);
     uint8_t fp = cloud_id >> kCloudQuotientingLength;
     cloud_id = cloud_id & kQuotientingTailMask;
@@ -365,9 +394,13 @@ bool BlastHT::Query(uint64_t key, uint64_t* value_ptr) {
     uint64_t truncated_key = key >> kBlastQuotientingLength;
     uint64_t masked_key = truncated_key << kBlastQuotientingLength;
     uint64_t cloud_id =
-        ((XXH64(&truncated_key, sizeof(uint64_t), kHashSeed1) ^ key) &
+        ((HASH_FUNCTION(&truncated_key, sizeof(uint64_t), kHashSeed1) ^ key) &
          kBlastQuotientingMask);
+
     uint8_t fp = cloud_id >> kCloudQuotientingLength;
+    
+    __m256i fp_dup_vec = _mm256_set1_epi8(fp);
+
     cloud_id = cloud_id & kQuotientingTailMask;
 
     uint8_t* cloud = &cloud_tab[(cloud_id << kCloudIdShiftOffset)];
@@ -384,6 +417,12 @@ query_again:
         expected_version = concurrent_version.load();
     } while ((expected_version & 1));
 
+    // __m256i revert_mask = _mm256_set_epi8(
+    //     31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, 16, 15, 14,
+    //     13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0);
+    __m256i fp_vec = _mm256_loadu_si256(
+        reinterpret_cast<__m256i*>(cloud + kFingerprintOffset));
+
     uint8_t& control_info = cloud[kControlOffset];
     uint8_t crystal_cnt = control_info & kControlCrystalMask;
     uint8_t tp_cnt = (control_info >> kControlTinyPtrShift);
@@ -391,14 +430,8 @@ query_again:
 
     uint8_t crystal_begin = kControlOffset - kEntryByteLength;
 
-    // __m256i revert_mask = _mm256_set_epi8(
-    //     31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, 16, 15, 14,
-    //     13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0);
-    __m256i fp_vec = _mm256_loadu_si256(
-        reinterpret_cast<__m256i*>(cloud + kFingerprintOffset));
-
     // fp_vec = _mm256_xor_si256(fp_vec, revert_mask);
-    __mmask32 mask = _mm256_cmpeq_epi8_mask(fp_vec, _mm256_set1_epi8(fp));
+    __mmask32 mask = _mm256_cmpeq_epi8_mask(fp_vec, fp_dup_vec);
 
     mask &= ((1u << (fp_cnt)) - 1u);
 
@@ -479,7 +512,7 @@ bool BlastHT::Update(uint64_t key, uint64_t value) {
     uint64_t truncated_key = key >> kBlastQuotientingLength;
     uint64_t masked_key = truncated_key << kBlastQuotientingLength;
     uint64_t cloud_id =
-        ((XXH64(&truncated_key, sizeof(uint64_t), kHashSeed1) ^ key) &
+        ((HASH_FUNCTION(&truncated_key, sizeof(uint64_t), kHashSeed1) ^ key) &
          kBlastQuotientingMask);
     uint8_t fp = cloud_id >> kCloudQuotientingLength;
     cloud_id = cloud_id & kQuotientingTailMask;
@@ -561,7 +594,7 @@ void BlastHT::Free(uint64_t key) {
     uint64_t truncated_key = key >> kBlastQuotientingLength;
     uint64_t masked_key = truncated_key << kBlastQuotientingLength;
     uint64_t cloud_id =
-        ((XXH64(&truncated_key, sizeof(uint64_t), kHashSeed1) ^ key) &
+        ((HASH_FUNCTION(&truncated_key, sizeof(uint64_t), kHashSeed1) ^ key) &
          kBlastQuotientingMask);
     uint8_t fp = cloud_id >> kCloudQuotientingLength;
     cloud_id = cloud_id & kQuotientingTailMask;
@@ -744,7 +777,36 @@ bool BlastHT::ResizeMoveStride(uint64_t stride_id, BlastHT* new_ht) {
         stride_id_end = kCloudNum;
     }
 
-    std::queue<std::pair<uint64_t, uint64_t>> ins_queue;
+    // Resize queue configuration - must be power of 2 for fast bitwise operations
+    static constexpr uint8_t kResizeQueueSize = 128;
+    static constexpr uint8_t kResizeQueueMask = kResizeQueueSize - 1;
+
+    // Simple queue implementation for resize operations
+    struct ResizeQueue {
+        std::pair<uint64_t, uint64_t> data[kResizeQueueSize];
+        uint8_t front = 0;
+        uint8_t back = 0;
+        uint8_t size = 0;
+
+        inline void push(const std::pair<uint64_t, uint64_t>& item) {
+            data[back] = item;
+            back = (back + 1) & kResizeQueueMask;
+            size++;
+        }
+
+        inline std::pair<uint64_t, uint64_t> pop() {
+            auto item = data[front];
+            front = (front + 1) & kResizeQueueMask;
+            size--;
+            return item;
+        }
+
+        inline bool empty() const { return size == 0; }
+
+        inline uint8_t get_size() const { return size; }
+    };
+
+    ResizeQueue ins_queue;
 
     for (uint64_t cloud_id = stride_id_start; cloud_id < stride_id_end;
          cloud_id++) {
@@ -761,12 +823,14 @@ bool BlastHT::ResizeMoveStride(uint64_t stride_id, BlastHT* new_ht) {
 
             uint8_t fp = cloud[kFingerprintOffset + crystal_iter];
 
-            uint8_t* entry =
-                cloud + kControlOffset - crystal_iter * kEntryByteLength - kEntryByteLength;
+            uint8_t* entry = cloud + kControlOffset -
+                             crystal_iter * kEntryByteLength - kEntryByteLength;
 
             uint64_t ins_key = hash_key_rebuild(
                 (*reinterpret_cast<uint64_t*>(entry + kKeyOffset)), cloud_id,
                 fp);
+
+            new_ht->prefetch_key(ins_key);
 
             ins_queue.push(std::make_pair(
                 ins_key, *reinterpret_cast<uint64_t*>(entry + kValueOffset)));
@@ -786,15 +850,17 @@ bool BlastHT::ResizeMoveStride(uint64_t stride_id, BlastHT* new_ht) {
             uint64_t ins_key = hash_key_rebuild(
                 (*reinterpret_cast<uint64_t*>(entry + kKeyOffset)), cloud_id,
                 fp);
+
+            new_ht->prefetch_key(ins_key);
+
             ins_queue.push(std::make_pair(
                 ins_key, *reinterpret_cast<uint64_t*>(entry + kValueOffset)));
             new_ht->prefetch_key(ins_key);
         }
 
-        if (ins_queue.size() >= 10) {
+        if (ins_queue.get_size() >= 10) {
             while (!ins_queue.empty()) {
-                auto ins_pair = ins_queue.front();
-                ins_queue.pop();
+                auto ins_pair = ins_queue.pop();
                 if (!new_ht->Insert(ins_pair.first, ins_pair.second)) {
                     return false;
                 }
@@ -803,8 +869,7 @@ bool BlastHT::ResizeMoveStride(uint64_t stride_id, BlastHT* new_ht) {
     }
 
     while (!ins_queue.empty()) {
-        auto ins_pair = ins_queue.front();
-        ins_queue.pop();
+        auto ins_pair = ins_queue.pop();
         if (!new_ht->Insert(ins_pair.first, ins_pair.second)) {
             return false;
         }

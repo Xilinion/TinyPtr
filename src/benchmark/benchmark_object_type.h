@@ -1,6 +1,8 @@
 #pragma once
 
 #include <cstdint>
+#include <chrono>
+#include <vector>
 
 namespace tinyptr {
 
@@ -29,7 +31,10 @@ struct BenchmarkObjectType {
         BOLT = 19,
         BLAST = 20,
         RESIZABLE_BLAST = 21,
-        COUNT = 22
+        HASH_DISTRIBUTION = 22,
+        NONCONC_BLAST = 23,
+        TBB = 24,
+        COUNT = 25
     };
 
     BenchmarkObjectType(const BenchmarkObjectType& b) = default;

@@ -169,7 +169,7 @@ uint64_t ConcurrentByteArrayChainedHT::limited_base_id(uint64_t key) {
         return limited_base_cnt++;
     } else {
         uint64_t tmp = key >> kQuotientingTailLength;
-        return (XXH64(&tmp, sizeof(uint64_t), kHashSeed1) ^ key) %
+        return (HASH_FUNCTION(&tmp, sizeof(uint64_t), kHashSeed1) ^ key) %
                limited_base_entry_num;
     }
 }

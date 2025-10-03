@@ -16,17 +16,24 @@
 
 using namespace std;
 
+rng::rng64 rng64(123456789);
 
 TEST(Junction_TESTSUITE, ProtocolCorrectness) {
 
-    auto tab = new junction::ConcurrentMap_Leapfrog<uint32_t, uint32_t>(1 << 4);
+    auto tab =
+        new junction::ConcurrentMap_Linear<uint64_t, uint64_t>(1 << 25);
     // junction::ConcurrentMap_Grampa<turf::u32, uint32_t> tab(1<<25);
 
-    for (int i = 1; i < 1000000; i++) {
+    auto keys = new uint64_t[1 << 26];
+    for (int i = 2; i < (1 << 25); i++) {
         // cout << "assign " << i << endl;
-        tab->assign(7, i+1);
+        keys[i] = i * 1ll << 32;
+        tab->assign(keys[i], i);
         // cout << "get " << i << endl;
-        tab->get(i+1);
+    }
+
+    for (int i = 2; i < (1 << 25); i++) {
+        ASSERT_EQ(tab->get(keys[i]), i);
     }
 }
 

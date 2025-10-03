@@ -1,5 +1,13 @@
 function(build_junction)
     include(FetchContent)
+
+    if(DISABLE_RESIZING)
+        set(JUNCTION_REPO "https://github.com/BlackJackTone/junction.git")
+        set(JUNCTION_TAG "a89f8bc7f6b5b6cc775d8b49701f2e7d159caea5")
+    else()
+        set(JUNCTION_REPO "https://github.com/preshing/junction.git")
+        set(JUNCTION_TAG "5ad3be7ce1d3f16b9f7ed6065bbfeacd2d629a08")
+    endif()
     
     # Set up the repositories
     FetchContent_Declare(
@@ -10,8 +18,8 @@ function(build_junction)
     
     FetchContent_Declare(
         junction
-        GIT_REPOSITORY https://github.com/preshing/junction.git
-        GIT_TAG 5ad3be7ce1d3f16b9f7ed6065bbfeacd2d629a08
+        GIT_REPOSITORY ${JUNCTION_REPO}
+        GIT_TAG ${JUNCTION_TAG}
     )
     
     # Download the repositories during configuration

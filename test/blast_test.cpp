@@ -104,7 +104,7 @@ TEST(BlastHT_TESTSUITE, ParallelInsertQuery) {
     using namespace tinyptr;  // Ensure tinyptr is a valid namespace
 
     start = chrono::high_resolution_clock::now();
-    BlastHT ht(static_cast<uint64_t>(num_operations), 127);
+    BlastHT ht(static_cast<uint64_t>(num_operations), 0);
     end = chrono::high_resolution_clock::now();
     std::cout
         << "init time: "

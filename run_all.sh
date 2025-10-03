@@ -38,3 +38,10 @@ cd ./scripts || exit
 bash benchmark.sh -d "$exp_dir"
 
 cd -
+
+exit
+
+cd ./scripts || exit
+bash to_csv.sh -d "$exp_dir"
+
+cd -
