@@ -206,8 +206,7 @@ function RunYCSB() {
 
 function RunRandMemFree() {
     #####native execution
-
-    args="-o $object_id -c $case_id -e $entry_id -t $table_size -p $opt_num -l $load_factor -h $hit_percent -b $bin_size -q $quotient_tail_length -n $thread_num -m -f "$res_path""
+    args="-o $object_id -c $case_id -e $entry_id -t $table_size -p $opt_num -l $load_factor -h $hit_percent -b $bin_size -q $quotient_tail_length -n $thread_num -z $zipfian_skew -m -f "$res_path""
 
     WarmUp
 
@@ -231,7 +230,8 @@ function RunRandMemFree() {
 
     echo "== end benchmarking: $args"
 
-    echo "== file path: "$res_path/object_${object_id}_case_${case_id}_entry_${entry_id}_memuse.txt""
+    echo "== mem use file path: "$res_path/object_${object_id}_case_${case_id}_entry_${entry_id}_memuse.txt""
+    echo "== file path: "$res_path/object_${object_id}_case_${case_id}_entry_${entry_id}_.txt""
 }
 
 function RunPerf() {
