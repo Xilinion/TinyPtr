@@ -8,9 +8,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
-#include <iostream>
-#include <iterator>
-#include <regex>
+ 
 
 namespace tinyptr {
 
@@ -82,7 +80,6 @@ ConcurrentByteArrayChainedHT::ConcurrentByteArrayChainedHT(
         base_tab_size_aligned + byte_array_size_aligned + bin_cnt_size_aligned;
 
     // Allocate a single aligned block
-    void* combined_mem;
     if (if_resize) {
         combined_mem = mmap(NULL, total_size, PROT_READ | PROT_WRITE,
                             MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
@@ -92,8 +89,9 @@ ConcurrentByteArrayChainedHT::ConcurrentByteArrayChainedHT(
     }
 
     // Assign pointers to their respective regions
-    uint8_t* base =
-        (uint8_t*)((uint64_t)(combined_mem + 63) & ~static_cast<uint64_t>(63));
+    uint8_t* base = reinterpret_cast<uint8_t*>(
+        (reinterpret_cast<uintptr_t>(combined_mem) + 63) &
+        ~static_cast<uintptr_t>(63));
 
     byte_array = base;
     base += byte_array_size_aligned;
@@ -159,9 +157,28 @@ ConcurrentByteArrayChainedHT::ConcurrentByteArrayChainedHT(uint64_t size,
     : ConcurrentByteArrayChainedHT(size, 0, 127, if_resize) {}
 
 ConcurrentByteArrayChainedHT::~ConcurrentByteArrayChainedHT() {
-    munmap(byte_array, kBinNum * kBinSize * kEntryByteLength);
-    munmap(base_tab, kBaseTabSize);
-    munmap(bin_cnt_head, kBinNum << 1);
+    if (play_entry) {
+        delete[] play_entry;
+        play_entry = nullptr;
+    }
+    // Calculate individual sizes
+    uint64_t base_tab_size = kBaseTabSize;
+    uint64_t byte_array_size = kBinNum * kBinSize * kEntryByteLength;
+    uint64_t bin_cnt_size = kBinNum << 1;
+
+    // Align each section to 64 bytes
+    uint64_t base_tab_size_aligned =
+        (base_tab_size + 63) & ~static_cast<uint64_t>(63);
+    uint64_t byte_array_size_aligned =
+        (byte_array_size + 63) & ~static_cast<uint64_t>(63);
+    uint64_t bin_cnt_size_aligned =
+        (bin_cnt_size + 63) & ~static_cast<uint64_t>(63);
+
+    // Total size for combined allocation
+    uint64_t total_size =
+        base_tab_size_aligned + byte_array_size_aligned + bin_cnt_size_aligned;
+
+    munmap(combined_mem, total_size);
 }
 
 uint64_t ConcurrentByteArrayChainedHT::limited_base_id(uint64_t key) {

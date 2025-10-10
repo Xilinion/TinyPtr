@@ -7,7 +7,7 @@
 #include <sys/types.h>
 #include <atomic>
 #include <cstdint>
-#include <functional>
+ 
 #include "common.h"
 #include "utils/cache_line_size.h"
 
@@ -194,6 +194,7 @@ class ConcurrentByteArrayChainedHT {
     void evict_entry_cache_line(uint8_t* entry);
 
    protected:
+    void* combined_mem;
     uint64_t limited_base_id(uint64_t key);
 
    public:
