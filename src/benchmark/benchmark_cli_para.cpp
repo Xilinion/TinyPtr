@@ -20,7 +20,7 @@ std::string BenchmarkCLIPara::GetOuputFileName() {
 void BenchmarkCLIPara::Parse(int argc, char** argv) {
     this->configuring_getopt();
     for (int c;
-         (c = getopt(argc, argv, "o:c:e:t:p:l:h:f:q:b:m:y:s:n:z:")) != -1;) {
+         (c = getopt(argc, argv, "o:c:e:t:p:l:h:f:q:b:my:s:n:z:")) != -1;) {
         switch (c) {
             // TODO: add validity check of parameters
             case 'o':
