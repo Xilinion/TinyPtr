@@ -12,7 +12,7 @@ const BenchmarkObjectType BenchmarkHashDistribution::TYPE =
 
 BenchmarkHashDistribution::BenchmarkHashDistribution(uint64_t n)
     : BenchmarkObject64(TYPE),
-      kHashSeed1(rand()),
+      kHashSeed1(rng::random_device_seed{}()),
       bin_vec(n),
       cnt_vec(n),
       op_cnt(n) {
@@ -25,7 +25,6 @@ BenchmarkHashDistribution::BenchmarkHashDistribution(uint64_t n)
     }
     kQuotientingTailMask = (1 << kQuotientingTailLength) - 1;
     assert(kQuotientingTailMask == n - 1);
-    kHashSeed1 = 0;
 }
 
 uint8_t BenchmarkHashDistribution::Insert(uint64_t key, uint64_t value) {

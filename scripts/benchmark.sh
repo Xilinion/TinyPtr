@@ -126,7 +126,7 @@ function CommonArgsWithYCSB() {
         ycsb_load_path=$ycsb_a_load_file
         ycsb_exe_path=$ycsb_neg_a_exe_file
     fi
-    
+
     echo "-o $object_id -c $case_id -e $entry_id -t $table_size -p $opt_num -l $load_factor -h $hit_percent -b $bin_size -q $quotient_tail_length -y $ycsb_load_path -s $ycsb_exe_path -n $thread_num -f "$res_path""
 }
 
@@ -206,10 +206,9 @@ function RunYCSB() {
 
 function RunRandMemFree() {
     #####native execution
+    args="-o $object_id -c $case_id -e $entry_id -t $table_size -p $opt_num -l $load_factor -h $hit_percent -b $bin_size -q $quotient_tail_length -n $thread_num -z $zipfian_skew -m -f "$res_path""
 
-    args="-o $object_id -c $case_id -e $entry_id -t $table_size -p $opt_num -l $load_factor -h $hit_percent -b $bin_size -q $quotient_tail_length -n $thread_num -m -f "$res_path""
-
-    WarmUp
+    # WarmUp
 
     echo "== begin benchmarking: $args"
 
@@ -231,7 +230,8 @@ function RunRandMemFree() {
 
     echo "== end benchmarking: $args"
 
-    echo "== file path: "$res_path/object_${object_id}_case_${case_id}_entry_${entry_id}_memuse.txt""
+    echo "== mem use file path: "$res_path/object_${object_id}_case_${case_id}_entry_${entry_id}_memuse.txt""
+    echo "== file path: "$res_path/object_${object_id}_case_${case_id}_entry_${entry_id}_.txt""
 }
 
 function RunPerf() {
@@ -337,6 +337,38 @@ bin_size=127
 no_resize_object_ids=(6 7 15 17 20 24)
 space_eff_object_ids=(6 7 15 17 23 24)
 resize_object_ids=(6 7 15 18 21 24)
+
+# Number of repetitions for each configuration
+num_rep=10
+
+thread_num=1
+enable_core_binding=true
+
+for case_id in 1; do
+    for object_id in 21; do
+    # for object_id in "${resize_object_ids[@]}"; do
+        entry_id=100
+        for table_size in 16777215; do
+        # for table_size in 1677721; do
+            opt_num=$(printf "%.0f" $(echo "$table_size * 10" | bc -l))
+
+            # Run memory free only once per configuration
+            thread_num=0
+            # output=$(RunRandMemFree)
+            # echo "$output"          
+            RunWithRetry "RunRandMemFree"  
+            thread_num=1
+            
+
+            let "entry_id++"
+        done
+    done
+done
+
+thread_num=0
+enable_core_binding=false
+
+exit
 
 # YCSB with resize
 
@@ -475,7 +507,6 @@ enable_core_binding=false
 
 exit
 
-
 # Hash Distribution Validation
 
 num_rep=100
@@ -530,7 +561,6 @@ for case_id in 1 3 6 7; do
 done
 thread_num=0
 
-
 # progressive latency
 
 for case_id in 9 10; do
@@ -545,7 +575,6 @@ for case_id in 9 10; do
         done
     done
 done
-
 
 # load factor with deletion
 

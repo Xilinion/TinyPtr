@@ -43,7 +43,7 @@ class ResizableHT {
 
    public:
     ResizableHT(uint64_t initial_size_per_part = 40000, uint64_t part_num = 0,
-                uint32_t thread_num = 0, double resize_threshold = 0.75,
+                uint32_t thread_num = 0, double resize_threshold = 0.95,
                 double resize_factor = 2.0);
 
    protected:
@@ -318,9 +318,15 @@ ResizableHT<HTType>::ResizableHT(uint64_t initial_size_per_part_,
     part_resize_threshold = new int64_t[part_num];
 
     for (uint64_t i = 0; i < part_num; i++) {
-        partitions[i] = new HTType(initial_size_per_part, true);
-        part_size[i] = initial_size_per_part;
-        part_resize_threshold[i] = initial_size_per_part * resize_threshold;
+        double frac = (part_num <= 1) ? 0.0 : (double)i / (double)(part_num - 1);
+        // double sized = initial_size_per_part * (1 + resize_factor * frac);
+        double sized = initial_size_per_part * std::pow(resize_factor, frac);
+        uint64_t size_i = std::max<uint64_t>(1, static_cast<uint64_t>(sized));
+        size_i = initial_size_per_part;
+
+        partitions[i] = new HTType(size_i, true);
+        part_size[i] = size_i;
+        part_resize_threshold[i] = static_cast<int64_t>(size_i * resize_threshold);
     }
 
     part_cnt = new std::atomic<int64_t>[part_num << kInt64toCacheLineShift];
