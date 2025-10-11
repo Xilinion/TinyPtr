@@ -588,7 +588,7 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
                                                   part_num, thread_num);
         } break;
         case BenchmarkObjectType::RESIZABLE_BYTEARRAYCHAINEDHT: {
-            uint64_t part_num = 10;
+            uint64_t part_num = 16;
             obj = new BenchmarkResizableByteArrayChainedHT(
                 table_size / part_num, part_num, thread_num);
         } break;
