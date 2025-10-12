@@ -338,24 +338,24 @@ no_resize_object_ids=(6 7 15 17 20 24)
 space_eff_object_ids=(6 7 15 17 23 24)
 resize_object_ids=(6 7 15 18 21 24)
 
-# YCSB with resize
-
-thread_num=16
-enable_core_binding=true
-for case_id in 17 18 19 20 21 22; do
-    for object_id in "${resize_object_ids[@]}"; do
-        entry_id=1
-        for table_size in 33554432; do
-            RunWithRetry "RunYCSB"
-            let "entry_id++"
-        done
-    done
-done
-thread_num=0
-enable_core_binding=false
-
-# scaling
-
+## YCSB with resize
+#
+#thread_num=16
+#enable_core_binding=true
+#for case_id in 17 18 19 20 21 22; do
+#    for object_id in "${resize_object_ids[@]}"; do
+#        entry_id=1
+#        for table_size in 33554432; do
+#            RunWithRetry "RunYCSB"
+#            let "entry_id++"
+#        done
+#    done
+#done
+#thread_num=0
+#enable_core_binding=false
+#
+## scaling
+#
 #for case_id in 1 3 6 7; do
 #    for object_id in "${no_resize_object_ids[@]}"; do
 #        entry_id=10
