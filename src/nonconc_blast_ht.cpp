@@ -324,6 +324,8 @@ query_again:
 }
 */
 
+volatile int counter;
+
 bool NonConcBlastHT::Query(uint64_t key, uint64_t* value_ptr) {
 
     uint64_t truncated_key = key >> kBlastQuotientingLength;
@@ -335,9 +337,11 @@ bool NonConcBlastHT::Query(uint64_t key, uint64_t* value_ptr) {
     
     cloud_id = cloud_id & kQuotientingTailMask;
 
-    return cloud_id < (1 << 24);
-
     uint8_t* cloud = &cloud_tab[(cloud_id << kCloudIdShiftOffset)];
+
+    counter += cloud[0];
+
+    return true;
 
 query_again:
 
