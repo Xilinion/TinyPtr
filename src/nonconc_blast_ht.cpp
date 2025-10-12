@@ -335,10 +335,9 @@ bool NonConcBlastHT::Query(uint64_t key, uint64_t* value_ptr) {
     
     cloud_id = cloud_id & kQuotientingTailMask;
 
+    return cloud_id < (1 << 24);
+
     uint8_t* cloud = &cloud_tab[(cloud_id << kCloudIdShiftOffset)];
-
-    return ((uint64_t) cloud) < (1 << 32);
-
 
 query_again:
 
