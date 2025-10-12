@@ -345,19 +345,21 @@ query_again:
     __m256i fp_vec = _mm256_loadu_si256(
         reinterpret_cast<__m256i*>(cloud + kFingerprintOffset));
     
-    uint8_t& control_info = cloud[kControlOffset];
-    uint8_t crystal_cnt = control_info & kControlCrystalMask;
-    uint8_t tp_cnt = (control_info >> kControlTinyPtrShift);
-    uint8_t fp_cnt = crystal_cnt + tp_cnt;
-
-    uint8_t crystal_begin = kControlOffset - kEntryByteLength;
-
     // __m256i revert_mask = _mm256_set_epi8(
     //     31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, 16, 15, 14,
     //     13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0);
 
     // fp_vec = _mm256_xor_si256(fp_vec, revert_mask);
     __mmask32 mask = _mm256_cmpeq_epi8_mask(fp_vec, fp_dup_vec);
+
+    return mask != 0;
+
+    uint8_t& control_info = cloud[kControlOffset];
+    uint8_t crystal_cnt = control_info & kControlCrystalMask;
+    uint8_t tp_cnt = (control_info >> kControlTinyPtrShift);
+    uint8_t fp_cnt = crystal_cnt + tp_cnt;
+
+    uint8_t crystal_begin = kControlOffset - kEntryByteLength;
 
     mask &= ((1u << (fp_cnt)) - 1u);
 
