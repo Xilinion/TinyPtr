@@ -367,7 +367,7 @@ bool NonConcBlastHT::Query(uint64_t key, uint64_t* value_ptr) {
     uint32_t crystal_cnt = control_info & kControlCrystalMask;
     while (tp_mask) {
         uint32_t i = __builtin_ctz(tp_mask);
-	tp_mask &= ~(1u << i);
+	tp_mask &= tp_mask - 1;
         uint8_t crystal_end = kControlOffset - kEntryByteLength * crystal_cnt;
         uint8_t* tiny_ptr = cloud + crystal_end - i + crystal_cnt - 1;
         uint64_t deref_key = (cloud_id << kByteShift) | fp;
