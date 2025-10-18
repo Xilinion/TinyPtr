@@ -363,13 +363,22 @@ bool NonConcBlastHT::Query(uint64_t key, uint64_t* value_ptr) {
 	}
     }
 
-    __mmask32 tp_mask = mask & (~crystal_mask);
+    // if (!tp_mask) {
+    //     return false;
+    // }
+
+    // uint32_t crystal_cnt = control_info & kControlCrystalMask;
+    // uint32_t tp_cnt = fp_cnt - crystral_cnt;
+    // uint8_t crystal_end = kControlOffset - kEntryByteLength * crystal_cnt;
+    // uint8_t* tiny_ptr = cloud + crystal_end - tp_cnt;
+
     uint32_t crystal_cnt = control_info & kControlCrystalMask;
+    __mmask32 tp_mask = mask >> crystal_cnt;
+    uint32_t crystal_end = kControlOffset - kEntryByteLength * crystal_cnt;
     while (tp_mask) {
         uint32_t i = __builtin_ctz(tp_mask);
 	tp_mask &= tp_mask - 1;
-        uint8_t crystal_end = kControlOffset - kEntryByteLength * crystal_cnt;
-        uint8_t* tiny_ptr = cloud + crystal_end - i + crystal_cnt - 1;
+        uint8_t* tiny_ptr = cloud + crystal_end - i - 1;
         uint64_t deref_key = (cloud_id << kByteShift) | fp;
         uint8_t* entry = ptab_query_entry_address(deref_key, *tiny_ptr);
 
