@@ -429,7 +429,7 @@ thread_num=1
 enable_core_binding=true
 
 for case_id in 9; do
-    for object_id in 15 23; do
+    for object_id in 23; do
         entry_id=100
         for table_size in 16777215; do
             for load_factor in 0.05 0.7; do
