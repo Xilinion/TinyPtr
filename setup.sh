@@ -5,6 +5,7 @@ git submodule update --init --recursive
 source config.sh
 
 sudo apt update
+sudo apt install -y clang-format
 sudo apt-get install -y cmake
 sudo apt-get install -y python2
 sudo apt-get install -y python3
