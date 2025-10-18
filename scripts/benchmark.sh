@@ -420,40 +420,40 @@ resize_object_ids=(6 7 15 18 21 24)
 #done
 #thread_num=0
 #
-## Throughput / Space Efficiency
-#
-## Number of repetitions for each configuration
-#num_rep=10
-#
-#thread_num=1
-#enable_core_binding=true
-#
-#for case_id in 1 9 10; do
-#    for object_id in "${space_eff_object_ids[@]}"; do
-#        entry_id=100
-#        for table_size in 16777215; do
-#            for load_factor in 0.05 0.1 0.15 0.2 0.25 0.3 0.35 0.4 0.45 0.5 0.55 0.6 0.65 0.7 0.75 0.8 0.85 0.9 0.95 0.99; do
-#                opt_num=$(printf "%.0f" $(echo "$table_size * $load_factor" | bc -l))
-#
-#                # Run memory free only once per configuration
-#                thread_num=0
-#                output=$(RunRandMemFree)
-#                echo "$output"
-#                thread_num=1
-#
-#                # Repeat the actual run num_rep times
-#                for ((rep = 1; rep <= num_rep; rep++)); do
-#                    RunWithRetry "Run"
-#                    let "entry_id++"
-#                done
-#            done
-#        done
-#    done
-#done
-#
-#thread_num=0
-#enable_core_binding=false
-#
+# Throughput / Space Efficiency
+
+# Number of repetitions for each configuration
+num_rep=1
+
+thread_num=1
+enable_core_binding=true
+
+for case_id in 9; do
+    for object_id in 15 23; do
+        entry_id=100
+        for table_size in 16777215; do
+            for load_factor in 0.05 0.7; do
+                opt_num=$(printf "%.0f" $(echo "$table_size * $load_factor" | bc -l))
+
+                ## Run memory free only once per configuration
+                #thread_num=0
+                #output=$(RunRandMemFree)
+                #echo "$output"
+                #thread_num=1
+
+                # Repeat the actual run num_rep times
+                for ((rep = 1; rep <= num_rep; rep++)); do
+                    RunWithRetry "Run"
+                    let "entry_id++"
+                done
+            done
+        done
+    done
+done
+
+thread_num=0
+enable_core_binding=false
+
 ## Positive Query Latency Percentile
 #
 #thread_num=1
@@ -514,22 +514,22 @@ resize_object_ids=(6 7 15 18 21 24)
 #
 #exit
 
-# micro benchmark
-
-thread_num=1
-for case_id in 6; do
-    for object_id in 20; do
-        entry_id=0
-        for table_size in 67108863; do
-            # 0.95
-            opt_num=63753420
-            RunWithRetry "Run"
-            let "entry_id++"
-        done
-    done
-done
-thread_num=0
-
+## micro benchmark
+#
+#thread_num=1
+#for case_id in 6; do
+#    for object_id in 20; do
+#        entry_id=0
+#        for table_size in 67108863; do
+#            # 0.95
+#            opt_num=63753420
+#            RunWithRetry "Run"
+#            let "entry_id++"
+#        done
+#    done
+#done
+#thread_num=0
+#
 
 # progressive latency
 

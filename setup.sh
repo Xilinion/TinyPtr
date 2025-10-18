@@ -27,5 +27,5 @@ sudo apt install -y linux-tools-common linux-tools-generic linux-tools-$(uname -
 sudo apt install -y golang-go
 sudo apt install -y shfmt
 
-# YCSB
-bash scripts/ycsb/ycsb.sh
+## YCSB
+#bash scripts/ycsb/ycsb.sh
