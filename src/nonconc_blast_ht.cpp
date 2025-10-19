@@ -266,44 +266,36 @@ bool NonConcBlastHT::Query(uint64_t key, uint64_t* value_ptr) {
 
     __mmask32 mask = _mm256_mask_cmpeq_epi8_mask(kkeep, fp_vec, fp_dup_vec);
 
-
     __mmask32 crystal_mask = _bzhi_u32(mask, crystal_cnt);
-    const uint64_t masked_key = truncated_key << kBlastQuotientingLength;
 
     while (crystal_mask) {
         uint32_t i = __builtin_ctz(crystal_mask);
         crystal_mask &= crystal_mask - 1;
 
 	uint32_t crystal_begin = kControlOffset - kEntryByteLength;
-	if (reinterpret_cast<uint64_t*>(cloud + crystal_begin -
-				i * kEntryByteLength +
-				kKeyOffset)[0]
-			<< kBlastQuotientingLength ==
-			masked_key) {
-	    *value_ptr = reinterpret_cast<uint64_t*>(cloud + crystal_begin -
-			    i * kEntryByteLength + kValueOffset)[0];
+	uint64_t* stored_key = reinterpret_cast<uint64_t*>(cloud + crystal_begin - i * kEntryByteLength + kKeyOffset);
+	// stored_key = _bzhi_u64(stored_key, 64 - kBlastQuotientingLength);
+	if (_bzhi_u64(stored_key[0], 64 - kBlastQuotientingLength) == truncated_key) {
+	    *value_ptr = *reinterpret_cast<uint64_t*>(reinterpret_cast<uint8_t*>(stored_key) + 6);
                 return true;
 	}
     }
 
-    __mmask32 tp_mask = mask & ~kControlCrystalMask;
+    __mmask32 tp_mask = mask >> crystal_cnt;
     while (tp_mask) {
         uint32_t i = __builtin_ctz(tp_mask);
         tp_mask &= tp_mask - 1;
 
             uint8_t crystal_end =
                 kControlOffset - kEntryByteLength * crystal_cnt;
-            uint8_t* tiny_ptr = cloud + crystal_end - i + crystal_cnt - 1;
+            uint8_t* tiny_ptr = cloud + crystal_end - i - 1;
             uint64_t deref_key = (cloud_id << kByteShift) | fp;
             uint8_t* entry = ptab_query_entry_address(deref_key, *tiny_ptr);
 
-            uint64_t entry_masked_key =
-                (*reinterpret_cast<uint64_t*>(entry + kKeyOffset))
-                << kBlastQuotientingLength;
-
-            if (entry_masked_key == masked_key) {
-                *value_ptr = *reinterpret_cast<uint64_t*>(entry + kValueOffset);
-
+            uint64_t* stored_key =
+                (reinterpret_cast<uint64_t*>(entry + kKeyOffset));
+	    if (_bzhi_u64(stored_key[0], 64 - kBlastQuotientingLength) == truncated_key) {
+	        *value_ptr = *reinterpret_cast<uint64_t*>(reinterpret_cast<uint8_t*>(stored_key) + 6);
                 return true;
             }
     }

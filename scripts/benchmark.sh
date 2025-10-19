@@ -28,7 +28,7 @@ if [ -z "$exp_dir" ]; then
 fi
 
 function Init() {
-    compile_option=2
+    compile_option=1
     compile_resize=0
     sudo sysctl kernel.perf_event_paranoid=-1
     sudo sysctl kernel.kptr_restrict=0
@@ -318,7 +318,7 @@ Init
 # DebugCompile
 # ValgrindCompile
 
-compile_option=2
+compile_option=1
 compile_resize=1
 CompileWithOption
 
@@ -338,108 +338,108 @@ no_resize_object_ids=(6 7 15 17 20 24)
 space_eff_object_ids=(6 7 15 17 23 24)
 resize_object_ids=(6 7 15 18 21 24)
 
-# YCSB with resize
-
-thread_num=16
-enable_core_binding=true
-for case_id in 17 18 19 20 21 22; do
-    for object_id in "${resize_object_ids[@]}"; do
-        entry_id=1
-        for table_size in 33554432; do
-            RunWithRetry "RunYCSB"
-            let "entry_id++"
-        done
-    done
-done
-thread_num=0
-enable_core_binding=false
-
-# scaling
-
-for case_id in 1 3 6 7; do
-    for object_id in "${no_resize_object_ids[@]}"; do
-        entry_id=10
-        for table_size in 67108863; do
-            opt_num=63753420
-            for thread_num in 1 2 4 8 16 32; do
-                RunWithRetry "Run"
-                let "entry_id++"
-            done
-        done
-    done
-done
-thread_num=0
-
-# data size scaling
-
-for case_id in 1 3 6 7; do
-    for object_id in "${no_resize_object_ids[@]}"; do
-        entry_id=1000
-        for table_size in 32767 262143 2097151 16777215 134217727; do
-            opt_num=$table_size
-            for thread_num in 1; do
-                RunWithRetry "Run"
-                let "entry_id++"
-            done
-        done
-    done
-done
-thread_num=0
-
-# YCSB with resize latency percentile
-
-thread_num=16
-for case_id in 24; do
-    for object_id in "${resize_object_ids[@]}"; do
-        entry_id=0
-        for table_size in 33554432; do
-            RunWithRetry "RunYCSB"
-            let "entry_id++"
-        done
-    done
-done
-thread_num=0
-
-compile_option=1
-compile_resize=0
-CompileWithOption
-
-# YCSB without resize
-
-thread_num=16
-for case_id in 17 18 19 20 21 22; do
-    for object_id in "${no_resize_object_ids[@]}"; do
-        entry_id=0
-        # for table_size in 134217728; do
-        # /0.7
-        for table_size in 191739611; do
-            RunWithRetry "RunYCSB"
-            let "entry_id++"
-        done
-    done
-done
-thread_num=0
-
+## YCSB with resize
+#
+#thread_num=16
+#enable_core_binding=true
+#for case_id in 17 18 19 20 21 22; do
+#    for object_id in "${resize_object_ids[@]}"; do
+#        entry_id=1
+#        for table_size in 33554432; do
+#            RunWithRetry "RunYCSB"
+#            let "entry_id++"
+#        done
+#    done
+#done
+#thread_num=0
+#enable_core_binding=false
+#
+## scaling
+#
+#for case_id in 1 3 6 7; do
+#    for object_id in "${no_resize_object_ids[@]}"; do
+#        entry_id=10
+#        for table_size in 67108863; do
+#            opt_num=63753420
+#            for thread_num in 1 2 4 8 16 32; do
+#                RunWithRetry "Run"
+#                let "entry_id++"
+#            done
+#        done
+#    done
+#done
+#thread_num=0
+#
+## data size scaling
+#
+#for case_id in 1 3 6 7; do
+#    for object_id in "${no_resize_object_ids[@]}"; do
+#        entry_id=1000
+#        for table_size in 32767 262143 2097151 16777215 134217727; do
+#            opt_num=$table_size
+#            for thread_num in 1; do
+#                RunWithRetry "Run"
+#                let "entry_id++"
+#            done
+#        done
+#    done
+#done
+#thread_num=0
+#
+## YCSB with resize latency percentile
+#
+#thread_num=16
+#for case_id in 24; do
+#    for object_id in "${resize_object_ids[@]}"; do
+#        entry_id=0
+#        for table_size in 33554432; do
+#            RunWithRetry "RunYCSB"
+#            let "entry_id++"
+#        done
+#    done
+#done
+#thread_num=0
+#
+#compile_option=1
+#compile_resize=0
+#CompileWithOption
+#
+## YCSB without resize
+#
+#thread_num=16
+#for case_id in 17 18 19 20 21 22; do
+#    for object_id in "${no_resize_object_ids[@]}"; do
+#        entry_id=0
+#        # for table_size in 134217728; do
+#        # /0.7
+#        for table_size in 191739611; do
+#            RunWithRetry "RunYCSB"
+#            let "entry_id++"
+#        done
+#    done
+#done
+#thread_num=0
+#
 # Throughput / Space Efficiency
 
 # Number of repetitions for each configuration
-num_rep=10
+num_rep=1
 
 thread_num=1
 enable_core_binding=true
 
-for case_id in 1 9 10; do
-    for object_id in "${space_eff_object_ids[@]}"; do
+for case_id in 9; do
+    for object_id in 23; do
         entry_id=100
         for table_size in 16777215; do
-            for load_factor in 0.05 0.1 0.15 0.2 0.25 0.3 0.35 0.4 0.45 0.5 0.55 0.6 0.65 0.7 0.75 0.8 0.85 0.9 0.95 0.99; do
+            for load_factor in 0.05 0.7; do
                 opt_num=$(printf "%.0f" $(echo "$table_size * $load_factor" | bc -l))
 
-                # Run memory free only once per configuration
-                thread_num=0
-                output=$(RunRandMemFree)
-                echo "$output"
-                thread_num=1
+                ## Run memory free only once per configuration
+                #thread_num=0
+                #output=$(RunRandMemFree)
+                #echo "$output"
+                #thread_num=1
 
                 # Repeat the actual run num_rep times
                 for ((rep = 1; rep <= num_rep; rep++)); do
@@ -454,220 +454,220 @@ done
 thread_num=0
 enable_core_binding=false
 
-# Positive Query Latency Percentile
+## Positive Query Latency Percentile
+#
+#thread_num=1
+#enable_core_binding=true
+#for case_id in 26; do
+#    for object_id in "${no_resize_object_ids[@]}"; do
+#        entry_id=0
+#        for table_size in 16777215; do
+#            for load_factor in 0.7 0.8 0.9 0.95; do
+#                opt_num=$(printf "%.0f" $(echo "$table_size * $load_factor" | bc -l))
+#                RunWithRetry "Run"
+#                let "entry_id++"
+#            done
+#        done
+#    done
+#done
+#thread_num=0
+#enable_core_binding=false
+#
+#exit
+#
+#
+## Hash Distribution Validation
+#
+#num_rep=100
+#
+#thread_num=16
+#for case_id in 23; do
+#    for object_id in 22; do
+#        entry_id=0
+#        for table_size in 67108864; do
+#            opt_num=$table_size
+#            for ((rep = 1; rep <= num_rep; rep++)); do
+#                RunWithRetry "Run"
+#                let "entry_id++"
+#            done
+#        done
+#    done
+#done
+#thread_num=0
+#
+## load factor support
+#
+#for case_id in 0; do
+#    for object_id in 4; do
+#        entry_id=0
+#        for table_size in 16777215; do
+#            for bin_size in 3 7 15 31 63 127; do
+#                opt_num=$table_size
+#                RunWithRetry "Run"
+#                let "entry_id++"
+#            done
+#        done
+#    done
+#done
+#
+#thread_num=0
+#
+#exit
 
-thread_num=1
-enable_core_binding=true
-for case_id in 26; do
-    for object_id in "${no_resize_object_ids[@]}"; do
-        entry_id=0
-        for table_size in 16777215; do
-            for load_factor in 0.7 0.8 0.9 0.95; do
-                opt_num=$(printf "%.0f" $(echo "$table_size * $load_factor" | bc -l))
-                RunWithRetry "Run"
-                let "entry_id++"
-            done
-        done
-    done
-done
-thread_num=0
-enable_core_binding=false
-
-exit
-
-
-# Hash Distribution Validation
-
-num_rep=100
-
-thread_num=16
-for case_id in 23; do
-    for object_id in 22; do
-        entry_id=0
-        for table_size in 67108864; do
-            opt_num=$table_size
-            for ((rep = 1; rep <= num_rep; rep++)); do
-                RunWithRetry "Run"
-                let "entry_id++"
-            done
-        done
-    done
-done
-thread_num=0
-
-# load factor support
-
-for case_id in 0; do
-    for object_id in 4; do
-        entry_id=0
-        for table_size in 16777215; do
-            for bin_size in 3 7 15 31 63 127; do
-                opt_num=$table_size
-                RunWithRetry "Run"
-                let "entry_id++"
-            done
-        done
-    done
-done
-
-thread_num=0
-
-exit
-
-# micro benchmark
-
-thread_num=16
-for case_id in 1 3 6 7; do
-    for object_id in "${no_resize_object_ids[@]}"; do
-        entry_id=0
-        for table_size in 67108863; do
-            # 0.95
-            opt_num=63753420
-            RunWithRetry "Run"
-            let "entry_id++"
-        done
-    done
-done
-thread_num=0
-
+## micro benchmark
+#
+#thread_num=1
+#for case_id in 6; do
+#    for object_id in 20; do
+#        entry_id=0
+#        for table_size in 67108863; do
+#            # 0.95
+#            opt_num=63753420
+#            RunWithRetry "Run"
+#            let "entry_id++"
+#        done
+#    done
+#done
+#thread_num=0
+#
 
 # progressive latency
 
-for case_id in 9 10; do
-    for object_id in "${no_resize_object_ids[@]}"; do
-        entry_id=0
-        for table_size in 16777215; do
-            for load_factor in 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 0.95; do
-                opt_num=$table_size
-                RunWithRetry "Run"
-                let "entry_id++"
-            done
-        done
-    done
-done
-
-
-# load factor with deletion
-
-for case_id in 16; do
-    for object_id in 4; do
-        entry_id=0
-        for table_size in 16777215; do
-            opt_num=$table_size
-            for bin_size in 3 7 15 31 63 127; do
-                for load_factor in 0.99 0.98 0.97 0.96 0.95 0.94 0.93 0.92 0.91 0.90 0.89 0.88 0.87 0.86 0.85 0.84 0.83 0.82 0.81 0.80 0.79 0.78 0.77 0.76 0.75 0.74 0.73 0.72 0.71 0.70 0.69 0.68 0.67 0.66 0.65 0.64 0.63 0.62 0.61 0.60 0.59 0.58 0.57 0.56 0.55 0.54 0.53 0.52 0.51 0.50 0.49 0.48 0.47 0.46 0.45 0.44 0.43 0.42 0.41 0.40 0.39 0.38 0.37 0.36 0.35 0.34 0.33 0.32 0.31 0.30 0.29 0.28 0.27 0.26 0.25 0.24 0.23 0.22 0.21 0.20 0.19 0.18 0.17 0.16 0.15 0.14 0.13 0.12 0.11 0.10 0.09 0.08 0.07 0.06; do
-                    output=$(Run)
-                    echo "$output"
-
-                    let "entry_id++"
-                    if echo "$output" | grep -q "good"; then
-                        break
-                    fi
-                done
-            done
-
-        done
-    done
-done
-
-exit
-
-# reminder of FlameGraph usage
-
-for case_id in 0; do
-    for object_id in 4; do
-        entry_id=0
-        for table_size in 67108864; do
-            for bin_size in 3 7 15 31 63 127; do
-                opt_num=$table_size
-
-                # RunValgrind
-                # RunPerf
-                # FlameGraph
-                # RunRandMemFree
-                # sleep 3
-                output=$(Run)
-                echo "$output"
-
-                let "entry_id++"
-            done
-        done
-    done
-done
-
-exit
-
-for case_id in 15; do
-    for object_id in 4; do
-        entry_id=0
-        for table_size in 1000000 10000000; do
-            opt_num=$table_size
-            Run
-            let "entry_id++"
-        done
-    done
-done
-
-exit
-
-for case_id in $(seq 6 7); do
-    if [ $case_id -eq 5 ]; then
-        continue
-    fi
-    for object_id in 4 7; do
-        entry_id=0
-        for table_size in 10000000; do
-            opt_num=$table_size
-
-            for flamegraph_entry in cache-misses branch-misses LLC-loads-misses page-faults L1-dcache-load-misses L1-icache-load-misses; do
-                FlameGraphEntry
-            done
-
-            let "entry_id++"
-        done
-    done
-done
-
-for case_id in 12 13; do
-    for object_id in 0; do
-        entry_id=0
-        for opt_num in 10000 100000 1000000 10000000 100000000; do
-            Run
-            let "entry_id++"
-        done
-    done
-done
-
-for case_id in 9 10; do
-    for object_id in $(seq 0 4); do
-        entry_id=0
-        for table_size in 10000 100000 1000000 10000000; do
-            for opt_num in 100000 1000000 10000000 100000000; do
-                for load_factor in 0.1 0.97; do
-                    for rep_cnt in $(seq 0 0); do
-                        Run
-                        let "entry_id++"
-                    done
-                done
-            done
-        done
-    done
-done
-
-for case_id in 11; do
-    for object_id in $(seq 0 4); do
-        entry_id=0
-        for table_size in 10000 100000 1000000 10000000; do
-            for opt_num in 100000 1000000 10000000 100000000; do
-                for load_factor in 0.1 0.97; do
-                    for hit_percent in 0.1 0.8; do
-                        for rep_cnt in $(seq 0 0); do
-                            Run
-                            let "entry_id++"
-                        done
-                    done
-                done
-            done
-        done
-    done
-done
+#for case_id in 9 10; do
+#    for object_id in "${no_resize_object_ids[@]}"; do
+#        entry_id=0
+#        for table_size in 16777215; do
+#            for load_factor in 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 0.95; do
+#                opt_num=$table_size
+#                RunWithRetry "Run"
+#                let "entry_id++"
+#            done
+#        done
+#    done
+#done
+#
+#
+## load factor with deletion
+#
+#for case_id in 16; do
+#    for object_id in 4; do
+#        entry_id=0
+#        for table_size in 16777215; do
+#            opt_num=$table_size
+#            for bin_size in 3 7 15 31 63 127; do
+#                for load_factor in 0.99 0.98 0.97 0.96 0.95 0.94 0.93 0.92 0.91 0.90 0.89 0.88 0.87 0.86 0.85 0.84 0.83 0.82 0.81 0.80 0.79 0.78 0.77 0.76 0.75 0.74 0.73 0.72 0.71 0.70 0.69 0.68 0.67 0.66 0.65 0.64 0.63 0.62 0.61 0.60 0.59 0.58 0.57 0.56 0.55 0.54 0.53 0.52 0.51 0.50 0.49 0.48 0.47 0.46 0.45 0.44 0.43 0.42 0.41 0.40 0.39 0.38 0.37 0.36 0.35 0.34 0.33 0.32 0.31 0.30 0.29 0.28 0.27 0.26 0.25 0.24 0.23 0.22 0.21 0.20 0.19 0.18 0.17 0.16 0.15 0.14 0.13 0.12 0.11 0.10 0.09 0.08 0.07 0.06; do
+#                    output=$(Run)
+#                    echo "$output"
+#
+#                    let "entry_id++"
+#                    if echo "$output" | grep -q "good"; then
+#                        break
+#                    fi
+#                done
+#            done
+#
+#        done
+#    done
+#done
+#
+#exit
+#
+## reminder of FlameGraph usage
+#
+#for case_id in 0; do
+#    for object_id in 4; do
+#        entry_id=0
+#        for table_size in 67108864; do
+#            for bin_size in 3 7 15 31 63 127; do
+#                opt_num=$table_size
+#
+#                # RunValgrind
+#                # RunPerf
+#                # FlameGraph
+#                # RunRandMemFree
+#                # sleep 3
+#                output=$(Run)
+#                echo "$output"
+#
+#                let "entry_id++"
+#            done
+#        done
+#    done
+#done
+#
+#exit
+#
+#for case_id in 15; do
+#    for object_id in 4; do
+#        entry_id=0
+#        for table_size in 1000000 10000000; do
+#            opt_num=$table_size
+#            Run
+#            let "entry_id++"
+#        done
+#    done
+#done
+#
+#exit
+#
+#for case_id in $(seq 6 7); do
+#    if [ $case_id -eq 5 ]; then
+#        continue
+#    fi
+#    for object_id in 4 7; do
+#        entry_id=0
+#        for table_size in 10000000; do
+#            opt_num=$table_size
+#
+#            for flamegraph_entry in cache-misses branch-misses LLC-loads-misses page-faults L1-dcache-load-misses L1-icache-load-misses; do
+#                FlameGraphEntry
+#            done
+#
+#            let "entry_id++"
+#        done
+#    done
+#done
+#
+#for case_id in 12 13; do
+#    for object_id in 0; do
+#        entry_id=0
+#        for opt_num in 10000 100000 1000000 10000000 100000000; do
+#            Run
+#            let "entry_id++"
+#        done
+#    done
+#done
+#
+#for case_id in 9 10; do
+#    for object_id in $(seq 0 4); do
+#        entry_id=0
+#        for table_size in 10000 100000 1000000 10000000; do
+#            for opt_num in 100000 1000000 10000000 100000000; do
+#                for load_factor in 0.1 0.97; do
+#                    for rep_cnt in $(seq 0 0); do
+#                        Run
+#                        let "entry_id++"
+#                    done
+#                done
+#            done
+#        done
+#    done
+#done
+#
+#for case_id in 11; do
+#    for object_id in $(seq 0 4); do
+#        entry_id=0
+#        for table_size in 10000 100000 1000000 10000000; do
+#            for opt_num in 100000 1000000 10000000 100000000; do
+#                for load_factor in 0.1 0.97; do
+#                    for hit_percent in 0.1 0.8; do
+#                        for rep_cnt in $(seq 0 0); do
+#                            Run
+#                            let "entry_id++"
+#                        done
+#                    done
+#                done
+#            done
+#        done
+#    done
+#done
