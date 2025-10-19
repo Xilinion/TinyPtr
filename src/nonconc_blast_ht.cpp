@@ -266,7 +266,6 @@ bool NonConcBlastHT::Query(uint64_t key, uint64_t* value_ptr) {
 
     __mmask32 mask = _mm256_mask_cmpeq_epi8_mask(kkeep, fp_vec, fp_dup_vec);
 
-    uint32_t crystal_begin = kControlOffset - kEntryByteLength;
 
     __mmask32 crystal_mask = _bzhi_u32(mask, crystal_cnt);
     const uint64_t masked_key = truncated_key << kBlastQuotientingLength;
@@ -275,16 +274,16 @@ bool NonConcBlastHT::Query(uint64_t key, uint64_t* value_ptr) {
         uint32_t i = __builtin_ctz(crystal_mask);
         crystal_mask &= crystal_mask - 1;
 
-            if (reinterpret_cast<uint64_t*>(cloud + crystal_begin -
-                                            i * kEntryByteLength +
-                                            kKeyOffset)[0]
-                    << kBlastQuotientingLength ==
-                masked_key) {
-                *value_ptr = reinterpret_cast<uint64_t*>(cloud + crystal_begin -
-                                                         i * kEntryByteLength +
-                                                         kValueOffset)[0];
+	uint32_t crystal_begin = kControlOffset - kEntryByteLength;
+	if (reinterpret_cast<uint64_t*>(cloud + crystal_begin -
+				i * kEntryByteLength +
+				kKeyOffset)[0]
+			<< kBlastQuotientingLength ==
+			masked_key) {
+	    *value_ptr = reinterpret_cast<uint64_t*>(cloud + crystal_begin -
+			    i * kEntryByteLength + kValueOffset)[0];
                 return true;
-	    }
+	}
     }
 
     __mmask32 tp_mask = mask & ~kControlCrystalMask;
@@ -308,7 +307,6 @@ bool NonConcBlastHT::Query(uint64_t key, uint64_t* value_ptr) {
                 return true;
             }
     }
-    // } while (mask);
 
     return false;
 }
