@@ -257,25 +257,24 @@ bool NonConcBlastHT::Query(uint64_t key, uint64_t* value_ptr) {
     uint32_t tp_cnt = (control_info >> kControlTinyPtrShift);
     uint32_t crystal_cnt = control_info & kControlCrystalMask;
     uint32_t fp_cnt = tp_cnt + crystal_cnt;
+    const __mmask32 kkeep = static_cast<__mmask32>(_bzhi_u32(0xFFFF'FFFFu, fp_cnt));
 
     const uint8_t fp = qbits >> kCloudQuotientingLength;
     __m256i fp_dup_vec = _mm256_set1_epi8(fp);
     __m256i fp_vec = _mm256_load_si256(
 		    reinterpret_cast<__m256i*>(cloud + kFingerprintOffset));
 
-    const __mmask32 kkeep = static_cast<__mmask32>(_bzhi_u32(0xFFFF'FFFFu, fp_cnt));
-
     __mmask32 mask = _mm256_mask_cmpeq_epi8_mask(kkeep, fp_vec, fp_dup_vec);
 
     uint32_t crystal_begin = kControlOffset - kEntryByteLength;
 
-    uint64_t masked_key = truncated_key << kBlastQuotientingLength;
-    while (mask) {
+    __mmask32 crystal_mask = _bzhi_u32(mask, crystal_cnt);
+    const uint64_t masked_key = truncated_key << kBlastQuotientingLength;
 
-        uint8_t i = __builtin_ctz(mask);
-        mask &= ~(1u << i);
+    while (crystal_mask) {
+        uint32_t i = __builtin_ctz(crystal_mask);
+        crystal_mask &= crystal_mask - 1;
 
-        if (i < crystal_cnt) {
             if (reinterpret_cast<uint64_t*>(cloud + crystal_begin -
                                             i * kEntryByteLength +
                                             kKeyOffset)[0]
@@ -285,8 +284,14 @@ bool NonConcBlastHT::Query(uint64_t key, uint64_t* value_ptr) {
                                                          i * kEntryByteLength +
                                                          kValueOffset)[0];
                 return true;
-            }
-        } else {
+	    }
+    }
+
+    __mmask32 tp_mask = mask & ~kControlCrystalMask;
+    while (tp_mask) {
+        uint32_t i = __builtin_ctz(tp_mask);
+        tp_mask &= tp_mask - 1;
+
             uint8_t crystal_end =
                 kControlOffset - kEntryByteLength * crystal_cnt;
             uint8_t* tiny_ptr = cloud + crystal_end - i + crystal_cnt - 1;
@@ -302,7 +307,6 @@ bool NonConcBlastHT::Query(uint64_t key, uint64_t* value_ptr) {
 
                 return true;
             }
-        }
     }
     // } while (mask);
 
