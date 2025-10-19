@@ -245,68 +245,33 @@ bool NonConcBlastHT::Insert(uint64_t key, uint64_t value) {
 }
 
 bool NonConcBlastHT::Query(uint64_t key, uint64_t* value_ptr) {
-
     uint64_t truncated_key = key >> kBlastQuotientingLength;
-    uint64_t masked_key = truncated_key << kBlastQuotientingLength;
-    uint64_t cloud_id =
-        ((HASH_FUNCTION(&truncated_key, sizeof(uint64_t), kHashSeed1) ^ key) &
-         kBlastQuotientingMask);
-    uint8_t fp = cloud_id >> kCloudQuotientingLength;
-    
-    __m256i fp_dup_vec = _mm256_set1_epi8(fp);
-
-    cloud_id = cloud_id & kQuotientingTailMask;
+    const uint64_t h =
+        HASH_FUNCTION(&truncated_key, sizeof(uint64_t), kHashSeed1) ^ key;
+    const uint64_t qbits = (h & kBlastQuotientingMask);
+    const uint64_t cloud_id = qbits & kQuotientingTailMask;
 
     uint8_t* cloud = &cloud_tab[(cloud_id << kCloudIdShiftOffset)];
 
-
-query_again:
-
-    __m256i fp_vec = _mm256_loadu_si256(
-        reinterpret_cast<__m256i*>(cloud + kFingerprintOffset));
-    
     uint8_t& control_info = cloud[kControlOffset];
-    uint8_t crystal_cnt = control_info & kControlCrystalMask;
-    uint8_t tp_cnt = (control_info >> kControlTinyPtrShift);
-    uint8_t fp_cnt = crystal_cnt + tp_cnt;
+    uint32_t tp_cnt = (control_info >> kControlTinyPtrShift);
+    uint32_t crystal_cnt = control_info & kControlCrystalMask;
+    uint32_t fp_cnt = tp_cnt + crystal_cnt;
 
-    uint8_t crystal_begin = kControlOffset - kEntryByteLength;
+    const uint8_t fp = qbits >> kCloudQuotientingLength;
+    __m256i fp_dup_vec = _mm256_set1_epi8(fp);
+    __m256i fp_vec = _mm256_load_si256(
+		    reinterpret_cast<__m256i*>(cloud + kFingerprintOffset));
 
-    // __m256i revert_mask = _mm256_set_epi8(
-    //     31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, 16, 15, 14,
-    //     13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0);
+    const __mmask32 kkeep = static_cast<__mmask32>(_bzhi_u32(0xFFFF'FFFFu, fp_cnt));
 
-    // fp_vec = _mm256_xor_si256(fp_vec, revert_mask);
-    __mmask32 mask = _mm256_cmpeq_epi8_mask(fp_vec, fp_dup_vec);
+    __mmask32 mask = _mm256_mask_cmpeq_epi8_mask(kkeep, fp_vec, fp_dup_vec);
 
-    mask &= ((1u << (fp_cnt)) - 1u);
+    uint32_t crystal_begin = kControlOffset - kEntryByteLength;
 
-    // *value_ptr = mask;
-    // if (concurrent_version.load() != expected_version) {
-    //     goto query_again;
-    // }
-    // if (mask == 0) {
-    //     return false;
-    // }
-    // return true;
-
-    // if (mask == 0) {
-    //     if (concurrent_version.load() != expected_version) {
-    //         goto query_again;
-    //     }
-    //     return false;
-    // }
-
-    // do {
+    uint64_t masked_key = truncated_key << kBlastQuotientingLength;
     while (mask) {
 
-        // static uint64_t cnt = 0;
-        // cnt++;
-        // if (cnt % 100000 == 0) {
-        //     std::cout << "cnt: " << cnt << std::endl;
-        // }
-
-        // while (mask) {
         uint8_t i = __builtin_ctz(mask);
         mask &= ~(1u << i);
 

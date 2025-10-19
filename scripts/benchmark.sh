@@ -28,7 +28,7 @@ if [ -z "$exp_dir" ]; then
 fi
 
 function Init() {
-    compile_option=1
+    compile_option=2
     compile_resize=0
     sudo sysctl kernel.perf_event_paranoid=-1
     sudo sysctl kernel.kptr_restrict=0
@@ -318,7 +318,7 @@ Init
 # DebugCompile
 # ValgrindCompile
 
-compile_option=1
+compile_option=2
 compile_resize=1
 CompileWithOption
 
