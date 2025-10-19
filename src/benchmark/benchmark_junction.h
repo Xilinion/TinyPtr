@@ -1,7 +1,13 @@
+#pragma once
+
 #include <junction/ConcurrentMap_Grampa.h>
 #include <junction/ConcurrentMap_Leapfrog.h>
 #include <junction/ConcurrentMap_Linear.h>
+#include <cstdint>
+#include <vector>
+#include <tuple>
 #include "benchmark/benchmark_object_64.h"
+#include "benchmark/benchmark_object_type.h"
 
 namespace tinyptr {
 
@@ -37,6 +43,12 @@ class BenchmarkJunction : public BenchmarkObject64 {
     // junction::ConcurrentMap_Grampa<uint64_t, uint64_t>* tab;
     // junction::ConcurrentMap_Leapfrog<uint64_t, uint64_t>* tab;
     junction::ConcurrentMap_Linear<uint64_t, uint64_t>* tab;
+
+    // Wrapper functions to prevent inlining
+    [[gnu::noinline]] void assign_wrapper(uint64_t k, uint64_t v);
+    [[gnu::noinline]] uint64_t get_wrapper(uint64_t k);
+    [[gnu::noinline]] uint64_t exchange_wrapper(uint64_t k, uint64_t v);
+    [[gnu::noinline]] void erase_wrapper(uint64_t k);
 };
 
 }  // namespace tinyptr
