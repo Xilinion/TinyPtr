@@ -8,7 +8,7 @@
 #include <thread>
 #include <unordered_map>
 #include <vector>
-#include "blast_ht.h"
+#include "nonconc_blast_ht.h"
 #include "utils/rng.h"
 
 rng::rng64 rng64(123456789);
@@ -50,7 +50,7 @@ TEST(BlastHT_TESTSUITE, StdMapCompliance_INSERT_QUERY) {
 
     std::unordered_map<uint64_t, uint64_t> lala;
     // tinyptr::ByteArrayChainedHT skulker_ht(m, 24, 127);
-    tinyptr::BlastHT blast_ht(m, 127);
+    tinyptr::NonConcBlastHT blast_ht(m, 127);
 
     int cnt = 0;
     while (n--) {
@@ -78,7 +78,7 @@ TEST(BlastHT_TESTSUITE, StdMapCompliance) {
 
     int n = 1e6, m = 1 << 14;
     std::unordered_map<uint64_t, uint64_t> lala;
-    tinyptr::BlastHT blast_ht(m, 127);
+    tinyptr::NonConcBlastHT blast_ht(m, 127);
 
     int flag = 0;
 
