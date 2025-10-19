@@ -19,21 +19,53 @@ BenchmarkJunction::BenchmarkJunction(int n) : BenchmarkObject64(TYPE) {
     tab = new junction::ConcurrentMap_Linear<uint64_t, uint64_t>(table_size);
 }
 
+// Wrapper function definitions
+[[gnu::noinline]] void BenchmarkJunction::assign_wrapper(uint64_t k, uint64_t v) {
+    tab->assign(k, v);
+    // Prevent tail call optimization with compiler barrier (zero runtime cost)
+    asm volatile("" ::: "memory");
+}
+
+[[gnu::noinline]] uint64_t BenchmarkJunction::get_wrapper(uint64_t k) {
+    auto result = tab->get(k);
+    // Prevent tail call optimization with compiler barrier (zero runtime cost)
+    asm volatile("" ::: "memory");
+    return result;
+}
+
+[[gnu::noinline]] uint64_t BenchmarkJunction::exchange_wrapper(uint64_t k, uint64_t v) {
+    auto result = tab->exchange(k, v);
+    // Prevent tail call optimization with compiler barrier (zero runtime cost)
+    asm volatile("" ::: "memory");
+    return result;
+}
+
+[[gnu::noinline]] void BenchmarkJunction::erase_wrapper(uint64_t k) {
+    tab->erase(k);
+    // Prevent tail call optimization with compiler barrier (zero runtime cost)
+    asm volatile("" ::: "memory");
+}
+
 uint8_t BenchmarkJunction::Insert(uint64_t key, uint64_t value) {
-    tab->assign(key, value);
+    assign_wrapper(key, value);
+    asm volatile("nop" ::: "memory");  // Single nop instruction to prevent tail call
     return 0;
 }
 
 uint64_t BenchmarkJunction::Query(uint64_t key, uint8_t ptr) {
-    return tab->get(key);
+    auto result = get_wrapper(key);
+    asm volatile("nop" ::: "memory");  // Single nop instruction to prevent tail call
+    return result;
 }
 
 void BenchmarkJunction::Update(uint64_t key, uint8_t ptr, uint64_t value) {
-    tab->exchange(key, value);
+    exchange_wrapper(key, value);
+    asm volatile("nop" ::: "memory");  // Single nop instruction to prevent tail call
 }
 
 void BenchmarkJunction::Erase(uint64_t key, uint8_t ptr) {
-    tab->erase(key);
+    erase_wrapper(key);
+    asm volatile("nop" ::: "memory");  // Single nop instruction to prevent tail call
 }
 
 void BenchmarkJunction::YCSBFill(std::vector<uint64_t>& keys, int num_threads) {
@@ -50,7 +82,7 @@ void BenchmarkJunction::YCSBFill(std::vector<uint64_t>& keys, int num_threads) {
         threads.emplace_back(
             [this, &keys, start_index, end_index, i, context]() {
                 for (size_t j = start_index; j < end_index; ++j) {
-                    tab->assign(keys[j], 0);
+                    assign_wrapper(keys[j], 0);
                     if (j & ((1 << 10) - 1) == 0) {
                         junction::DefaultQSBR.update(context);
                     }
@@ -81,9 +113,9 @@ void BenchmarkJunction::YCSBRun(std::vector<std::pair<uint64_t, uint64_t>>& ops,
             [this, &ops, start_index, end_index, i, context]() {
                 for (size_t j = start_index; j < end_index; ++j) {
                     if (ops[j].first == 1) {
-                        tab->assign(ops[j].second, 0);
+                        assign_wrapper(ops[j].second, 0);
                     } else {
-                        tab->get(ops[j].second);
+                        get_wrapper(ops[j].second);
                     }
 
                     if (j & ((1 << 10) - 1) == 0) {
@@ -123,9 +155,9 @@ std::vector<std::tuple<uint64_t, double, uint64_t>> BenchmarkJunction::YCSBRunWi
                     std::chrono::high_resolution_clock::now().time_since_epoch()).count();
                 
                 if (ops[j].first == 1) {
-                    tab->assign(ops[j].second, 0);
+                    assign_wrapper(ops[j].second, 0);
                 } else {
-                    tab->get(ops[j].second);
+                    get_wrapper(ops[j].second);
                 }
                 
                 uint64_t end_time = std::chrono::duration_cast<std::chrono::nanoseconds>(
@@ -209,13 +241,13 @@ void BenchmarkJunction::ConcurrentRun(
             [this, &ops, start_index, end_index, i, context]() {
                 for (size_t j = start_index; j < end_index; ++j) {
                     if (std::get<0>(ops[j]) == ConcOptType::INSERT) {
-                        tab->assign(std::get<1>(ops[j]), std::get<2>(ops[j]));
+                        assign_wrapper(std::get<1>(ops[j]), std::get<2>(ops[j]));
                     } else if (std::get<0>(ops[j]) == ConcOptType::QUERY) {
-                        tab->get(std::get<1>(ops[j]));
+                        get_wrapper(std::get<1>(ops[j]));
                     } else if (std::get<0>(ops[j]) == ConcOptType::UPDATE) {
-                        tab->exchange(std::get<1>(ops[j]), std::get<2>(ops[j]));
+                        exchange_wrapper(std::get<1>(ops[j]), std::get<2>(ops[j]));
                     } else if (std::get<0>(ops[j]) == ConcOptType::ERASE) {
-                        tab->erase(std::get<1>(ops[j]));
+                        erase_wrapper(std::get<1>(ops[j]));
                     }
 
                     if (j & ((1 << 10) - 1) == 0) {
@@ -256,13 +288,13 @@ std::vector<std::tuple<uint64_t, double, uint64_t>> BenchmarkJunction::Concurren
                     std::chrono::high_resolution_clock::now().time_since_epoch()).count();
                 
                 if (std::get<0>(ops[j]) == ConcOptType::INSERT) {
-                    tab->assign(std::get<1>(ops[j]), std::get<2>(ops[j]));
+                    assign_wrapper(std::get<1>(ops[j]), std::get<2>(ops[j]));
                 } else if (std::get<0>(ops[j]) == ConcOptType::QUERY) {
-                    tab->get(std::get<1>(ops[j]));
+                    get_wrapper(std::get<1>(ops[j]));
                 } else if (std::get<0>(ops[j]) == ConcOptType::UPDATE) {
-                    tab->exchange(std::get<1>(ops[j]), std::get<2>(ops[j]));
+                    exchange_wrapper(std::get<1>(ops[j]), std::get<2>(ops[j]));
                 } else if (std::get<0>(ops[j]) == ConcOptType::ERASE) {
-                    tab->erase(std::get<1>(ops[j]));
+                    erase_wrapper(std::get<1>(ops[j]));
                 }
 
                 if (j & ((1 << 10) - 1) == 0) {
