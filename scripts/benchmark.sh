@@ -423,7 +423,7 @@ resize_object_ids=(6 7 15 18 21 24)
 # Throughput / Space Efficiency
 
 # Number of repetitions for each configuration
-num_rep=1
+num_rep=5
 
 thread_num=1
 enable_core_binding=true

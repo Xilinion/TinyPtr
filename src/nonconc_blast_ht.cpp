@@ -276,7 +276,7 @@ bool NonConcBlastHT::Query(uint64_t key, uint64_t* value_ptr) {
 	uint64_t* stored_key = reinterpret_cast<uint64_t*>(cloud + crystal_begin - i * kEntryByteLength + kKeyOffset);
 	// stored_key = _bzhi_u64(stored_key, 64 - kBlastQuotientingLength);
 	if (_bzhi_u64(stored_key[0], 64 - kBlastQuotientingLength) == truncated_key) {
-	    *value_ptr = *reinterpret_cast<uint64_t*>(reinterpret_cast<uint8_t*>(stored_key) + 6);
+	    *value_ptr = *reinterpret_cast<uint64_t*>(reinterpret_cast<uint8_t*>(stored_key) + kValueOffset);
                 return true;
 	}
     }
@@ -295,7 +295,7 @@ bool NonConcBlastHT::Query(uint64_t key, uint64_t* value_ptr) {
             uint64_t* stored_key =
                 (reinterpret_cast<uint64_t*>(entry + kKeyOffset));
 	    if (_bzhi_u64(stored_key[0], 64 - kBlastQuotientingLength) == truncated_key) {
-	        *value_ptr = *reinterpret_cast<uint64_t*>(reinterpret_cast<uint8_t*>(stored_key) + 6);
+	        *value_ptr = *reinterpret_cast<uint64_t*>(reinterpret_cast<uint8_t*>(stored_key) + kValueOffset);
                 return true;
             }
     }
