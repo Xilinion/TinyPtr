@@ -43,14 +43,14 @@ class NonConcBlastHT {
     // {4*{TP,K,V},{Bolts},{Control}}
 
     // const uint8_t kCloudByteLength = utils::kCacheLineSize;
-    static constexpr uint8_t kCloudByteLength = 64;
-    static constexpr uint8_t kCloudIdShiftOffset = 6;
+    static constexpr uint32_t kCloudByteLength = 64;
+    static constexpr uint32_t kCloudIdShiftOffset = 6;
     // control byte and bolts grow from the end of the cloud
-    static constexpr uint8_t kConcurrentVersionByteLength = 1;
-    static constexpr uint8_t kConcurrentVersionOffset =
+    static constexpr uint32_t kConcurrentVersionByteLength = 1;
+    static constexpr uint32_t kConcurrentVersionOffset =
         kCloudByteLength - kConcurrentVersionByteLength;
-    static constexpr uint8_t kControlByteLength = 1;
-    static constexpr uint8_t kControlOffset =
+    static constexpr uint32_t kControlByteLength = 1;
+    static constexpr uint32_t kControlOffset =
         kConcurrentVersionOffset - kControlByteLength;
     // static constexpr uint8_t kBoltByteLength = 2;
     // static constexpr uint8_t kBoltByteLengthShift = 1;
