@@ -42,7 +42,7 @@ void concurrent_insert(ResizableBlastHT& ht,
     uint64_t handle = ht.GetHandle();
     for (int i = start; i < end; ++i) {
         if (!ht.Insert(handle, data[i].first, data[i].second)) {
-            printf("insert failed: %llu, %llu\n", data[i].first,
+            printf("insert failed: %lu, %lu\n", data[i].first,
                    data[i].second);
             // printf("handle: %llu\n", handle);
             // printf("i: %llu\n", i);
