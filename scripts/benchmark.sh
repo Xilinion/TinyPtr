@@ -429,10 +429,10 @@ thread_num=1
 enable_core_binding=true
 
 for case_id in 9; do
-    for object_id in 23; do
+    for object_id in 20 23; do
         entry_id=100
         for table_size in 16777215; do
-            for load_factor in 0.05 0.7; do
+            for load_factor in 0.05 0.7 0.9; do
                 opt_num=$(printf "%.0f" $(echo "$table_size * $load_factor" | bc -l))
 
                 ## Run memory free only once per configuration
