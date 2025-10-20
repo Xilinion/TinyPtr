@@ -42,10 +42,10 @@ void concurrent_insert(ResizableByteArrayChainedHT& ht,
     uint64_t handle = ht.GetHandle();
     for (int i = start; i < end; ++i) {
         if (!ht.Insert(handle, data[i].first, data[i].second)) {
-            printf("insert failed: %llu, %llu\n", data[i].first,
+            printf("insert failed: %lu, %lu\n", data[i].first,
                    data[i].second);
-            printf("handle: %llu\n", handle);
-            printf("i: %llu\n", i);
+            printf("handle: %lu\n", handle);
+            printf("i: %u\n", i);
             ht.FreeHandle(handle);
             exit(0);
         }
@@ -82,7 +82,7 @@ TEST(ResizableByteArrayChainedHT_TESTSUITE, ParallelInsertQuery) {
     vector<pair<uint64_t, uint64_t>> data(num_operations);
     for (int i = 0; i < num_operations; ++i) {
         // cout << i << endl;
-        data[i] = {static_cast<uint64_t>(i * rand() * 233), my_value_rand()};
+        data[i] = {static_cast<uint64_t>(i) * static_cast<uint64_t>(rand()) * 233ULL, my_value_rand()};
     }
 
     // Ensure SlowXXHash64 is defined or included

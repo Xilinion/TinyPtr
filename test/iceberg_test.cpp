@@ -44,7 +44,7 @@ void concurrent_insert(iceberg_table* ht,
 
     for (int i = start; i < end; ++i) {
         if (!iceberg_insert(ht, data[i].first, data[i].second, tid)) {
-            printf("insert failed: %llu, %llu\n", data[i].first,
+            printf("insert failed: %lu, %lu\n", data[i].first,
                    data[i].second);
             // printf("handle: %llu\n", handle);
             // printf("i: %llu\n", i);
@@ -79,7 +79,7 @@ TEST(Iceberg_TESTSUITE, ParallelInsertQuery) {
     vector<pair<uint64_t, uint64_t>> data(num_operations);
     for (int i = 0; i < num_operations; ++i) {
         // cout << i << endl;
-        data[i] = {static_cast<uint64_t>(i * 233), my_value_rand()};
+        data[i] = {static_cast<uint64_t>(i) * 233ULL, my_value_rand()};
     }
 
     // Ensure SlowXXHash64 is defined or included

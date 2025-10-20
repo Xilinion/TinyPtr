@@ -31,9 +31,12 @@ YardedTPHT::YardedTPHT(uint64_t size, uint16_t bin_size)
       kFrontyardOffset(kBaseDuplexEncodingBytes),
       kYardNum((kBaseTabSize + kBaseDuplexSize - 1) / kFrontyardSize) {
 
-    (void)posix_memalign(reinterpret_cast<void**>(&frontyard_tab_ptr),
-                         utils::kCacheLineSize,
-                         (utils::kCacheLineSize + kBackyardSize) * kYardNum);
+    int result = posix_memalign(reinterpret_cast<void**>(&frontyard_tab_ptr),
+                                utils::kCacheLineSize,
+                                (utils::kCacheLineSize + kBackyardSize) * kYardNum);
+    if (result != 0) {
+        throw std::runtime_error("posix_memalign failed");
+    }
     memset(frontyard_tab_ptr, 0,
            (utils::kCacheLineSize + kBackyardSize) * kYardNum);
     backyard_tab_ptr = frontyard_tab_ptr + kYardNum * utils::kCacheLineSize;
