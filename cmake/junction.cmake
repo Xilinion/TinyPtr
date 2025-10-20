@@ -51,6 +51,16 @@ function(build_junction)
         file(CREATE_LINK ${junction_SOURCE_DIR} ${CMAKE_BINARY_DIR}/junction_combined/junction SYMBOLIC)
     endif()
     
+    # Patch Junction CMakeLists.txt to use modern CMake version
+    file(READ ${CMAKE_BINARY_DIR}/junction_combined/junction/CMakeLists.txt JUNCTION_CMAKE_CONTENT)
+    string(REPLACE "cmake_minimum_required(VERSION 2.8.5)" "cmake_minimum_required(VERSION 3.5)" JUNCTION_CMAKE_CONTENT "${JUNCTION_CMAKE_CONTENT}")
+    file(WRITE ${CMAKE_BINARY_DIR}/junction_combined/junction/CMakeLists.txt "${JUNCTION_CMAKE_CONTENT}")
+    
+    # Patch Turf CMakeLists.txt to use modern CMake version
+    file(READ ${CMAKE_BINARY_DIR}/junction_combined/turf/CMakeLists.txt TURF_CMAKE_CONTENT)
+    string(REPLACE "cmake_minimum_required(VERSION 2.8.5)" "cmake_minimum_required(VERSION 3.5)" TURF_CMAKE_CONTENT "${TURF_CMAKE_CONTENT}")
+    file(WRITE ${CMAKE_BINARY_DIR}/junction_combined/turf/CMakeLists.txt "${TURF_CMAKE_CONTENT}")
+    
     # Add Junction as a subdirectory
     add_subdirectory(${CMAKE_BINARY_DIR}/junction_combined/junction ${CMAKE_BINARY_DIR}/junction_combined/junction_build)
     

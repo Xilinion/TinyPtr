@@ -12,6 +12,7 @@ function(build_cuckoo)
             GIT_REPOSITORY ${CUCKOO_REPO}
             GIT_TAG ${CUCKOO_TAG}
             PREFIX ${CMAKE_BINARY_DIR}/cuckoo
+            PATCH_COMMAND sed -i -E "s/cmake_minimum_required\\(VERSION [0-9]+\\.[0-9]+([\\.]?[0-9]*)\\)/cmake_minimum_required(VERSION 3.5)/" CMakeLists.txt || true
             CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=<INSTALL_DIR>
             BUILD_IN_SOURCE 1
             BUILD_COMMAND ${CMAKE_COMMAND} --build . --target install
@@ -26,6 +27,7 @@ function(build_cuckoo)
             URL ${CUCKOO_URL}
             URL_HASH SHA256=${CUCKOO_HASH}
             PREFIX ${CMAKE_BINARY_DIR}/cuckoo
+            PATCH_COMMAND sed -i -E "s/cmake_minimum_required\\(VERSION [0-9]+\\.[0-9]+([\\.]?[0-9]*)\\)/cmake_minimum_required(VERSION 3.5)/" CMakeLists.txt || true
             CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=<INSTALL_DIR>
             BUILD_IN_SOURCE 1
             BUILD_COMMAND ${CMAKE_COMMAND} --build . --target install
