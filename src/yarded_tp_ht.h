@@ -25,7 +25,7 @@ class YardedTPHT : public ByteArrayChainedHT {
 
    protected:
     __attribute__((always_inline)) inline void print_duplex(uint64_t base_id,
-                                                            char* msg) {
+                                                            const char* msg) {
 
         return;
 
