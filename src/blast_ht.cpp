@@ -419,8 +419,7 @@ for (;;) {
     
         const uint8_t fp = qbits >> kCloudQuotientingLength;
         __m256i fp_dup_vec = _mm256_set1_epi8(fp);
-        __m256i fp_vec = _mm256_load_si256(
-    		    reinterpret_cast<__m256i*>(cloud + kFingerprintOffset));
+        __m256i fp_vec = _mm256_load_si256(reinterpret_cast<__m256i*>(cloud + kFingerprintOffset));
     
         __mmask32 mask = _mm256_mask_cmpeq_epi8_mask(kkeep, fp_vec, fp_dup_vec);
     
@@ -433,7 +432,7 @@ for (;;) {
     	    uint64_t* stored_key = reinterpret_cast<uint64_t*>(cloud + kCrystalOffset - i * kEntryByteLength + kKeyOffset);
     	    if (_bzhi_u64(stored_key[0], 64 - kBlastQuotientingLength) == truncated_key) {
     	        *value_ptr = *reinterpret_cast<uint64_t*>(reinterpret_cast<uint8_t*>(stored_key) + kValueOffset);
-              	    uint8_t end = concurrent_version.load(std::memory_order_acquire);
+              	uint8_t end = concurrent_version.load(std::memory_order_acquire);
                 if (end == start) return true;
                 continue; // version changed; retry whole read
             }
