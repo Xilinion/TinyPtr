@@ -145,7 +145,7 @@ BlastHT::BlastHT(uint64_t size, uint8_t quotienting_tail_length,
 
     // Assign pointers to their respective regions
     uint8_t* base =
-        (uint8_t*)((uint64_t)(combined_mem + 63) & ~static_cast<uint64_t>(63));
+        reinterpret_cast<uint8_t*>(((uintptr_t)(combined_mem) + 63) & ~static_cast<uintptr_t>(63));
     cloud_tab = base;
     base += cloud_size_aligned;
 
