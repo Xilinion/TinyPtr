@@ -399,194 +399,70 @@ bool BlastHT::Query(uint64_t key, uint64_t* value_ptr) {
     uint8_t* cloud = &cloud_tab[(cloud_id << kCloudIdShiftOffset)];
 
     // Use std::atomic for concurrent_version
-    std::atomic<uint8_t>& concurrent_version =
+    auto& concurrent_version =
         *reinterpret_cast<std::atomic<uint8_t>*>(
             &cloud[kConcurrentVersionOffset]);
 
-query_again:
+for (;;) {
+        // 1) Wait for an even (stable) version.
+        uint8_t start = concurrent_version.load(std::memory_order_acquire);
+        while (start & 1u) {
+            _mm_pause(); // polite spin while a writer is active
+            start = concurrent_version.load(std::memory_order_acquire);
+        }
 
-    uint8_t expected_version = concurrent_version.load();
-    while (expected_version & 1) {
-        uint8_t expected_version = concurrent_version.load();
-    }
-
-    uint8_t& control_info = cloud[kControlOffset];
-    uint32_t tp_cnt = (control_info >> kControlTinyPtrShift);
-    uint32_t crystal_cnt = control_info & kControlCrystalMask;
-    uint32_t fp_cnt = tp_cnt + crystal_cnt;
-    const __mmask32 kkeep = static_cast<__mmask32>(_bzhi_u32(0xFFFF'FFFFu, fp_cnt));
-
-    const uint8_t fp = qbits >> kCloudQuotientingLength;
-    __m256i fp_dup_vec = _mm256_set1_epi8(fp);
-    __m256i fp_vec = _mm256_load_si256(
-		    reinterpret_cast<__m256i*>(cloud + kFingerprintOffset));
-
-    __mmask32 mask = _mm256_mask_cmpeq_epi8_mask(kkeep, fp_vec, fp_dup_vec);
-
-    __mmask32 crystal_mask = _bzhi_u32(mask, crystal_cnt);
-
-    while (crystal_mask) {
-        uint32_t i = __builtin_ctz(crystal_mask);
-        crystal_mask &= crystal_mask - 1;
-
-	uint64_t* stored_key = reinterpret_cast<uint64_t*>(cloud + kCrystalOffset - i * kEntryByteLength + kKeyOffset);
-	// stored_key = _bzhi_u64(stored_key, 64 - kBlastQuotientingLength);
-	if (_bzhi_u64(stored_key[0], 64 - kBlastQuotientingLength) == truncated_key) {
-	    *value_ptr = *reinterpret_cast<uint64_t*>(reinterpret_cast<uint8_t*>(stored_key) + kValueOffset);
-	    if (concurrent_version.load() != expected_version) {
-	        goto query_again;
-	    }
-            return true;
+        uint8_t& control_info = cloud[kControlOffset];
+        uint32_t tp_cnt = (control_info >> kControlTinyPtrShift);
+        uint32_t crystal_cnt = control_info & kControlCrystalMask;
+        uint32_t fp_cnt = tp_cnt + crystal_cnt;
+        const __mmask32 kkeep = static_cast<__mmask32>(_bzhi_u32(0xFFFF'FFFFu, fp_cnt));
+    
+        const uint8_t fp = qbits >> kCloudQuotientingLength;
+        __m256i fp_dup_vec = _mm256_set1_epi8(fp);
+        __m256i fp_vec = _mm256_load_si256(
+    		    reinterpret_cast<__m256i*>(cloud + kFingerprintOffset));
+    
+        __mmask32 mask = _mm256_mask_cmpeq_epi8_mask(kkeep, fp_vec, fp_dup_vec);
+    
+        __mmask32 crystal_mask = _bzhi_u32(mask, crystal_cnt);
+    
+        while (crystal_mask) {
+            uint32_t i = __builtin_ctz(crystal_mask);
+            crystal_mask &= crystal_mask - 1;
+    
+    	    uint64_t* stored_key = reinterpret_cast<uint64_t*>(cloud + kCrystalOffset - i * kEntryByteLength + kKeyOffset);
+    	    if (_bzhi_u64(stored_key[0], 64 - kBlastQuotientingLength) == truncated_key) {
+    	        *value_ptr = *reinterpret_cast<uint64_t*>(reinterpret_cast<uint8_t*>(stored_key) + kValueOffset);
+              	    uint8_t end = concurrent_version.load(std::memory_order_acquire);
+                if (end == start) return true;
+                continue; // version changed; retry whole read
+            }
 	}
-    }
-
-    __mmask32 tp_mask = mask >> crystal_cnt;
-    while (tp_mask) {
-        uint32_t i = __builtin_ctz(tp_mask);
-        tp_mask &= tp_mask - 1;
-
+    
+        __mmask32 tp_mask = mask >> crystal_cnt;
+        while (tp_mask) {
+            uint32_t i = __builtin_ctz(tp_mask);
+            tp_mask &= tp_mask - 1;
+    
             uint32_t crystal_end =
-                kControlOffset - kEntryByteLength * crystal_cnt;
+            kControlOffset - kEntryByteLength * crystal_cnt;
             uint8_t* tiny_ptr = cloud + crystal_end - i - 1;
             uint64_t deref_key = (cloud_id << kByteShift) | fp;
             uint8_t* entry = ptab_query_entry_address(deref_key, *tiny_ptr);
-
-            uint64_t* stored_key =
-                (reinterpret_cast<uint64_t*>(entry + kKeyOffset));
-	    if (_bzhi_u64(stored_key[0], 64 - kBlastQuotientingLength) == truncated_key) {
-	        *value_ptr = *reinterpret_cast<uint64_t*>(reinterpret_cast<uint8_t*>(stored_key) + kValueOffset);
-	        if (concurrent_version.load() != expected_version) {
-	            goto query_again;
-	        }
-                return true;
-            }
-    }
-
-    if (concurrent_version.load() != expected_version) {
-        goto query_again;
-    }
-    return false;
-}
-
-/*
-bool BlastHT::Query(uint64_t key, uint64_t* value_ptr) {
-
-    uint64_t truncated_key = key >> kBlastQuotientingLength;
-    uint64_t masked_key = truncated_key << kBlastQuotientingLength;
-    uint64_t cloud_id =
-        ((HASH_FUNCTION(&truncated_key, sizeof(uint64_t), kHashSeed1) ^ key) &
-         kBlastQuotientingMask);
-
-    uint8_t fp = cloud_id >> kCloudQuotientingLength;
     
-    __m256i fp_dup_vec = _mm256_set1_epi8(fp);
-
-    cloud_id = cloud_id & kQuotientingTailMask;
-
-    uint8_t* cloud = &cloud_tab[(cloud_id << kCloudIdShiftOffset)];
-
-    // Use std::atomic for concurrent_version
-    std::atomic<uint8_t>& concurrent_version =
-        *reinterpret_cast<std::atomic<uint8_t>*>(
-            &cloud[kConcurrentVersionOffset]);
-
-query_again:
-
-    uint8_t expected_version;
-    do {
-        expected_version = concurrent_version.load();
-    } while ((expected_version & 1));
-
-    // __m256i revert_mask = _mm256_set_epi8(
-    //     31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, 16, 15, 14,
-    //     13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0);
-    __m256i fp_vec = _mm256_loadu_si256(
-        reinterpret_cast<__m256i*>(cloud + kFingerprintOffset));
-
-    uint8_t& control_info = cloud[kControlOffset];
-    uint8_t crystal_cnt = control_info & kControlCrystalMask;
-    uint8_t tp_cnt = (control_info >> kControlTinyPtrShift);
-    uint8_t fp_cnt = crystal_cnt + tp_cnt;
-
-    uint8_t crystal_begin = kControlOffset - kEntryByteLength;
-
-    // fp_vec = _mm256_xor_si256(fp_vec, revert_mask);
-    __mmask32 mask = _mm256_cmpeq_epi8_mask(fp_vec, fp_dup_vec);
-
-    mask &= ((1u << (fp_cnt)) - 1u);
-
-    // *value_ptr = mask;
-    // if (concurrent_version.load() != expected_version) {
-    //     goto query_again;
-    // }
-    // if (mask == 0) {
-    //     return false;
-    // }
-    // return true;
-
-    // if (mask == 0) {
-    //     if (concurrent_version.load() != expected_version) {
-    //         goto query_again;
-    //     }
-    //     return false;
-    // }
-
-    // do {
-    while (mask) {
-
-        // static uint64_t cnt = 0;
-        // cnt++;
-        // if (cnt % 100000 == 0) {
-        //     std::cout << "cnt: " << cnt << std::endl;
-        // }
-
-        // while (mask) {
-        uint8_t i = __builtin_ctz(mask);
-        mask &= ~(1u << i);
-
-        if (i < crystal_cnt) {
-            if (reinterpret_cast<uint64_t*>(cloud + crystal_begin -
-                                            i * kEntryByteLength +
-                                            kKeyOffset)[0]
-                    << kBlastQuotientingLength ==
-                masked_key) {
-                *value_ptr = reinterpret_cast<uint64_t*>(cloud + crystal_begin -
-                                                         i * kEntryByteLength +
-                                                         kValueOffset)[0];
-                if (concurrent_version.load() != expected_version) {
-                    goto query_again;
-                }
-                return true;
-            }
-        } else {
-            uint8_t crystal_end =
-                kControlOffset - kEntryByteLength * crystal_cnt;
-            uint8_t* tiny_ptr = cloud + crystal_end - i + crystal_cnt - 1;
-            uint64_t deref_key = (cloud_id << kByteShift) | fp;
-            uint8_t* entry = ptab_query_entry_address(deref_key, *tiny_ptr);
-
-            uint64_t entry_masked_key =
-                (*reinterpret_cast<uint64_t*>(entry + kKeyOffset))
-                << kBlastQuotientingLength;
-
-            if (entry_masked_key == masked_key) {
-                *value_ptr = *reinterpret_cast<uint64_t*>(entry + kValueOffset);
-
-                if (concurrent_version.load() != expected_version) {
-                    goto query_again;
-                }
-                return true;
+            uint64_t* stored_key = (reinterpret_cast<uint64_t*>(entry + kKeyOffset));
+    	    if (_bzhi_u64(stored_key[0], 64 - kBlastQuotientingLength) == truncated_key) {
+    	        *value_ptr = *reinterpret_cast<uint64_t*>(reinterpret_cast<uint8_t*>(stored_key) + kValueOffset);
+                uint8_t end = concurrent_version.load(std::memory_order_acquire);
+                if (end == start) return true;
+                continue; // version changed; retry whole read
             }
         }
+    
+        uint8_t end = concurrent_version.load(std::memory_order_acquire);
+        if (end == start) return false;
     }
-    // } while (mask);
-
-    if (concurrent_version.load() != expected_version) {
-        goto query_again;
-    }
-    return false;
 }
-*/
 
 bool BlastHT::Update(uint64_t key, uint64_t value) {
 
