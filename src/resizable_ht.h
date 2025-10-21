@@ -43,7 +43,7 @@ class ResizableHT {
 
    public:
     ResizableHT(uint64_t initial_size_per_part = 40000, uint64_t part_num = 0,
-                uint32_t thread_num = 0, double resize_threshold = 0.95,
+                uint32_t thread_num = 0, double resize_threshold = 0.7,
                 double resize_factor = 2.0);
 
    protected:
@@ -322,7 +322,7 @@ ResizableHT<HTType>::ResizableHT(uint64_t initial_size_per_part_,
         // double sized = initial_size_per_part * (1 + resize_factor * frac);
         double sized = initial_size_per_part * std::pow(resize_factor, frac);
         uint64_t size_i = std::max<uint64_t>(1, static_cast<uint64_t>(sized));
-        size_i = initial_size_per_part;
+        // size_i = initial_size_per_part;
 
         partitions[i] = new HTType(size_i, true);
         part_size[i] = size_i;
