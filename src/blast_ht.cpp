@@ -309,90 +309,9 @@ bool BlastHT::Insert(uint64_t key, uint64_t value) {
     }
 }
 
-/*
 bool BlastHT::Query(uint64_t key, uint64_t* value_ptr) {
 
     uint64_t truncated_key = key >> kBlastQuotientingLength;
-    uint64_t masked_key = truncated_key << kBlastQuotientingLength;
-    uint64_t cloud_id =
-        ((HASH_FUNCTION(&truncated_key, sizeof(uint64_t), kHashSeed1) ^ key) &
-         kBlastQuotientingMask);
-    uint8_t fp = cloud_id >> kCloudQuotientingLength;
-    cloud_id = cloud_id & kQuotientingTailMask;
-
-    uint8_t* cloud = &cloud_tab[(cloud_id << kCloudIdShiftOffset)];
-
-    // Use std::atomic for concurrent_version
-    std::atomic<uint8_t>& concurrent_version =
-        *reinterpret_cast<std::atomic<uint8_t>*>(
-            &cloud[kConcurrentVersionOffset]);
-
-query_again:
-
-    uint8_t expected_version;
-    do {
-        expected_version = concurrent_version.load();
-    } while ((expected_version & 1));
-
-    uint8_t& control_info = cloud[kControlOffset];
-    uint8_t crystal_cnt = control_info & kControlCrystalMask;
-    uint8_t tp_cnt = (control_info >> kControlTinyPtrShift);
-    uint8_t fp_cnt = crystal_cnt + tp_cnt;
-
-    uint8_t crystal_begin = kControlOffset - kEntryByteLength;
-
-    // Crystal search - using standard loop
-    for (uint8_t i = 0; i < fp_cnt; i++) {
-        if ((cloud[kFingerprintOffset + i]) == fp) {
-            if (i < crystal_cnt) {
-                if (reinterpret_cast<uint64_t*>(cloud + crystal_begin -
-                                                i * kEntryByteLength +
-                                                kKeyOffset)[0]
-                        << kBlastQuotientingLength ==
-                    masked_key) {
-                    *value_ptr = reinterpret_cast<uint64_t*>(
-                        cloud + crystal_begin - i * kEntryByteLength +
-                        kValueOffset)[0];
-                    if (concurrent_version.load() != expected_version) {
-                        goto query_again;
-                    }
-                    return true;
-                }
-            } else {
-                uint8_t crystal_end =
-                    kControlOffset - kEntryByteLength * crystal_cnt;
-                uint8_t* tiny_ptr = cloud + crystal_end - i + crystal_cnt - 1;
-                uint64_t deref_key = (cloud_id << kByteShift) | fp;
-                uint8_t* entry = ptab_query_entry_address(deref_key, *tiny_ptr);
-
-                uint64_t entry_masked_key =
-                    (*reinterpret_cast<uint64_t*>(entry + kKeyOffset))
-                    << kBlastQuotientingLength;
-
-                if (entry_masked_key == masked_key) {
-                    *value_ptr =
-                        *reinterpret_cast<uint64_t*>(entry + kValueOffset);
-
-                    if (concurrent_version.load() != expected_version) {
-                        goto query_again;
-                    }
-                    return true;
-                }
-            }
-        }
-    }
-
-    if (concurrent_version.load() != expected_version) {
-        goto query_again;
-    }
-    return false;
-}
-*/
-
-bool BlastHT::Query(uint64_t key, uint64_t* value_ptr) {
-
-    uint64_t truncated_key = key >> kBlastQuotientingLength;
-    // uint64_t masked_key = truncated_key << kBlastQuotientingLength;
     uint64_t cloud_id =
         ((HASH_FUNCTION(&truncated_key, sizeof(uint64_t), kHashSeed1) ^ key) &
          kBlastQuotientingMask);
@@ -417,9 +336,6 @@ query_again:
         expected_version = concurrent_version.load();
     } while ((expected_version & 1));
 
-    // __m256i revert_mask = _mm256_set_epi8(
-    //     31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, 16, 15, 14,
-    //     13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0);
     __m256i fp_vec = _mm256_loadu_si256(
         reinterpret_cast<__m256i*>(cloud + kFingerprintOffset));
 
@@ -429,8 +345,6 @@ query_again:
     uint8_t fp_cnt = crystal_cnt + tp_cnt;
 
     const __mmask32 kkeep = static_cast<__mmask32>(_bzhi_u32(0xFFFF'FFFFu, fp_cnt));
-
-    uint8_t crystal_begin = kControlOffset - kEntryByteLength;
 
     // fp_vec = _mm256_xor_si256(fp_vec, revert_mask);
     __mmask32 mask = _mm256_mask_cmpeq_epi8_mask(kkeep, fp_vec, fp_dup_vec);
@@ -445,7 +359,6 @@ query_again:
         uint32_t crystal_begin = kControlOffset - kEntryByteLength;
         uint64_t* stored_key = reinterpret_cast<uint64_t*>(
             cloud + crystal_begin - i * kEntryByteLength + kKeyOffset);
-        // stored_key = _bzhi_u64(stored_key, 64 - kBlastQuotientingLength);
         if (_bzhi_u64(stored_key[0], 64 - kBlastQuotientingLength) ==
             truncated_key) {
             *value_ptr = *reinterpret_cast<uint64_t*>(
@@ -478,68 +391,6 @@ query_again:
             return true;
         }
     }
-
-
-    // *value_ptr = mask;
-    // if (concurrent_version.load() != expected_version) {
-    //     goto query_again;
-    // }
-    // if (mask == 0) {
-    //     return false;
-    // }
-    // return true;
-
-    // if (mask == 0) {
-    //     if (concurrent_version.load() != expected_version) {
-    //         goto query_again;
-    //     }
-    //     return false;
-    // }
-
-    // __mmask32 crystal_mask = _bzhi_u32(mask, crystal_cnt);
-    // while (crystal_mask) {
-    //     // while (mask) {
-    //     uint8_t i = __builtin_ctz(crystal_mask);
-    //     crystal_mask &= crystal_mask - 1;
-
-    //     uint64_t* stored_key = reinterpret_cast<uint64_t*>(
-    //         cloud + crystal_begin - i * kEntryByteLength + kKeyOffset);
-
-    //     if (_bzhi_u64(stored_key[0], 64 - kBlastQuotientingLength) ==
-    //         truncated_key) {
-    //         *value_ptr = *reinterpret_cast<uint64_t*>(
-    //             reinterpret_cast<uint8_t*>(stored_key) + kValueOffset -
-    //             kKeyOffset);
-    //         if (concurrent_version.load() != expected_version) {
-    //             goto query_again;
-    //         }
-    //         return true;
-    //     }
-    // }
-
-    // __mmask32 tp_mask = mask >> crystal_cnt;
-    // while (tp_mask) {
-    //     uint8_t i = __builtin_ctz(tp_mask);
-    //     tp_mask &= tp_mask - 1;
-
-    //     uint8_t crystal_end = kControlOffset - kEntryByteLength * crystal_cnt;
-    //     uint8_t* tiny_ptr = cloud + crystal_end - i - 1;
-    //     uint64_t deref_key = (cloud_id << kByteShift) | fp;
-    //     uint8_t* entry = ptab_query_entry_address(deref_key, *tiny_ptr);
-
-    //     uint64_t entry_masked_key =
-    //         (*reinterpret_cast<uint64_t*>(entry + kKeyOffset))
-    //         << kBlastQuotientingLength;
-
-    //     if (entry_masked_key == masked_key) {
-    //         *value_ptr = *reinterpret_cast<uint64_t*>(entry + kValueOffset);
-
-    //         if (concurrent_version.load() != expected_version) {
-    //             goto query_again;
-    //         }
-    //         return true;
-    //     }
-    // }
 
     if (concurrent_version.load() != expected_version) {
         goto query_again;
