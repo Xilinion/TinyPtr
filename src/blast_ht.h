@@ -31,33 +31,34 @@ class BlastHT {
    public:
     const uint64_t kHashSeed1;
     const uint64_t kHashSeed2;
-    const uint8_t kCloudQuotientingLength;
-    const uint8_t kBlastQuotientingLength;
+    const uint32_t kCloudQuotientingLength;
+    const uint32_t kBlastQuotientingLength;
     const uint64_t kBlastQuotientingMask;
     const uint64_t kQuotientingTailMask;
-    const uint8_t kQuotKeyByteLength;
+    const uint32_t kBlastQuotientingRemainLen;
+    const uint32_t kQuotKeyByteLength;
     const uint8_t kEntryByteLength;
-    const uint8_t kCrystalOffset;
+    const uint32_t kCrystalOffset;
 
     // layout
     // {4*{TP,K,V},{Bolts},{Control}}
 
     // const uint8_t kCloudByteLength = utils::kCacheLineSize;
-    static constexpr uint8_t kCloudByteLength = 64;
-    static constexpr uint8_t kCloudIdShiftOffset = 6;
+    static constexpr uint32_t kCloudByteLength = 64;
+    static constexpr uint32_t kCloudIdShiftOffset = 6;
     // control byte and bolts grow from the end of the cloud
-    static constexpr uint8_t kConcurrentVersionByteLength = 1;
-    static constexpr uint8_t kConcurrentVersionOffset =
+    static constexpr uint32_t kConcurrentVersionByteLength = 1;
+    static constexpr uint32_t kConcurrentVersionOffset =
         kCloudByteLength - kConcurrentVersionByteLength;
-    static constexpr uint8_t kControlByteLength = 1;
-    static constexpr uint8_t kControlOffset =
+    static constexpr uint32_t kControlByteLength = 1;
+    static constexpr uint32_t kControlOffset =
         kConcurrentVersionOffset - kControlByteLength;
-    // static constexpr uint8_t kBoltByteLength = 2;
-    // static constexpr uint8_t kBoltByteLengthShift = 1;
-    // static constexpr uint8_t kBoltOffset = kControlOffset;
+    // static constexpr uint32_t kBoltByteLength = 2;
+    // static constexpr uint32_t kBoltByteLengthShift = 1;
+    // static constexpr uint32_t kBoltOffset = kControlOffset;
 
-    static constexpr uint8_t kControlCrystalMask = (1 << 3) - 1;
-    static constexpr uint8_t kControlTinyPtrShift = 3;
+    static constexpr uint32_t kControlCrystalMask = (1 << 3) - 1;
+    static constexpr uint32_t kControlTinyPtrShift = 3;
 
     static constexpr double kCloudOverflowBound = 0.23;
     // expected ratio of used quotienting slots
@@ -65,15 +66,15 @@ class BlastHT {
 
     const uint16_t kBinSize;
     const uint64_t kBinNum;
-    static constexpr uint8_t kTinyPtrOffset = 0;
-    static constexpr uint8_t kFingerprintOffset = 0;
-    static constexpr uint8_t kFingerprintShift = 3;
-    static constexpr uint8_t kKeyOffset = 0;
-    const uint8_t kValueOffset;
+    static constexpr uint32_t kTinyPtrOffset = 0;
+    static constexpr uint32_t kFingerprintOffset = 0;
+    static constexpr uint32_t kFingerprintShift = 3;
+    static constexpr uint32_t kKeyOffset = 0;
+    const uint32_t kValueOffset;
     const uint16_t kBinByteLength;
     static constexpr uintptr_t kPtr16BAlignMask = ~0xF;
     static constexpr uintptr_t kPtr16BBufferOffsetMask = 0xF;
-    static constexpr uint8_t kPtr16BBufferSecondLoadOffset = 16;
+    static constexpr uint32_t kPtr16BBufferSecondLoadOffset = 16;
     // const uintptr_t kPtrCacheLineOffsetMask = utils::kCacheLineSize - 1;
     static constexpr uintptr_t kPtrCacheLineOffsetMask = kCloudByteLength - 1;
     static constexpr uintptr_t kPtrCacheLineAlignMask =
@@ -83,8 +84,8 @@ class BlastHT {
     // const uint64_t kBaseHashFactor;
     // const uint64_t kBaseHashInverse;
 
-    static constexpr uint8_t kFastDivisionUpperBoundLog = 31;
-    const uint8_t kFastDivisionShift[2];
+    static constexpr uint32_t kFastDivisionUpperBoundLog = 31;
+    const uint32_t kFastDivisionShift[2];
     static constexpr uint64_t kFastDivisionUpperBound =
         1ULL << kFastDivisionUpperBoundLog;
     const uint64_t kFastDivisionReciprocal[2];
