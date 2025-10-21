@@ -98,8 +98,8 @@ class NonConcBlastHT {
     uint8_t AutoFastDivisionInnerShift(uint64_t divisor);
 
    public:
-    NonConcBlastHT(uint64_t size, uint8_t quotienting_tail_length, uint16_t bin_size,
-            bool if_resize);
+    NonConcBlastHT(uint64_t size, uint8_t quotienting_tail_length,
+                   uint16_t bin_size, bool if_resize);
     NonConcBlastHT(uint64_t size, uint16_t bin_size, bool if_resize);
     NonConcBlastHT(uint64_t size, bool if_resize);
 
@@ -221,9 +221,16 @@ class NonConcBlastHT {
     }
 
     __attribute__((always_inline)) inline uint8_t* ptab_query_entry_address(
-        uint64_t key, uint8_t ptr) {
-        uint8_t flag = (ptr >= (1 << 7));
-        ptr = ptr & ((1 << 7) - 1);
+        uint64_t key, uint32_t ptr) {
+#if defined(__x86_64__) || defined(_M_X64)
+        unsigned char flag;
+        __asm__ volatile(
+            "btr $7, %1\n\t"  // test-and-clear bit 7 in tmp; CF = old bit
+            "setc %0"         // flag = CF
+            : "=r"(flag), "+r"(ptr)
+            :
+            : "cc");
+
         if (flag) {
             return byte_array +
                    (hash_2_bin(key) * kBinSize + ptr - 1) * kEntryByteLength;
@@ -231,6 +238,17 @@ class NonConcBlastHT {
             return byte_array +
                    (hash_1_bin(key) * kBinSize + ptr - 1) * kEntryByteLength;
         }
+#else
+        uint8_t flag = ptr >> 7;
+        ptr &= 0x7F;
+        if (flag) {
+            return byte_array +
+                   (hash_2_bin(key) * kBinSize + ptr - 1) * kEntryByteLength;
+        } else {
+            return byte_array +
+                   (hash_1_bin(key) * kBinSize + ptr - 1) * kEntryByteLength;
+        }
+#endif
     }
 
     __attribute__((always_inline)) inline uint8_t* ptab_insert_entry_address(
@@ -305,7 +323,6 @@ class NonConcBlastHT {
 
         uint64_t bin_id = (entry - byte_array) / kBinByteLength;
 
-
         bin_cnt(bin_id)--;
         uint8_t& head = bin_head(bin_id);
         uint8_t cur_in_bin_pos = ((uint8_t)((*pre_tiny_ptr) << 1) >> 1) - 1;
@@ -315,14 +332,14 @@ class NonConcBlastHT {
         }
         head = cur_in_bin_pos;
         *pre_tiny_ptr = 0;
-
     }
 
    public:
     __attribute__((always_inline)) inline void prefetch_key(uint64_t key) {
         uint64_t truncated_key = key >> kBlastQuotientingLength;
         uint64_t cloud_id =
-            ((HASH_FUNCTION(&truncated_key, sizeof(uint64_t), kHashSeed1) ^ key) &
+            ((HASH_FUNCTION(&truncated_key, sizeof(uint64_t), kHashSeed1) ^
+              key) &
              kBlastQuotientingMask);
         // do fast division
         // uint64_t cloud_id;
