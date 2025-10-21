@@ -473,9 +473,6 @@ done
 thread_num=0
 enable_core_binding=false
 
-exit
-
-
 # Hash Distribution Validation
 
 num_rep=100
