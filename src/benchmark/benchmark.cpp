@@ -879,7 +879,7 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
         case BenchmarkCaseType::QUERY_HIT_ONLY:
             run = [this, para]() {
                 std::vector<uint64_t> key_vec, value_vec;
-                obj_fill_vec_prepare(key_vec, value_vec, table_size);
+                obj_fill_vec_prepare(key_vec, value_vec, opt_num);
 
                 std::vector<std::tuple<uint64_t, uint64_t, uint64_t>> ops;
                 if (thread_num) {
@@ -944,7 +944,7 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
         case BenchmarkCaseType::QUERY_HIT_PERCENT:
             run = [this]() {
                 std::vector<uint64_t> key_vec, value_vec;
-                obj_fill_vec_prepare(key_vec, value_vec, table_size);
+                obj_fill_vec_prepare(key_vec, value_vec, opt_num);
 
                 std::vector<std::tuple<uint64_t, uint64_t, uint64_t>> ops;
                 if (thread_num) {
