@@ -45,8 +45,39 @@ def find_object_id(filename: str) -> int:
     return int(m.group(1))
 
 
-def normalized_series(times: List[float], mem: List[float]) -> Tuple[List[float], List[float]]:
-    """Cut series from first change to the final peak, then normalize time to [0,1]."""
+def remove_trailing_zeros(times: List[float], mem: List[float]) -> Tuple[List[float], List[float]]:
+    """Remove trailing zero values from the end of the memory series."""
+    if not mem:
+        return times, mem
+    
+    # Find last non-zero index
+    last_nonzero = len(mem) - 1
+    for i in range(len(mem) - 1, -1, -1):
+        if mem[i] != 0.0:
+            last_nonzero = i
+            break
+    
+    # If all zeros, return empty
+    if last_nonzero < 0 or mem[last_nonzero] == 0.0:
+        return [], []
+    
+    return times[:last_nonzero + 1], mem[:last_nonzero + 1]
+
+
+def normalized_series(times: List[float], mem: List[float], use_peak_as_end: bool = True) -> Tuple[List[float], List[float]]:
+    """Cut series from first change to either peak or final point, then normalize time to [0,1].
+    
+    Args:
+        times: List of time values
+        mem: List of memory values
+        use_peak_as_end: If True, cut to last occurrence of peak memory value.
+                        If False, cut to final data point.
+    """
+    if not times:
+        return [], []
+
+    # Remove trailing zeros first
+    times, mem = remove_trailing_zeros(times, mem)
     if not times:
         return [], []
 
@@ -57,13 +88,19 @@ def normalized_series(times: List[float], mem: List[float]) -> Tuple[List[float]
         if mem[i] != mem[0]:
             start_idx = i
             break
-    # Peak index (greatest memory usage) - use LAST occurrence if multiple peaks
-    peak_mem = max(mem)
-    end_idx = start_idx  # default fallback
-    for i in range(len(mem) - 1, -1, -1):  # search backwards from end
-        if mem[i] == peak_mem:
-            end_idx = i
-            break
+    
+    # Determine end index based on mode
+    if use_peak_as_end:
+        # Peak index (greatest memory usage) - use LAST occurrence if multiple peaks
+        peak_mem = max(mem)
+        end_idx = start_idx  # default fallback
+        for i in range(len(mem) - 1, -1, -1):  # search backwards from end
+            if mem[i] == peak_mem:
+                end_idx = i
+                break
+    else:
+        # Use final data point
+        end_idx = len(mem) - 1
     
     if end_idx < start_idx:
         # Fallback: ensure non-empty slice
@@ -97,6 +134,12 @@ def resample_50(norm_times: List[float], mem: List[float]) -> List[Tuple[float, 
 
 
 def main() -> None:
+    # ============ CONFIGURATION ============
+    # Set to True to cut series at last occurrence of peak memory
+    # Set to False to cut series at final data point
+    USE_PEAK_AS_END = False
+    # =======================================
+    
     base_dir = config_py.RESULTS_DIR
     out_dir = config_py.CSV_OUTPUT_DIR
     os.makedirs(out_dir, exist_ok=True)
@@ -125,7 +168,7 @@ def main() -> None:
                 print(f"Warning: no parsable lines in {file_name}")
                 continue
 
-            norm_times, mem_series = normalized_series(times, virtuals)
+            norm_times, mem_series = normalized_series(times, virtuals, use_peak_as_end=USE_PEAK_AS_END)
             if not norm_times:
                 print(f"Warning: no usable segment (no change->peak) in {file_name}")
                 continue
@@ -141,7 +184,7 @@ def main() -> None:
 
     if rows_written == 0:
         print("Warning: mem_growth.csv contains no data rows. Verify benchmark.sh and results directory.")
-    print(f"Created {output_csv}")
+    print(f"Created {output_csv} (USE_PEAK_AS_END={USE_PEAK_AS_END})")
 
 
 if __name__ == "__main__":
