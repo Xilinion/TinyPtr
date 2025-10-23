@@ -126,7 +126,7 @@ function CommonArgsWithYCSB() {
         ycsb_load_path=$ycsb_a_load_file
         ycsb_exe_path=$ycsb_neg_a_exe_file
     fi
-    
+
     echo "-o $object_id -c $case_id -e $entry_id -t $table_size -p $opt_num -l $load_factor -h $hit_percent -b $bin_size -q $quotient_tail_length -y $ycsb_load_path -s $ycsb_exe_path -n $thread_num -f "$res_path""
 }
 
@@ -400,6 +400,28 @@ for case_id in 24; do
 done
 thread_num=0
 
+
+# resize memory footprint
+
+thread_num=0
+enable_core_binding=false
+
+for case_id in 1; do
+        for object_id in "${resize_object_ids[@]}"; do
+        entry_id=10000
+        # 2^24
+        for table_size in 16777215; do
+            # 2^27 * 0.6
+            opt_num=80530636
+            RunWithRetry "RunRandMemFree"
+        done
+    done
+done
+
+thread_num=0
+enable_core_binding=false
+
+
 compile_option=1
 compile_resize=0
 CompileWithOption
@@ -527,7 +549,6 @@ for case_id in 1 3 6 7; do
 done
 thread_num=0
 
-
 # progressive latency
 
 for case_id in 9 10; do
@@ -542,7 +563,6 @@ for case_id in 9 10; do
         done
     done
 done
-
 
 # load factor with deletion
 
