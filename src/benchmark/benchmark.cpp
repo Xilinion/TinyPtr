@@ -7,6 +7,8 @@
 #include <cstdlib>
 #include <ctime>
 #include <iostream>
+#include <fstream>
+#include <sstream>
 #include <iterator>
 #include <ostream>
 #include <queue>
@@ -42,6 +44,7 @@
 #include "benchmark_std_unordered_map_64.h"
 #include "benchmark_yarded_tp_ht.h"
 #include "benchmark_tbb.h"
+#include <iomanip>
 
 namespace tinyptr {
 
@@ -1549,6 +1552,102 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
                                   << std::get<1>(latency) << ", "
                                   << std::get<2>(latency) << std::endl;
                 }
+            };
+            break;
+        case BenchmarkCaseType::MEMORY_MEASUREMENT_INSERTIONS:
+            run = [this, para]() {
+                // Pre-allocate vectors for memory measurements
+                std::vector<uint64_t> memory_measurements;
+                std::vector<uint64_t> operation_counts;
+                memory_measurements.reserve(50);
+                operation_counts.reserve(50);
+                
+                // Calculate the intervals for 50 even points
+                uint64_t interval = opt_num / 50;
+                uint64_t current_target = interval;
+                
+                // Function to get current max memory usage (VmHWM in KB)
+                auto get_memory_usage = []() -> uint64_t {
+                    std::ifstream status_file("/proc/self/status");
+                    std::string line;
+                    while (std::getline(status_file, line)) {
+                        if (line.substr(0, 6) == "VmHWM:") { 
+                            // Extract the number (in KB)
+                            std::istringstream iss(line.substr(6));
+                            uint64_t memory_kb;
+                            iss >> memory_kb;
+                            return memory_kb;
+                        }
+                    }
+                    return 0;
+                };
+                
+                // Record initial memory
+                uint64_t initial_memory = get_memory_usage();
+                memory_measurements.push_back(initial_memory);
+                operation_counts.push_back(0);
+                
+                auto start = std::chrono::high_resolution_clock::now();
+                
+                // Perform insertions and measure memory at intervals
+                for (uint64_t i = 1; i <= opt_num; ++i) {
+                    // Generate random key and value for memory-free insertion
+                    uint64_t key = gen_key_hittable();
+                    uint64_t value = gen_value();
+                    
+                    // Perform the insertion
+                    obj->Insert(key, value);
+                    
+                    // Check if we've reached a measurement point
+                    if (i == current_target || i == opt_num) {
+                        uint64_t current_memory = get_memory_usage();
+                        memory_measurements.push_back(current_memory);
+                        operation_counts.push_back(i);
+                        
+                        // Move to next target
+                        if (current_target < opt_num) {
+                            current_target += interval;
+                            if (current_target > opt_num) {
+                                current_target = opt_num;
+                            }
+                        }
+                    }
+                }
+                
+                auto end = std::chrono::high_resolution_clock::now();
+                auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+                
+                // Output results
+                output_stream << "Memory Measurement Along Insertions" << std::endl;
+                output_stream << "Total Operations: " << opt_num << std::endl;
+                output_stream << "CPU Time: " << duration << " ms" << std::endl;
+                output_stream << "Throughput: " << int(double(opt_num) / (duration / 1000.0)) << " ops/s" << std::endl;
+                output_stream << "Average Latency: " << int(duration * 1000000.0 / double(opt_num)) << " ns/op" << std::endl;
+                output_stream << std::endl;
+                
+                // Output memory measurements
+                output_stream << "Memory Usage Measurements:" << std::endl;
+                output_stream << "Completion %, Memory Usage (MB), Memory Growth (MB)" << std::endl;
+                
+                for (size_t i = 0; i < memory_measurements.size(); ++i) {
+                    double completion_percent = (double(operation_counts[i]) / opt_num) * 100.0;
+                    double memory_mb = memory_measurements[i] / 1024.0;  // Convert KB to MB
+                    double memory_growth_mb = (memory_measurements[i] - initial_memory) / 1024.0;
+                    output_stream << std::fixed << std::setprecision(2) << completion_percent << ", " 
+                                 << std::fixed << std::setprecision(2) << memory_mb << ", " 
+                                 << std::fixed << std::setprecision(2) << memory_growth_mb << std::endl;
+                }
+                
+                // Calculate and output memory efficiency metrics
+                uint64_t max_memory = *std::max_element(memory_measurements.begin(), memory_measurements.end());
+                uint64_t total_memory_growth = max_memory - initial_memory;
+                
+                output_stream << std::endl;
+                output_stream << "Memory Efficiency Metrics:" << std::endl;
+                output_stream << "Initial Memory: " << std::fixed << std::setprecision(2) << (initial_memory / 1024.0) << " MB" << std::endl;
+                output_stream << "Peak Memory: " << std::fixed << std::setprecision(2) << (max_memory / 1024.0) << " MB" << std::endl;
+                output_stream << "Total Memory Growth: " << std::fixed << std::setprecision(2) << (total_memory_growth / 1024.0) << " MB" << std::endl;
+                output_stream << "Memory per Operation: " << std::fixed << std::setprecision(2) << (total_memory_growth / 1024.0) / opt_num << " MB/op" << std::endl;
             };
             break;
 

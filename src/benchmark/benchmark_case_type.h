@@ -33,7 +33,8 @@ struct BenchmarkCaseType {
         YCSB_A_PERCENTILE = 24,
         YCSB_NEG_A_PERCENTILE = 25,
         QUERY_HIT_CUSTOM_LOAD_FACTOR_ONLY_PERCENTILE = 26,
-        COUNT = 27
+        MEMORY_MEASUREMENT_INSERTIONS = 27,
+        COUNT = 28
     };
 
     BenchmarkCaseType() = default;
