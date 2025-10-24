@@ -100,9 +100,9 @@ class BlastHT {
 
    public:
     BlastHT(uint64_t size, uint8_t quotienting_tail_length, uint16_t bin_size,
-            bool if_resize);
-    BlastHT(uint64_t size, uint16_t bin_size, bool if_resize);
-    BlastHT(uint64_t size, bool if_resize);
+            bool if_resize, double resize_threshold = 1.0);
+    BlastHT(uint64_t size, uint16_t bin_size, bool if_resize, double resize_threshold = 1.0);
+    BlastHT(uint64_t size, bool if_resize, double resize_threshold = 1.0);
 
     ~BlastHT();
 
@@ -115,6 +115,8 @@ class BlastHT {
     bool ResizeMoveStride(uint64_t stride_id, BlastHT* new_ht);
 
     void Scan4Stats();
+
+    uint64_t GetTableSize() const { return kCloudNum * 4; }
 
    protected:
     void* combined_mem;

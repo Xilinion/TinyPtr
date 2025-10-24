@@ -72,7 +72,7 @@ uint8_t ConcurrentSkulkerHT::AutoLockNum(uint64_t thread_num_supported) {
 
 ConcurrentSkulkerHT::ConcurrentSkulkerHT(uint64_t size,
                                          uint8_t quotienting_tail_length,
-                                         uint16_t bin_size, bool if_resize)
+                                         uint16_t bin_size, bool if_resize, double resize_threshold)
     : kHashSeed1(rand() & ((1 << 16) - 1)),
       kHashSeed2(65536 + rand()),
       kQuotientingTailLength(quotienting_tail_length
@@ -98,7 +98,9 @@ ConcurrentSkulkerHT::ConcurrentSkulkerHT(uint64_t size,
       kControlOffset(kConcurrentVersionOffset - kControlByteLength),
       kSkulkerOffset(kControlOffset - 1),
       kBinSize(bin_size),
-      kBinNum((size * kSkulkerRatio + kBinSize - 1) / kBinSize),
+      kBinNum(if_resize ? 
+              static_cast<uint64_t>(std::ceil((size * kSkulkerRatio + kBinSize - 1) / kBinSize * resize_threshold)) :
+              (size * kSkulkerRatio + kBinSize - 1) / kBinSize),
       kTinyPtrOffset(0),
       kKeyOffset(1),
       kValueOffset(kKeyOffset + kQuotKeyByteLength),
@@ -268,11 +270,11 @@ ConcurrentSkulkerHT::ConcurrentSkulkerHT(uint64_t size,
 }
 
 ConcurrentSkulkerHT::ConcurrentSkulkerHT(uint64_t size, uint16_t bin_size,
-                                         bool if_resize)
-    : ConcurrentSkulkerHT(size, 0, bin_size, if_resize) {}
+                                         bool if_resize, double resize_threshold)
+    : ConcurrentSkulkerHT(size, 0, bin_size, if_resize, resize_threshold) {}
 
-ConcurrentSkulkerHT::ConcurrentSkulkerHT(uint64_t size, bool if_resize)
-    : ConcurrentSkulkerHT(size, 0, 127, if_resize) {}
+ConcurrentSkulkerHT::ConcurrentSkulkerHT(uint64_t size, bool if_resize, double resize_threshold)
+    : ConcurrentSkulkerHT(size, 0, 127, if_resize, resize_threshold) {}
 
 ConcurrentSkulkerHT::~ConcurrentSkulkerHT() {
     munmap(bush_tab, kBushNum * kBushByteLength);

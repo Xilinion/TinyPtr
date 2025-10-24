@@ -93,10 +93,10 @@ class ConcurrentSkulkerHT {
 
    public:
     ConcurrentSkulkerHT(uint64_t size, uint8_t quotienting_tail_length,
-                        uint16_t bin_size, bool if_resize = false);
+                        uint16_t bin_size, bool if_resize = false, double resize_threshold = 1.0);
     ConcurrentSkulkerHT(uint64_t size, uint16_t bin_size,
-                        bool if_resize = false);
-    ConcurrentSkulkerHT(uint64_t size, bool if_resize = false);
+                        bool if_resize = false, double resize_threshold = 1.0);
+    ConcurrentSkulkerHT(uint64_t size, bool if_resize = false, double resize_threshold = 1.0);
 
     ~ConcurrentSkulkerHT();
 
@@ -107,6 +107,8 @@ class ConcurrentSkulkerHT {
 
     void SetResizeStride(uint64_t stride_num);
     bool ResizeMoveStride(uint64_t stride_id, ConcurrentSkulkerHT* new_ht);
+
+    uint64_t GetTableSize() const { return kBushNum * 4; }
 
    protected:
     uint8_t* bush_tab;

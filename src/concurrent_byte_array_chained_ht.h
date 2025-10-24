@@ -39,10 +39,10 @@ class ConcurrentByteArrayChainedHT {
 
    public:
     ConcurrentByteArrayChainedHT(uint64_t size, uint8_t quotienting_tail_length,
-                                 uint16_t bin_size, bool if_resize = false);
+                                 uint16_t bin_size, bool if_resize = false, double resize_threshold = 1.0);
     ConcurrentByteArrayChainedHT(uint64_t size, uint16_t bin_size,
-                                 bool if_resize = false);
-    ConcurrentByteArrayChainedHT(uint64_t size, bool if_resize = false);
+                                 bool if_resize = false, double resize_threshold = 1.0);
+    ConcurrentByteArrayChainedHT(uint64_t size, bool if_resize = false, double resize_threshold = 1.0);
 
     ~ConcurrentByteArrayChainedHT();
 
@@ -242,6 +242,7 @@ class ConcurrentByteArrayChainedHT {
    public:
     bool QueryNoMem(uint64_t key, uint64_t* value_ptr);
     void set_chain_length(uint64_t chain_length);
+    uint64_t GetTableSize() const { return kBinSize * kBinNum; }
 };
 
 }  // namespace tinyptr

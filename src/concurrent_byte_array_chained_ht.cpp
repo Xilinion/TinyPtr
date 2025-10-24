@@ -24,7 +24,7 @@ uint8_t ConcurrentByteArrayChainedHT::AutoQuotTailLength(uint64_t size) {
 
 ConcurrentByteArrayChainedHT::ConcurrentByteArrayChainedHT(
     uint64_t size, uint8_t quotienting_tail_length, uint16_t bin_size,
-    bool if_resize)
+    bool if_resize, double resize_threshold)
     : kHashSeed1(rand() & ((1 << 16) - 1)),
       kHashSeed2(65536 + rand()),
       kQuotientingTailLength(quotienting_tail_length
@@ -149,12 +149,12 @@ ConcurrentByteArrayChainedHT::ConcurrentByteArrayChainedHT(
 
 ConcurrentByteArrayChainedHT::ConcurrentByteArrayChainedHT(uint64_t size,
                                                            uint16_t bin_size,
-                                                           bool if_resize)
-    : ConcurrentByteArrayChainedHT(size, 0, bin_size, if_resize) {}
+                                                           bool if_resize, double resize_threshold)
+    : ConcurrentByteArrayChainedHT(size, 0, bin_size, if_resize, resize_threshold) {}
 
 ConcurrentByteArrayChainedHT::ConcurrentByteArrayChainedHT(uint64_t size,
-                                                           bool if_resize)
-    : ConcurrentByteArrayChainedHT(size, 0, 127, if_resize) {}
+                                                           bool if_resize, double resize_threshold)
+    : ConcurrentByteArrayChainedHT(size, 0, 127, if_resize, resize_threshold) {}
 
 ConcurrentByteArrayChainedHT::~ConcurrentByteArrayChainedHT() {
     if (play_entry) {
