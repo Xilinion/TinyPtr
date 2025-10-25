@@ -42,6 +42,12 @@ class BenchmarkCuckoo : public BenchmarkObject64 {
 
    private:
     libcuckoo::cuckoohash_map<uint64_t, uint64_t>* tab;
+
+    // Wrapper functions to prevent inlining
+    [[gnu::noinline]] bool insert_wrapper(uint64_t k, uint64_t v);
+    [[gnu::noinline]] bool find_wrapper(uint64_t k, uint64_t& v);
+    [[gnu::noinline]] void update_wrapper(uint64_t k, uint64_t v);
+    [[gnu::noinline]] bool erase_wrapper(uint64_t k);
 };
 
 }  // namespace tinyptr

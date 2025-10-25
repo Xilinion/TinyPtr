@@ -12,22 +12,55 @@ BenchmarkCuckoo::BenchmarkCuckoo(int n) : BenchmarkObject64(TYPE) {
     tab = new libcuckoo::cuckoohash_map<uint64_t, uint64_t>(n);
 }
 
+// Wrapper function definitions
+[[gnu::noinline]] bool BenchmarkCuckoo::insert_wrapper(uint64_t k, uint64_t v) {
+    bool result = tab->insert(k, v);
+    // Prevent tail call optimization with compiler barrier (zero runtime cost)
+    asm volatile("" ::: "memory");
+    return result;
+}
+
+[[gnu::noinline]] bool BenchmarkCuckoo::find_wrapper(uint64_t k, uint64_t& v) {
+    bool result = tab->find(k, v);
+    // Prevent tail call optimization with compiler barrier (zero runtime cost)
+    asm volatile("" ::: "memory");
+    return result;
+}
+
+[[gnu::noinline]] void BenchmarkCuckoo::update_wrapper(uint64_t k, uint64_t v) {
+    tab->update(k, v);
+    // Prevent tail call optimization with compiler barrier (zero runtime cost)
+    asm volatile("" ::: "memory");
+}
+
+[[gnu::noinline]] bool BenchmarkCuckoo::erase_wrapper(uint64_t k) {
+    bool result = tab->erase(k);
+    // Prevent tail call optimization with compiler barrier (zero runtime cost)
+    asm volatile("" ::: "memory");
+    return result;
+}
+
 uint8_t BenchmarkCuckoo::Insert(uint64_t key, uint64_t value) {
-    return tab->insert(key, value);
+    bool result = insert_wrapper(key, value);
+    asm volatile("nop" ::: "memory");  // Single nop instruction to prevent tail call
+    return result ? 0 : ~0;
 }
 
 uint64_t BenchmarkCuckoo::Query(uint64_t key, uint8_t ptr) {
     uint64_t value;
-    tab->find(key, value);
+    find_wrapper(key, value);
+    asm volatile("nop" ::: "memory");  // Single nop instruction to prevent tail call
     return value;
 }
 
 void BenchmarkCuckoo::Update(uint64_t key, uint8_t ptr, uint64_t value) {
-    tab->update(key, value);
+    update_wrapper(key, value);
+    asm volatile("nop" ::: "memory");  // Single nop instruction to prevent tail call
 }
 
 void BenchmarkCuckoo::Erase(uint64_t key, uint8_t ptr) {
-    tab->erase(key);
+    erase_wrapper(key);
+    asm volatile("nop" ::: "memory");  // Single nop instruction to prevent tail call
 }
 
 void BenchmarkCuckoo::YCSBFill(std::vector<uint64_t>& keys, int num_threads) {
@@ -41,7 +74,7 @@ void BenchmarkCuckoo::YCSBFill(std::vector<uint64_t>& keys, int num_threads) {
 
         threads.emplace_back([this, &keys, start_index, end_index]() {
             for (size_t j = start_index; j < end_index; ++j) {
-                tab->insert(keys[j], 0);
+                insert_wrapper(keys[j], 0);
             }
         });
     }
@@ -65,9 +98,9 @@ void BenchmarkCuckoo::YCSBRun(std::vector<std::pair<uint64_t, uint64_t>>& ops,
             uint64_t value;
             for (size_t j = start_index; j < end_index; ++j) {
                 if (ops[j].first == 1) {
-                    tab->insert(ops[j].second, 0);
+                    insert_wrapper(ops[j].second, 0);
                 } else {
-                    tab->find(ops[j].second, value);
+                    find_wrapper(ops[j].second, value);
                 }
             }
         });
@@ -102,9 +135,9 @@ std::vector<std::tuple<uint64_t, double, uint64_t>> BenchmarkCuckoo::YCSBRunWith
                     std::chrono::high_resolution_clock::now().time_since_epoch()).count();
                 
                 if (ops[j].first == 1) {
-                    tab->insert(ops[j].second, 0);
+                    insert_wrapper(ops[j].second, 0);
                 } else {
-                    tab->find(ops[j].second, value);
+                    find_wrapper(ops[j].second, value);
                 }
                 
                 uint64_t end_time = std::chrono::duration_cast<std::chrono::nanoseconds>(
@@ -183,15 +216,16 @@ void BenchmarkCuckoo::ConcurrentRun(
             (i == num_threads - 1) ? ops.size() : start_index + chunk_size;
 
         threads.emplace_back([this, &ops, start_index, end_index]() {
+            uint64_t value;
             for (size_t j = start_index; j < end_index; ++j) {
                 if (std::get<0>(ops[j]) == ConcOptType::INSERT) {
-                    tab->insert(std::get<1>(ops[j]), std::get<2>(ops[j]));
+                    insert_wrapper(std::get<1>(ops[j]), std::get<2>(ops[j]));
                 } else if (std::get<0>(ops[j]) == ConcOptType::QUERY) {
-                    tab->find(std::get<1>(ops[j]), std::get<2>(ops[j]));
+                    find_wrapper(std::get<1>(ops[j]), value);
                 } else if (std::get<0>(ops[j]) == ConcOptType::UPDATE) {
-                    tab->update(std::get<1>(ops[j]), std::get<2>(ops[j]));
+                    update_wrapper(std::get<1>(ops[j]), std::get<2>(ops[j]));
                 } else if (std::get<0>(ops[j]) == ConcOptType::ERASE) {
-                    tab->erase(std::get<1>(ops[j]));
+                    erase_wrapper(std::get<1>(ops[j]));
                 }
             }
         });
@@ -219,18 +253,20 @@ std::vector<std::tuple<uint64_t, double, uint64_t>> BenchmarkCuckoo::ConcurrentR
             std::vector<std::pair<uint64_t, uint64_t>> local_latencies;
             local_latencies.reserve(end_index - start_index);
             
+            uint64_t value;
+            
             for (size_t j = start_index; j < end_index; ++j) {
                 uint64_t start_time = std::chrono::duration_cast<std::chrono::nanoseconds>(
                     std::chrono::high_resolution_clock::now().time_since_epoch()).count();
                 
                 if (std::get<0>(ops[j]) == ConcOptType::INSERT) {
-                    tab->insert(std::get<1>(ops[j]), std::get<2>(ops[j]));
+                    insert_wrapper(std::get<1>(ops[j]), std::get<2>(ops[j]));
                 } else if (std::get<0>(ops[j]) == ConcOptType::QUERY) {
-                    tab->find(std::get<1>(ops[j]), std::get<2>(ops[j]));
+                    find_wrapper(std::get<1>(ops[j]), value);
                 } else if (std::get<0>(ops[j]) == ConcOptType::UPDATE) {
-                    tab->update(std::get<1>(ops[j]), std::get<2>(ops[j]));
+                    update_wrapper(std::get<1>(ops[j]), std::get<2>(ops[j]));
                 } else if (std::get<0>(ops[j]) == ConcOptType::ERASE) {
-                    tab->erase(std::get<1>(ops[j]));
+                    erase_wrapper(std::get<1>(ops[j]));
                 }
                 
                 uint64_t end_time = std::chrono::duration_cast<std::chrono::nanoseconds>(
