@@ -24,7 +24,7 @@ ycsb_neg_b_exe_file="$ycsb_workloads_dir/txnsb_neg_unif_int.dat"
 ycsb_neg_c_exe_file="$ycsb_workloads_dir/txnsc_neg_unif_int.dat"
 
 # Define CPU ID array, ordered by logical core id preference
-cpu_id_array=(0 16 1 17 2 18 3 19 4 20 5 21 6 22 7 23 8 24 9 25 10 26 11 27 12 28 13 29 14 30 15 31)
+cpu_id_array=(0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31)
 
 # Control whether to bind cores (set to true to enable core binding)
 enable_core_binding=false
