@@ -50,7 +50,8 @@ python3 ./load_factor_support_to_csv.py
 python3 ./scaling_to_csv.py
 python3 ./data_size_scaling_to_csv.py
 python3 ./intro_to_csv.py
-python3 ./mem_growth_to_csv.py
+python3 ./resizing_rss_to_csv.py
 exit
 python3 ./micro_to_csv.py
 python3 ./progressive_latency_to_csv.py
+python3 ./mem_growth_to_csv.py
