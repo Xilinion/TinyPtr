@@ -4,13 +4,20 @@ import csv
 import config_py  # shared configuration
 
 
-def extract_throughput(file_path: str):
+def extract_throughput(file_path: str, case_id: int):
     """Extract Throughput from a result file. Returns int ops/s or None."""
     if not os.path.exists(file_path):
         return None
     with open(file_path, 'r') as f:
         content = f.read()
-    m = re.search(r'Throughput: (\d+) ops/s', content)
+    
+    # For cases 9 and 10, extract Query metrics specifically
+    if case_id in [9, 10]:
+        m = re.search(r'Query Throughput: (\d+) ops/s', content)
+    else:
+        # For other cases (like case 1), use the old format
+        m = re.search(r'Throughput: (\d+) ops/s', content)
+    
     return int(m.group(1)) if m else None
 
 
@@ -22,7 +29,7 @@ def main():
     os.makedirs(output_dir, exist_ok=True)
 
     # Cases and objects used in data-size scaling (see benchmark.sh)
-    case_ids = [1, 3, 6, 7]
+    case_ids = [1, 3, 9, 10]
     object_ids = [6, 7, 15, 17, 20, 24]
 
     # Entry id range and sizes order as defined in benchmark.sh
@@ -36,7 +43,7 @@ def main():
                 entry_id = entry_start + idx
                 filename = f"object_{object_id}_case_{case_id}_entry_{entry_id}_.txt"
                 file_path = os.path.join(base_dir, filename)
-                thr = extract_throughput(file_path)
+                thr = extract_throughput(file_path, case_id)
                 if thr is None:
                     print(f"Warning: missing throughput in {filename}")
                     continue

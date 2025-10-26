@@ -3,15 +3,23 @@ import re
 import csv
 import config_py  # Import the shared configuration
 
-def extract_throughput(file_path):
+def extract_throughput(file_path, case_id):
     """Extract Throughput and Latency from a result file."""
     with open(file_path, 'r') as f:
         content = f.read()
 
-        throughput_match = re.search(
-            r'Throughput: (\d+) ops/s', content)
-        latency_match = re.search(
-            r'Latency: (\d+) ns/op', content)
+        # For cases 9 and 10, extract Query metrics specifically
+        if case_id in [9, 10]:
+            throughput_match = re.search(
+                r'Query Throughput: (\d+) ops/s', content)
+            latency_match = re.search(
+                r'Query Latency: (\d+) ns/op', content)
+        else:
+            # For other cases (like case 1), use the old format
+            throughput_match = re.search(
+                r'Throughput: (\d+) ops/s', content)
+            latency_match = re.search(
+                r'Latency: (\d+) ns/op', content)
 
         throughput = int(throughput_match.group(
             1)) if throughput_match else None
@@ -37,7 +45,7 @@ def main():
 
     # Define valid IDs based on the updated bash script
     valid_object_ids = [6, 7, 15, 17, 20, 24]
-    valid_case_ids = [1, 3, 6, 7]
+    valid_case_ids = [1, 3, 9, 10]
     thread_nums = [1, 2, 4, 8, 16, 32]
 
     # Process only the valid result files
@@ -50,7 +58,7 @@ def main():
 
                 if os.path.exists(file_path):
                     # Read throughput data
-                    throughput, latency = extract_throughput(file_path)
+                    throughput, latency = extract_throughput(file_path, case_id)
 
                     # Skip if we couldn't extract the data
                     if throughput is None or latency is None:
