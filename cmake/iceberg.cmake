@@ -19,8 +19,8 @@ function(build_iceberg)
     # Add ExternalProject for iceberg
     ExternalProject_Add(
         iceberg
-        URL https://github.com/splatlab/iceberghashtable/archive/a502848e3872a7b59a32f401bea963922e2c3146.zip
-        URL_HASH SHA256=86200bf9480397eaff708b876d409da60ad3c2166ad32c7848ef154b98681065
+        URL https://github.com/Xilinion/iceberghashtable/archive/8e053f3c3051a1b904c77e139badd7597b2e8251.zip
+        URL_HASH SHA256=ab252570c4aedc75f901f3a178c0b1ccbcf99507d95e443652b1da8f1d3d6eec
         PREFIX ${CMAKE_BINARY_DIR}/iceberg
         BUILD_IN_SOURCE 1
         BUILD_COMMAND

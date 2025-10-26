@@ -39,7 +39,7 @@ bash benchmark.sh -d "$exp_dir"
 
 cd -
 
-# exit
+exit
 
 cd ./scripts || exit
 bash to_csv.sh -d "$exp_dir"

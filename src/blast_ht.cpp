@@ -56,7 +56,7 @@ uint8_t BlastHT::AutoLockNum(uint64_t thread_num_supported) {
 }
 
 BlastHT::BlastHT(uint64_t size, uint8_t quotienting_tail_length,
-                 uint16_t bin_size, bool if_resize)
+                 uint16_t bin_size, bool if_resize, double resize_threshold)
     : kHashSeed1(rand() & ((1 << 16) - 1)),
       kHashSeed2(65536 + rand()),
       kCloudQuotientingLength(quotienting_tail_length
@@ -72,7 +72,9 @@ BlastHT::BlastHT(uint64_t size, uint8_t quotienting_tail_length,
       kBinByteLength(kBinSize * kEntryByteLength),
       kCloudNum(1ULL << kCloudQuotientingLength),
       kBinSize(bin_size),
-      kBinNum((size * kCloudOverflowBound + kBinSize - 1) / kBinSize),
+      kBinNum(if_resize ? 
+              static_cast<uint64_t>(std::ceil((size * kCloudOverflowBound + kBinSize - 1) / kBinSize * resize_threshold)) :
+              (size * kCloudOverflowBound + kBinSize - 1) / kBinSize),
       kValueOffset(kKeyOffset + kQuotKeyByteLength),
       kFastDivisionShift{
           static_cast<uint8_t>(
@@ -156,11 +158,11 @@ BlastHT::BlastHT(uint64_t size, uint8_t quotienting_tail_length,
     bin_cnt_head = base;
 }
 
-BlastHT::BlastHT(uint64_t size, uint16_t bin_size, bool if_resize)
-    : BlastHT(size, 0, bin_size, if_resize) {}
+BlastHT::BlastHT(uint64_t size, uint16_t bin_size, bool if_resize, double resize_threshold)
+    : BlastHT(size, 0, bin_size, if_resize, resize_threshold) {}
 
-BlastHT::BlastHT(uint64_t size, bool if_resize)
-    : BlastHT(size, 0, 127, if_resize) {}
+BlastHT::BlastHT(uint64_t size, bool if_resize, double resize_threshold)
+    : BlastHT(size, 0, 127, if_resize, resize_threshold) {}
 
 BlastHT::~BlastHT() {
     // Calculate individual sizes

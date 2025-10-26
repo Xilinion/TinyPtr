@@ -126,7 +126,7 @@ function CommonArgsWithYCSB() {
         ycsb_load_path=$ycsb_a_load_file
         ycsb_exe_path=$ycsb_neg_a_exe_file
     fi
-    
+
     echo "-o $object_id -c $case_id -e $entry_id -t $table_size -p $opt_num -l $load_factor -h $hit_percent -b $bin_size -q $quotient_tail_length -y $ycsb_load_path -s $ycsb_exe_path -n $thread_num -f "$res_path""
 }
 
@@ -343,48 +343,15 @@ resize_object_ids=(6 7 15 18 21 24)
 thread_num=16
 enable_core_binding=true
 for case_id in 17 18 19 20 21 22; do
+    entry_id=1
     for object_id in "${resize_object_ids[@]}"; do
-        entry_id=1
         for table_size in 33554432; do
             RunWithRetry "RunYCSB"
-            let "entry_id++"
         done
     done
 done
 thread_num=0
 enable_core_binding=false
-
-# scaling
-
-for case_id in 1 3 6 7; do
-    for object_id in "${no_resize_object_ids[@]}"; do
-        entry_id=10
-        for table_size in 67108863; do
-            opt_num=63753420
-            for thread_num in 1 2 4 8 16 32; do
-                RunWithRetry "Run"
-                let "entry_id++"
-            done
-        done
-    done
-done
-thread_num=0
-
-# data size scaling
-
-for case_id in 1 3 6 7; do
-    for object_id in "${no_resize_object_ids[@]}"; do
-        entry_id=1000
-        for table_size in 32767 262143 2097151 16777215 134217727; do
-            opt_num=$table_size
-            for thread_num in 1; do
-                RunWithRetry "Run"
-                let "entry_id++"
-            done
-        done
-    done
-done
-thread_num=0
 
 # YCSB with resize latency percentile
 
@@ -394,7 +361,22 @@ for case_id in 24; do
         entry_id=0
         for table_size in 33554432; do
             RunWithRetry "RunYCSB"
-            let "entry_id++"
+        done
+    done
+done
+thread_num=0
+
+# resize memory footprint
+
+thread_num=0
+for case_id in 27; do
+    for object_id in "${resize_object_ids[@]}"; do
+        entry_id=10000
+        # 2^24
+        for table_size in 16777215; do
+            # 2^27 * 0.6
+            opt_num=80530636
+            RunWithRetry "RunRandMemFree"
         done
     done
 done
@@ -408,17 +390,58 @@ CompileWithOption
 
 thread_num=16
 for case_id in 17 18 19 20 21 22; do
+    entry_id=0
     for object_id in "${no_resize_object_ids[@]}"; do
-        entry_id=0
         # for table_size in 134217728; do
         # /0.7
-        for table_size in 191739611; do
-            RunWithRetry "RunYCSB"
-            let "entry_id++"
+        if [[ $case_id == 19 || $case_id == 22 ]]; then
+            table_size=95869805
+        else
+            table_size=191739611
+        fi
+
+        RunWithRetry "RunYCSB"
+    done
+done
+thread_num=0
+
+# scaling
+
+enable_core_binding=true
+for case_id in 1 3 9 10; do
+    for object_id in "${no_resize_object_ids[@]}"; do
+        entry_id=10
+        for table_size in 67108863; do
+            load_factor=0.699
+            opt_num=$(printf "%.0f" $(echo "$table_size * $load_factor" | bc -l))
+            for thread_num in 1 2 4 8 16 32; do
+                RunWithRetry "Run"
+                let "entry_id++"
+            done
         done
     done
 done
 thread_num=0
+enable_core_binding=false
+
+# data size scaling
+
+enable_core_binding=true
+for case_id in 1 3 9 10; do
+    for object_id in "${no_resize_object_ids[@]}"; do
+        entry_id=1000
+        for table_size in 32767 262143 2097151 16777215 134217727; do
+            load_factor=0.699
+            opt_num=$(printf "%.0f" $(echo "$table_size * $load_factor" | bc -l))
+            for thread_num in 1; do
+                RunWithRetry "Run"
+                let "entry_id++"
+            done
+        done
+    done
+done
+thread_num=0
+enable_core_binding=false
 
 # Throughput / Space Efficiency
 
@@ -427,7 +450,6 @@ num_rep=10
 
 thread_num=1
 enable_core_binding=true
-
 for case_id in 1 9 10; do
     for object_id in "${space_eff_object_ids[@]}"; do
         entry_id=100
@@ -450,7 +472,6 @@ for case_id in 1 9 10; do
         done
     done
 done
-
 thread_num=0
 enable_core_binding=false
 
@@ -472,9 +493,6 @@ for case_id in 26; do
 done
 thread_num=0
 enable_core_binding=false
-
-exit
-
 
 # Hash Distribution Validation
 
@@ -512,41 +530,6 @@ done
 
 thread_num=0
 
-exit
-
-# micro benchmark
-
-thread_num=16
-for case_id in 1 3 6 7; do
-    for object_id in "${no_resize_object_ids[@]}"; do
-        entry_id=0
-        for table_size in 67108863; do
-            # 0.95
-            opt_num=63753420
-            RunWithRetry "Run"
-            let "entry_id++"
-        done
-    done
-done
-thread_num=0
-
-
-# progressive latency
-
-for case_id in 9 10; do
-    for object_id in "${no_resize_object_ids[@]}"; do
-        entry_id=0
-        for table_size in 16777215; do
-            for load_factor in 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 0.95; do
-                opt_num=$table_size
-                RunWithRetry "Run"
-                let "entry_id++"
-            done
-        done
-    done
-done
-
-
 # load factor with deletion
 
 for case_id in 16; do
@@ -571,6 +554,39 @@ for case_id in 16; do
 done
 
 exit
+
+exit
+
+# micro benchmark
+
+thread_num=16
+for case_id in 1 3 6 7; do
+    for object_id in "${no_resize_object_ids[@]}"; do
+        entry_id=0
+        for table_size in 67108863; do
+            # 0.95
+            opt_num=63753420
+            RunWithRetry "Run"
+            let "entry_id++"
+        done
+    done
+done
+thread_num=0
+
+# progressive latency
+
+for case_id in 9 10; do
+    for object_id in "${no_resize_object_ids[@]}"; do
+        entry_id=0
+        for table_size in 16777215; do
+            for load_factor in 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 0.95; do
+                opt_num=$table_size
+                RunWithRetry "Run"
+                let "entry_id++"
+            done
+        done
+    done
+done
 
 # reminder of FlameGraph usage
 

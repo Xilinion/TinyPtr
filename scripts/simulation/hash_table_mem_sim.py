@@ -15,7 +15,7 @@ PARTITIONS = 8                  # K: number of partitions
 INITIAL_SIZE = 1000             # L: initial capacity per partition (same for all)
 NUM_INSERTS = 100000            # n: total number of inserts
 RESIZE_FACTOR = 2.0             # E: multiplier when resizing (> 1.0)
-RESIZE_THRESHOLD = 0.95         # threshold as fraction of capacity (0, 1]
+RESIZE_THRESHOLD = 0.7         # threshold as fraction of capacity (0, 1]
 DISTRIBUTION = "uniform"        # "uniform" or "zipf"
 ZIPF_S = 1.0                    # Zipf exponent s (only if DISTRIBUTION == "zipf")
 SEED = 0                        # PRNG seed for reproducibility
