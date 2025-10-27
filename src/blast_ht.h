@@ -116,7 +116,7 @@ class BlastHT {
 
     void Scan4Stats();
 
-    uint64_t GetTableSize() const { return kCloudNum * 4; }
+    uint64_t GetTableSize() const { return kCloudNum * 4 - 1; }
 
    protected:
     void* combined_mem;
