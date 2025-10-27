@@ -370,7 +370,7 @@ thread_num=0
 
 thread_num=0
 for case_id in 27; do
-    for object_id in "${resize_object_ids[@]}"; do
+    for object_id in "${rss_object_ids[@]}"; do
         entry_id=10000
         # 2^24
         for table_size in 16777215; do

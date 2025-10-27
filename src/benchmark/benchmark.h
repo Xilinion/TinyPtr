@@ -98,9 +98,10 @@ class Benchmark {
 
     void all_operation_rand(std::vector<uint64_t>& key_vec, int opt_cnt);
 
-    void ycsb_load(std::vector<uint64_t>& ycsb_keys, std::string path);
-    void ycsb_exe_load(std::vector<std::pair<uint64_t, uint64_t>>& ycsb_exe_vec,
-                       std::string path);
+    void ycsb_load(std::vector<uint64_t>& ycsb_keys, std::string path, double load_factor);
+    void ycsb_exe_load(
+        std::vector<std::pair<uint64_t, uint64_t>>& ycsb_exe_vec,
+        std::string path, double load_factor);
 
     void vec_to_ops(std::vector<uint64_t>& key_vec,
                     std::vector<std::tuple<uint64_t, uint64_t, uint64_t>>& ops,
