@@ -8,11 +8,12 @@
 #include <iostream>
 #include <string>
 #include <vector>
-#include "utils/rng.h"
 #include "benchmark_case_type.h"
 #include "benchmark_cli_para.h"
 #include "benchmark_object_64.h"
 #include "benchmark_object_type.h"
+#include "blast_ht.h"
+#include "utils/rng.h"
 
 namespace tinyptr {
 
@@ -98,10 +99,11 @@ class Benchmark {
 
     void all_operation_rand(std::vector<uint64_t>& key_vec, int opt_cnt);
 
-    void ycsb_load(std::vector<uint64_t>& ycsb_keys, std::string path, double load_factor);
-    void ycsb_exe_load(
-        std::vector<std::pair<uint64_t, uint64_t>>& ycsb_exe_vec,
-        std::string path, double load_factor);
+    void ycsb_load(std::vector<uint64_t>& ycsb_keys, std::string path,
+                   double load_factor);
+    void ycsb_exe_load(std::vector<std::pair<uint64_t, uint64_t>>& ycsb_exe_vec,
+                       std::string path, double load_factor,
+                       BlastHT* available_keys);
 
     void vec_to_ops(std::vector<uint64_t>& key_vec,
                     std::vector<std::tuple<uint64_t, uint64_t, uint64_t>>& ops,
