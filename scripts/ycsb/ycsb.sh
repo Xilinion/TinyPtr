@@ -32,3 +32,4 @@ unset PYTHON
 cd -
 
 bash ycsb_neg.sh
+bash ycsb_del.sh
