@@ -647,6 +647,23 @@ void Benchmark::ycsb_del_load(
             pos = lineEnd + 1;
         }
     }
+
+    // Process any remaining partial line from the last buffer
+    if (!partialLine.empty()) {
+        uint64_t key;
+        key = strtoull(partialLine.c_str() + 7, nullptr, 10);
+        ycsb_exe_vec.emplace_back(2, key);
+    }
+
+    delete[] buffer;
+    fclose(file);
+
+    // Apply load factor to keep only a portion of the keys
+    if (load_factor < 1.0 && ycsb_exe_vec.size() > 0) {
+        size_t keep_count =
+            static_cast<size_t>(ycsb_exe_vec.size() * load_factor);
+        ycsb_exe_vec.resize(keep_count);
+    }
 }
 
 void Benchmark::vec_to_ops(
