@@ -79,6 +79,8 @@ void BenchmarkIceberg::YCSBRun(std::vector<std::pair<uint64_t, uint64_t>>& ops,
             for (size_t j = start_index; j < end_index; ++j) {
                 if (ops[j].first == 1) {
                     iceberg_insert(&tab, ops[j].second, 0, i);
+                } else if (ops[j].first == 2) {
+                    iceberg_remove(&tab, ops[j].second, i);
                 } else {
                     iceberg_get_value(&tab, ops[j].second, &value, i);
                 }

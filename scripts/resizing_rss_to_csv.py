@@ -65,7 +65,7 @@ def main() -> None:
 
     # Use resize settings from scripts/benchmark.sh
     # resize_object_ids=(6 7 15 18 21 24), case_id=27, entry_id=10000
-    object_ids = [6, 7, 15, 18, 21, 24]
+    object_ids = [6, 7, 15, 18, 21, 24, 25]
     case_id = 27
     entry_id = 10000
 

@@ -41,10 +41,16 @@ def main():
         0: [6, 7, 15, 17, 20, 24],  # entry_id = 0
         1: [6, 7, 15, 18, 21, 24]   # entry_id = 1
     }
-    valid_case_ids = [17, 18, 19, 20, 21, 22]
+    valid_case_ids_common = [17, 18, 19, 20, 21, 22]
 
     # Process only the valid result files
     for entry_id, object_ids in valid_ids.items():
+        # case_id 28 applies only to entry_id = 0
+        if entry_id == 0:
+            valid_case_ids = valid_case_ids_common + [28]
+        else:
+            valid_case_ids = valid_case_ids_common
+
         for case_id in valid_case_ids:
             for object_id in object_ids:
                 filename = f"object_{object_id}_case_{case_id}_entry_{entry_id}_.txt"

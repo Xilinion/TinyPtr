@@ -43,8 +43,8 @@ class ResizableHT {
 
    public:
     ResizableHT(uint64_t initial_size_per_part = 40000, uint64_t part_num = 0,
-                uint32_t thread_num = 0, double resize_threshold = 0.7,
-                double resize_factor = 2.0);
+                uint32_t thread_num = 0, bool if_stagger = false,
+                double resize_threshold = 0.7, double resize_factor = 2.0);
 
    protected:
     HTType** partitions;
@@ -53,6 +53,7 @@ class ResizableHT {
     uint64_t initial_size_per_part;
     double resize_threshold;
     double resize_factor;
+    bool if_stagger;  // Add this new member variable
     uint64_t thread_num;
     uint64_t stride_num;
     uint64_t* part_size;
@@ -191,8 +192,9 @@ class ResizableHT {
                 // std::chrono::high_resolution_clock::time_point my_time[10];
                 // my_time[0] = std::chrono::high_resolution_clock::now();
 
-                partitions_new[part_id] = new HTType(
-                    uint64_t(part_size[part_id] * resize_factor), true, resize_threshold);
+                partitions_new[part_id] =
+                    new HTType(uint64_t(part_size[part_id] * resize_factor),
+                               true, resize_threshold);
 
                 // std::cerr << "allocated partitions_new[" << part_id
                 //   << "]: " << partitions_new[part_id] << std::endl;
@@ -234,7 +236,7 @@ class ResizableHT {
 
                 delete tmp;
                 partitions_new[part_id] = nullptr;
-                
+
                 // Update part_size with actual table size from GetTableSize()
                 part_size[part_id] = partitions[part_id]->GetTableSize();
                 part_resize_threshold[part_id] =
@@ -279,13 +281,14 @@ class ResizableHT {
 template <typename HTType>
 ResizableHT<HTType>::ResizableHT(uint64_t initial_size_per_part_,
                                  uint64_t part_num_, uint32_t thread_num_,
-                                 double resize_threshold_,
+                                 bool if_stagger_, double resize_threshold_,
                                  double resize_factor_)
     : initial_size_per_part(initial_size_per_part_),
       part_num(part_num_),
       thread_num(thread_num_),
       resize_threshold(resize_threshold_),
       resize_factor(resize_factor_),
+      if_stagger(if_stagger_),  // Add this initialization
       kHashSeed(rand() & ((1 << 16) - 1)) {
 
     if (thread_num == 0) {
@@ -319,17 +322,21 @@ ResizableHT<HTType>::ResizableHT(uint64_t initial_size_per_part_,
     part_resize_threshold = new int64_t[part_num];
 
     for (uint64_t i = 0; i < part_num; i++) {
-        double frac = (part_num <= 1) ? 0.0 : (double)i / (double)(part_num - 1);
+        double frac =
+            (part_num <= 1) ? 0.0 : (double)i / (double)(part_num - 1);
         // double sized = initial_size_per_part * (1 + resize_factor * frac);
         double sized = initial_size_per_part * std::pow(resize_factor, frac);
         uint64_t size_i = std::max<uint64_t>(1, static_cast<uint64_t>(sized));
-        // size_i = initial_size_per_part;
+        if (!if_stagger) {
+            size_i = initial_size_per_part;
+        }
 
         partitions[i] = new HTType(size_i, true, resize_threshold);
-        
+
         // Update part_size with actual table size from GetTableSize()
         part_size[i] = partitions[i]->GetTableSize();
-        part_resize_threshold[i] = static_cast<int64_t>(part_size[i] * resize_threshold);
+        part_resize_threshold[i] =
+            static_cast<int64_t>(part_size[i] * resize_threshold);
     }
 
     part_cnt = new std::atomic<int64_t>[part_num << kInt64toCacheLineShift];

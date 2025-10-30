@@ -21,7 +21,7 @@ rng::rng64 rng64(123456789);
 TEST(Junction_TESTSUITE, ProtocolCorrectness) {
 
     auto tab =
-        new junction::ConcurrentMap_Linear<uint64_t, uint64_t>(1 << 25);
+        new junction::ConcurrentMap_Linear<uint64_t, uint64_t>(1 << 26);
     // junction::ConcurrentMap_Grampa<turf::u32, uint32_t> tab(1<<25);
 
     auto keys = new uint64_t[1 << 26];

@@ -10,7 +10,7 @@ BenchmarkResizableSkulkerHT::BenchmarkResizableSkulkerHT(
     double resize_threshold_, double resize_factor_)
     : BenchmarkObject64(TYPE) {
     tab = new ResizableSkulkerHT(initial_size_per_part_, part_num_, thread_num_,
-                                 resize_threshold_, resize_factor_);
+                                 false, resize_threshold_, resize_factor_);
     if (!thread_num_) {
         single_handle = tab->GetHandle();
     }
@@ -83,6 +83,8 @@ void BenchmarkResizableSkulkerHT::YCSBRun(
             for (size_t j = start_index; j < end_index; ++j) {
                 if (ops[j].first == 1) {
                     tab->Insert(handle, ops[j].second, 0);
+                } else if (ops[j].first == 2) {
+                    tab->Erase(handle, ops[j].second);
                 } else {
                     tab->Query(handle, ops[j].second, &value);
                 }

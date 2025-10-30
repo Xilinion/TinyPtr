@@ -1,6 +1,6 @@
 #include "benchmark_resizable_bytearray_ht.h"
-#include <chrono>
 #include <algorithm>
+#include <chrono>
 #include <execution>
 
 namespace tinyptr {
@@ -13,7 +13,7 @@ BenchmarkResizableByteArrayChainedHT::BenchmarkResizableByteArrayChainedHT(
     double resize_threshold_, double resize_factor_)
     : BenchmarkObject64(TYPE) {
     tab = new ResizableByteArrayChainedHT(initial_size_per_part_, part_num_,
-                                          thread_num_, resize_threshold_,
+                                          thread_num_, false, resize_threshold_,
                                           resize_factor_);
     if (!thread_num_) {
         single_handle = tab->GetHandle();
@@ -89,6 +89,8 @@ void BenchmarkResizableByteArrayChainedHT::YCSBRun(
             for (size_t j = start_index; j < end_index; ++j) {
                 if (ops[j].first == 1) {
                     tab->Insert(handle, ops[j].second, 0);
+                } else if (ops[j].first == 2) {
+                    tab->Erase(handle, ops[j].second);
                 } else {
                     tab->Query(handle, ops[j].second, &value);
                 }
@@ -102,10 +104,12 @@ void BenchmarkResizableByteArrayChainedHT::YCSBRun(
     }
 }
 
-std::vector<std::tuple<uint64_t, double, uint64_t>> BenchmarkResizableByteArrayChainedHT::YCSBRunWithLatencyRecording(
-    std::vector<std::pair<uint64_t, uint64_t>>& ops, int num_threads, uint64_t record_num,
-    const std::vector<double>& percentiles) {
-    std::vector<std::vector<std::pair<uint64_t, uint64_t>>> thread_latencies(num_threads);
+std::vector<std::tuple<uint64_t, double, uint64_t>>
+BenchmarkResizableByteArrayChainedHT::YCSBRunWithLatencyRecording(
+    std::vector<std::pair<uint64_t, uint64_t>>& ops, int num_threads,
+    uint64_t record_num, const std::vector<double>& percentiles) {
+    std::vector<std::vector<std::pair<uint64_t, uint64_t>>> thread_latencies(
+        num_threads);
 
     std::vector<std::thread> threads;
     size_t chunk_size = ops.size() / num_threads;
@@ -115,51 +119,58 @@ std::vector<std::tuple<uint64_t, double, uint64_t>> BenchmarkResizableByteArrayC
         size_t end_index =
             (i == num_threads - 1) ? ops.size() : start_index + chunk_size;
 
-        threads.emplace_back([this, &ops, start_index, end_index, &thread_latencies, i]() {
-            std::vector<std::pair<uint64_t, uint64_t>> local_latencies;
-            local_latencies.reserve(end_index - start_index);
-            
-            uint64_t handle = tab->GetHandle();
-            uint64_t value;
-            
-            for (size_t j = start_index; j < end_index; ++j) {
-                uint64_t start_time = std::chrono::duration_cast<std::chrono::nanoseconds>(
-                    std::chrono::high_resolution_clock::now().time_since_epoch()).count();
-                
-                if (ops[j].first == 1) {
-                    tab->Insert(handle, ops[j].second, 0);
-                } else {
-                    tab->Query(handle, ops[j].second, &value);
+        threads.emplace_back(
+            [this, &ops, start_index, end_index, &thread_latencies, i]() {
+                std::vector<std::pair<uint64_t, uint64_t>> local_latencies;
+                local_latencies.reserve(end_index - start_index);
+
+                uint64_t handle = tab->GetHandle();
+                uint64_t value;
+
+                for (size_t j = start_index; j < end_index; ++j) {
+                    uint64_t start_time =
+                        std::chrono::duration_cast<std::chrono::nanoseconds>(
+                            std::chrono::high_resolution_clock::now()
+                                .time_since_epoch())
+                            .count();
+
+                    if (ops[j].first == 1) {
+                        tab->Insert(handle, ops[j].second, 0);
+                    } else {
+                        tab->Query(handle, ops[j].second, &value);
+                    }
+
+                    uint64_t end_time =
+                        std::chrono::duration_cast<std::chrono::nanoseconds>(
+                            std::chrono::high_resolution_clock::now()
+                                .time_since_epoch())
+                            .count();
+                    uint64_t latency = end_time - start_time;
+                    local_latencies.emplace_back(ops[j].first, latency);
                 }
-                
-                uint64_t end_time = std::chrono::duration_cast<std::chrono::nanoseconds>(
-                    std::chrono::high_resolution_clock::now().time_since_epoch()).count();
-                uint64_t latency = end_time - start_time;
-                local_latencies.emplace_back(ops[j].first, latency);
-            }
-            
-            tab->FreeHandle(handle);
-            
-            // Store the results in the thread-specific vector
-            thread_latencies[i] = std::move(local_latencies);
-        });
+
+                tab->FreeHandle(handle);
+
+                // Store the results in the thread-specific vector
+                thread_latencies[i] = std::move(local_latencies);
+            });
     }
 
     for (auto& thread : threads) {
         thread.join();
     }
-    
+
     // Combine all thread results
     std::vector<std::pair<uint64_t, uint64_t>> all_latencies;
     for (const auto& thread_result : thread_latencies) {
-        all_latencies.insert(all_latencies.end(), 
-                           thread_result.begin(), thread_result.end());
+        all_latencies.insert(all_latencies.end(), thread_result.begin(),
+                             thread_result.end());
     }
-    
+
     // Separate insert and query latencies
     std::vector<uint64_t> insert_latencies;
     std::vector<uint64_t> query_latencies;
-    
+
     for (const auto& latency_pair : all_latencies) {
         if (latency_pair.first == 1) {  // Insert operation
             insert_latencies.push_back(latency_pair.second);
@@ -167,34 +178,40 @@ std::vector<std::tuple<uint64_t, double, uint64_t>> BenchmarkResizableByteArrayC
             query_latencies.push_back(latency_pair.second);
         }
     }
-    
+
     // Sort both vectors for percentile analysis
-    std::sort(std::execution::par, insert_latencies.begin(), insert_latencies.end());
-    std::sort(std::execution::par, query_latencies.begin(), query_latencies.end());
-    
+    std::sort(std::execution::par, insert_latencies.begin(),
+              insert_latencies.end());
+    std::sort(std::execution::par, query_latencies.begin(),
+              query_latencies.end());
+
     // Calculate percentiles for both operation types
     std::vector<std::tuple<uint64_t, double, uint64_t>> result;
-    
+
     // Calculate percentiles for insert latencies
     if (!insert_latencies.empty()) {
         for (double percentile : percentiles) {
-            size_t index = (percentile == 100.0) ? 
-                          insert_latencies.size() - 1 : 
-                          static_cast<size_t>((percentile / 100.0) * (insert_latencies.size() - 1));
+            size_t index =
+                (percentile == 100.0)
+                    ? insert_latencies.size() - 1
+                    : static_cast<size_t>((percentile / 100.0) *
+                                          (insert_latencies.size() - 1));
             result.emplace_back(1, percentile, insert_latencies[index]);
         }
     }
-    
+
     // Calculate percentiles for query latencies
     if (!query_latencies.empty()) {
         for (double percentile : percentiles) {
-            size_t index = (percentile == 100.0) ? 
-                          query_latencies.size() - 1 : 
-                          static_cast<size_t>((percentile / 100.0) * (query_latencies.size() - 1));
+            size_t index =
+                (percentile == 100.0)
+                    ? query_latencies.size() - 1
+                    : static_cast<size_t>((percentile / 100.0) *
+                                          (query_latencies.size() - 1));
             result.emplace_back(0, percentile, query_latencies[index]);
         }
     }
-    
+
     return result;
 }
 
@@ -234,10 +251,12 @@ void BenchmarkResizableByteArrayChainedHT::ConcurrentRun(
     }
 }
 
-std::vector<std::tuple<uint64_t, double, uint64_t>> BenchmarkResizableByteArrayChainedHT::ConcurrentRunWithLatencyRecording(
-    std::vector<std::tuple<uint64_t, uint64_t, uint64_t>>& ops, int num_threads, uint64_t record_num,
-    const std::vector<double>& percentiles) {
-    std::vector<std::vector<std::pair<uint64_t, uint64_t>>> thread_latencies(num_threads);
+std::vector<std::tuple<uint64_t, double, uint64_t>>
+BenchmarkResizableByteArrayChainedHT::ConcurrentRunWithLatencyRecording(
+    std::vector<std::tuple<uint64_t, uint64_t, uint64_t>>& ops, int num_threads,
+    uint64_t record_num, const std::vector<double>& percentiles) {
+    std::vector<std::vector<std::pair<uint64_t, uint64_t>>> thread_latencies(
+        num_threads);
 
     std::vector<std::thread> threads;
     size_t chunk_size = ops.size() / num_threads;
@@ -247,59 +266,66 @@ std::vector<std::tuple<uint64_t, double, uint64_t>> BenchmarkResizableByteArrayC
         size_t end_index =
             (i == num_threads - 1) ? ops.size() : start_index + chunk_size;
 
-        threads.emplace_back([this, &ops, start_index, end_index, &thread_latencies, i]() {
-            std::vector<std::pair<uint64_t, uint64_t>> local_latencies;
-            local_latencies.reserve(end_index - start_index);
-            
-            uint64_t value;
-            uint64_t handle = tab->GetHandle();
-            
-            for (size_t j = start_index; j < end_index; ++j) {
-                uint64_t start_time = std::chrono::duration_cast<std::chrono::nanoseconds>(
-                    std::chrono::high_resolution_clock::now().time_since_epoch()).count();
-                
-                if (std::get<0>(ops[j]) == ConcOptType::INSERT) {
-                    tab->Insert(handle, std::get<1>(ops[j]),
-                                std::get<2>(ops[j]));
-                } else if (std::get<0>(ops[j]) == ConcOptType::QUERY) {
-                    tab->Query(handle, std::get<1>(ops[j]), &value);
-                } else if (std::get<0>(ops[j]) == ConcOptType::UPDATE) {
-                    tab->Update(handle, std::get<1>(ops[j]),
-                                std::get<2>(ops[j]));
-                } else if (std::get<0>(ops[j]) == ConcOptType::ERASE) {
-                    tab->Erase(handle, std::get<1>(ops[j]));
+        threads.emplace_back(
+            [this, &ops, start_index, end_index, &thread_latencies, i]() {
+                std::vector<std::pair<uint64_t, uint64_t>> local_latencies;
+                local_latencies.reserve(end_index - start_index);
+
+                uint64_t value;
+                uint64_t handle = tab->GetHandle();
+
+                for (size_t j = start_index; j < end_index; ++j) {
+                    uint64_t start_time =
+                        std::chrono::duration_cast<std::chrono::nanoseconds>(
+                            std::chrono::high_resolution_clock::now()
+                                .time_since_epoch())
+                            .count();
+
+                    if (std::get<0>(ops[j]) == ConcOptType::INSERT) {
+                        tab->Insert(handle, std::get<1>(ops[j]),
+                                    std::get<2>(ops[j]));
+                    } else if (std::get<0>(ops[j]) == ConcOptType::QUERY) {
+                        tab->Query(handle, std::get<1>(ops[j]), &value);
+                    } else if (std::get<0>(ops[j]) == ConcOptType::UPDATE) {
+                        tab->Update(handle, std::get<1>(ops[j]),
+                                    std::get<2>(ops[j]));
+                    } else if (std::get<0>(ops[j]) == ConcOptType::ERASE) {
+                        tab->Erase(handle, std::get<1>(ops[j]));
+                    }
+
+                    uint64_t end_time =
+                        std::chrono::duration_cast<std::chrono::nanoseconds>(
+                            std::chrono::high_resolution_clock::now()
+                                .time_since_epoch())
+                            .count();
+                    uint64_t latency = end_time - start_time;
+                    local_latencies.emplace_back(std::get<0>(ops[j]), latency);
                 }
-                
-                uint64_t end_time = std::chrono::duration_cast<std::chrono::nanoseconds>(
-                    std::chrono::high_resolution_clock::now().time_since_epoch()).count();
-                uint64_t latency = end_time - start_time;
-                local_latencies.emplace_back(std::get<0>(ops[j]), latency);
-            }
-            
-            tab->FreeHandle(handle);
-            
-            // Store the results in the thread-specific vector
-            thread_latencies[i] = std::move(local_latencies);
-        });
+
+                tab->FreeHandle(handle);
+
+                // Store the results in the thread-specific vector
+                thread_latencies[i] = std::move(local_latencies);
+            });
     }
 
     for (auto& thread : threads) {
         thread.join();
     }
-    
+
     // Combine all thread results
     std::vector<std::pair<uint64_t, uint64_t>> all_latencies;
     for (const auto& thread_result : thread_latencies) {
-        all_latencies.insert(all_latencies.end(), 
-                           thread_result.begin(), thread_result.end());
+        all_latencies.insert(all_latencies.end(), thread_result.begin(),
+                             thread_result.end());
     }
-    
+
     // Separate latencies by operation type
     std::vector<uint64_t> insert_latencies;
     std::vector<uint64_t> query_latencies;
     std::vector<uint64_t> update_latencies;
     std::vector<uint64_t> erase_latencies;
-    
+
     for (const auto& latency_pair : all_latencies) {
         if (latency_pair.first == ConcOptType::INSERT) {
             insert_latencies.push_back(latency_pair.second);
@@ -311,56 +337,72 @@ std::vector<std::tuple<uint64_t, double, uint64_t>> BenchmarkResizableByteArrayC
             erase_latencies.push_back(latency_pair.second);
         }
     }
-    
+
     // Sort all vectors for percentile analysis
-    std::sort(std::execution::par, insert_latencies.begin(), insert_latencies.end());
-    std::sort(std::execution::par, query_latencies.begin(), query_latencies.end());
-    std::sort(std::execution::par, update_latencies.begin(), update_latencies.end());
-    std::sort(std::execution::par, erase_latencies.begin(), erase_latencies.end());
-    
+    std::sort(std::execution::par, insert_latencies.begin(),
+              insert_latencies.end());
+    std::sort(std::execution::par, query_latencies.begin(),
+              query_latencies.end());
+    std::sort(std::execution::par, update_latencies.begin(),
+              update_latencies.end());
+    std::sort(std::execution::par, erase_latencies.begin(),
+              erase_latencies.end());
+
     // Calculate percentiles for all operation types
     std::vector<std::tuple<uint64_t, double, uint64_t>> result;
-    
+
     // Calculate percentiles for insert latencies
     if (!insert_latencies.empty()) {
         for (double percentile : percentiles) {
-            size_t index = (percentile == 100.0) ? 
-                          insert_latencies.size() - 1 : 
-                          static_cast<size_t>((percentile / 100.0) * (insert_latencies.size() - 1));
-            result.emplace_back(ConcOptType::INSERT, percentile, insert_latencies[index]);
+            size_t index =
+                (percentile == 100.0)
+                    ? insert_latencies.size() - 1
+                    : static_cast<size_t>((percentile / 100.0) *
+                                          (insert_latencies.size() - 1));
+            result.emplace_back(ConcOptType::INSERT, percentile,
+                                insert_latencies[index]);
         }
     }
-    
+
     // Calculate percentiles for query latencies
     if (!query_latencies.empty()) {
         for (double percentile : percentiles) {
-            size_t index = (percentile == 100.0) ? 
-                          query_latencies.size() - 1 : 
-                          static_cast<size_t>((percentile / 100.0) * (query_latencies.size() - 1));
-            result.emplace_back(ConcOptType::QUERY, percentile, query_latencies[index]);
+            size_t index =
+                (percentile == 100.0)
+                    ? query_latencies.size() - 1
+                    : static_cast<size_t>((percentile / 100.0) *
+                                          (query_latencies.size() - 1));
+            result.emplace_back(ConcOptType::QUERY, percentile,
+                                query_latencies[index]);
         }
     }
-    
+
     // Calculate percentiles for update latencies
     if (!update_latencies.empty()) {
         for (double percentile : percentiles) {
-            size_t index = (percentile == 100.0) ? 
-                          update_latencies.size() - 1 : 
-                          static_cast<size_t>((percentile / 100.0) * (update_latencies.size() - 1));
-            result.emplace_back(ConcOptType::UPDATE, percentile, update_latencies[index]);
+            size_t index =
+                (percentile == 100.0)
+                    ? update_latencies.size() - 1
+                    : static_cast<size_t>((percentile / 100.0) *
+                                          (update_latencies.size() - 1));
+            result.emplace_back(ConcOptType::UPDATE, percentile,
+                                update_latencies[index]);
         }
     }
-    
+
     // Calculate percentiles for erase latencies
     if (!erase_latencies.empty()) {
         for (double percentile : percentiles) {
-            size_t index = (percentile == 100.0) ? 
-                          erase_latencies.size() - 1 : 
-                          static_cast<size_t>((percentile / 100.0) * (erase_latencies.size() - 1));
-            result.emplace_back(ConcOptType::ERASE, percentile, erase_latencies[index]);
+            size_t index =
+                (percentile == 100.0)
+                    ? erase_latencies.size() - 1
+                    : static_cast<size_t>((percentile / 100.0) *
+                                          (erase_latencies.size() - 1));
+            result.emplace_back(ConcOptType::ERASE, percentile,
+                                erase_latencies[index]);
         }
     }
-    
+
     return result;
 }
 

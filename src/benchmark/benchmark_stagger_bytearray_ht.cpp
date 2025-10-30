@@ -1,50 +1,51 @@
-#include "benchmark_resizable_blastht.h"
+#include "benchmark_stagger_bytearray_ht.h"
 
 namespace tinyptr {
 
-const BenchmarkObjectType BenchmarkResizableBlastHT::TYPE =
-    BenchmarkObjectType::RESIZABLE_BLAST;
+const BenchmarkObjectType BenchmarkStaggerByteArrayHT::TYPE =
+    BenchmarkObjectType::STAGGER_BYTEARRAYCHAINEDHT;
 
-BenchmarkResizableBlastHT::BenchmarkResizableBlastHT(
+BenchmarkStaggerByteArrayHT::BenchmarkStaggerByteArrayHT(
     uint64_t initial_size_per_part_, uint64_t part_num_, uint32_t thread_num_,
     double resize_threshold_, double resize_factor_)
     : BenchmarkObject64(TYPE) {
-    tab = new ResizableBlastHT(initial_size_per_part_, part_num_, thread_num_,
-                               false, resize_threshold_, resize_factor_);
+    tab = new ResizableByteArrayChainedHT(initial_size_per_part_, part_num_,
+                                          thread_num_, true, resize_threshold_,
+                                          resize_factor_);
     if (!thread_num_) {
         single_handle = tab->GetHandle();
     }
     thread_num = thread_num_;
 }
 
-BenchmarkResizableBlastHT::~BenchmarkResizableBlastHT() {
+BenchmarkStaggerByteArrayHT::~BenchmarkStaggerByteArrayHT() {
     if (!thread_num) {
         tab->FreeHandle(single_handle);
     }
     delete tab;
 }
 
-uint8_t BenchmarkResizableBlastHT::Insert(uint64_t key, uint64_t value) {
+uint8_t BenchmarkStaggerByteArrayHT::Insert(uint64_t key, uint64_t value) {
     return tab->Insert(single_handle, key, value);
 }
 
-uint64_t BenchmarkResizableBlastHT::Query(uint64_t key, uint8_t ptr) {
+uint64_t BenchmarkStaggerByteArrayHT::Query(uint64_t key, uint8_t ptr) {
     uint64_t value;
     tab->Query(single_handle, key, &value);
     return value;
 }
 
-void BenchmarkResizableBlastHT::Update(uint64_t key, uint8_t ptr,
-                                       uint64_t value) {
+void BenchmarkStaggerByteArrayHT::Update(uint64_t key, uint8_t ptr,
+                                         uint64_t value) {
     tab->Update(single_handle, key, value);
 }
 
-void BenchmarkResizableBlastHT::Erase(uint64_t key, uint8_t ptr) {
+void BenchmarkStaggerByteArrayHT::Erase(uint64_t key, uint8_t ptr) {
     tab->Erase(single_handle, key);
 }
 
-void BenchmarkResizableBlastHT::YCSBFill(std::vector<uint64_t>& keys,
-                                         int num_threads) {
+void BenchmarkStaggerByteArrayHT::YCSBFill(std::vector<uint64_t>& keys,
+                                           int num_threads) {
     std::vector<std::thread> threads;
     size_t chunk_size = keys.size() / num_threads;
 
@@ -67,7 +68,7 @@ void BenchmarkResizableBlastHT::YCSBFill(std::vector<uint64_t>& keys,
     }
 }
 
-void BenchmarkResizableBlastHT::YCSBRun(
+void BenchmarkStaggerByteArrayHT::YCSBRun(
     std::vector<std::pair<uint64_t, uint64_t>>& ops, int num_threads) {
     std::vector<std::thread> threads;
     size_t chunk_size = ops.size() / num_threads;
@@ -99,7 +100,7 @@ void BenchmarkResizableBlastHT::YCSBRun(
 }
 
 std::vector<std::tuple<uint64_t, double, uint64_t>>
-BenchmarkResizableBlastHT::YCSBRunWithLatencyRecording(
+BenchmarkStaggerByteArrayHT::YCSBRunWithLatencyRecording(
     std::vector<std::pair<uint64_t, uint64_t>>& ops, int num_threads,
     uint64_t record_num, const std::vector<double>& percentiles) {
     std::vector<std::vector<std::pair<uint64_t, uint64_t>>> thread_latencies(
@@ -209,7 +210,7 @@ BenchmarkResizableBlastHT::YCSBRunWithLatencyRecording(
     return result;
 }
 
-void BenchmarkResizableBlastHT::ConcurrentRun(
+void BenchmarkStaggerByteArrayHT::ConcurrentRun(
     std::vector<std::tuple<uint64_t, uint64_t, uint64_t>>& ops,
     int num_threads) {
     std::vector<std::thread> threads;
@@ -246,7 +247,7 @@ void BenchmarkResizableBlastHT::ConcurrentRun(
 }
 
 std::vector<std::tuple<uint64_t, double, uint64_t>>
-BenchmarkResizableBlastHT::ConcurrentRunWithLatencyRecording(
+BenchmarkStaggerByteArrayHT::ConcurrentRunWithLatencyRecording(
     std::vector<std::tuple<uint64_t, uint64_t, uint64_t>>& ops, int num_threads,
     uint64_t record_num, const std::vector<double>& percentiles) {
     std::vector<std::vector<std::pair<uint64_t, uint64_t>>> thread_latencies(

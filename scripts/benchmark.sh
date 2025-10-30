@@ -125,6 +125,9 @@ function CommonArgsWithYCSB() {
     elif [ $case_id -eq 25 ]; then
         ycsb_load_path=$ycsb_a_load_file
         ycsb_exe_path=$ycsb_neg_a_exe_file
+    elif [ $case_id -eq 28 ]; then
+        ycsb_load_path=$ycsb_c_load_file
+        ycsb_exe_path=$ycsb_del_c_exe_file
     fi
 
     echo "-o $object_id -c $case_id -e $entry_id -t $table_size -p $opt_num -l $load_factor -h $hit_percent -b $bin_size -q $quotient_tail_length -y $ycsb_load_path -s $ycsb_exe_path -n $thread_num -f "$res_path""
@@ -337,6 +340,7 @@ bin_size=127
 no_resize_object_ids=(6 7 15 17 20 24)
 space_eff_object_ids=(6 7 15 17 23 24)
 resize_object_ids=(6 7 15 18 21 24)
+rss_object_ids=(6 7 15 18 21 24 25)
 
 # YCSB with resize
 
@@ -370,7 +374,7 @@ thread_num=0
 
 thread_num=0
 for case_id in 27; do
-    for object_id in "${resize_object_ids[@]}"; do
+    for object_id in "${rss_object_ids[@]}"; do
         entry_id=10000
         # 2^24
         for table_size in 16777215; do
@@ -386,24 +390,47 @@ compile_option=1
 compile_resize=0
 CompileWithOption
 
+
 # YCSB without resize
 
+# 2309.63
+# 2484.16
+# 2049.88
+# 1924.90
+# 2403.76
+
+# Load factors for each object (first 5 from comments)
+# 2309.63, 2484.16, 2049.88, 1924.90, 2403.76
+declare -A load_factors
+load_factors[6]=$(printf "%.6f" $(echo "2309.63 * 0.7 / 2048" | bc -l))
+load_factors[7]=$(printf "%.6f" $(echo "2484.16 * 0.7 / 2048" | bc -l))
+load_factors[15]=$(printf "%.6f" $(echo "2049.88 * 0.7 / 2048" | bc -l))
+load_factors[18]=$(printf "%.6f" $(echo "1924.90 * 0.7 / 2048" | bc -l))
+load_factors[21]=$(printf "%.6f" $(echo "2403.76 * 0.7 / 2048" | bc -l))
+load_factors[24]=0.700000  # TBB (baseline, sixth object)
+
 thread_num=16
-for case_id in 17 18 19 20 21 22; do
+for case_id in 17 18 19 20 21 22 28; do
     entry_id=0
     for object_id in "${no_resize_object_ids[@]}"; do
-        # for table_size in 134217728; do
-        # /0.7
         if [[ $case_id == 19 || $case_id == 22 ]]; then
-            table_size=95869805
+            table_size=67108863
+            # table_size=134217723
         else
-            table_size=191739611
+            table_size=134217723
+        fi
+        
+        # Get load factor for this object
+        load_factor=${load_factors[$object_id]}
+        if [[ -z "$load_factor" ]]; then
+            load_factor=0.7  # Default fallback
         fi
 
         RunWithRetry "RunYCSB"
     done
 done
 thread_num=0
+load_factor=1
 
 # scaling
 

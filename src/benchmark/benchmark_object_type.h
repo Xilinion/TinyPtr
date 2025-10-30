@@ -34,7 +34,8 @@ struct BenchmarkObjectType {
         HASH_DISTRIBUTION = 22,
         NONCONC_BLAST = 23,
         TBB = 24,
-        COUNT = 25
+        STAGGER_BYTEARRAYCHAINEDHT = 25,
+        COUNT = 26
     };
 
     BenchmarkObjectType(const BenchmarkObjectType& b) = default;

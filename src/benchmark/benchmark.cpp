@@ -6,14 +6,14 @@
 #include <cstdint>
 #include <cstdlib>
 #include <ctime>
-#include <iostream>
 #include <fstream>
-#include <sstream>
+#include <iostream>
 #include <iterator>
 #include <ostream>
 #include <queue>
 #include <random>
 #include <set>
+#include <sstream>
 #include <unordered_set>
 #include "../chained_ht_64.h"
 #include "../dereference_table_64.h"
@@ -32,6 +32,7 @@
 #include "benchmark_dereftab64.h"
 #include "benchmark_hash_distribution.h"
 // #include "benchmark_growt.h"
+#include <iomanip>
 #include "benchmark_iceberg.h"
 #include "benchmark_intarray64.h"
 #include "benchmark_junction.h"
@@ -41,10 +42,10 @@
 #include "benchmark_resizable_skulkerht.h"
 #include "benchmark_same_bin_chainedht.h"
 #include "benchmark_skulkerht.h"
+#include "benchmark_stagger_bytearray_ht.h"
 #include "benchmark_std_unordered_map_64.h"
-#include "benchmark_yarded_tp_ht.h"
 #include "benchmark_tbb.h"
-#include <iomanip>
+#include "benchmark_yarded_tp_ht.h"
 
 namespace tinyptr {
 
@@ -341,7 +342,8 @@ void Benchmark::all_operation_rand(std::vector<uint64_t>& key_vec,
     }
 }
 
-void Benchmark::ycsb_load(std::vector<uint64_t>& ycsb_keys, std::string path) {
+void Benchmark::ycsb_load(std::vector<uint64_t>& ycsb_keys, std::string path,
+                          double load_factor_) {
     // Use a larger buffer size for better performance
     const size_t BUFFER_SIZE = 1 << 20;  // 1MB buffer
 
@@ -405,11 +407,19 @@ void Benchmark::ycsb_load(std::vector<uint64_t>& ycsb_keys, std::string path) {
 
     delete[] buffer;
     fclose(file);
+
+    // Apply load factor to keep only a portion of the keys
+    if (load_factor_ < 1.0 && ycsb_keys.size() > 0) {
+        size_t keep_count =
+            static_cast<size_t>(ycsb_keys.size() * load_factor_);
+        ycsb_keys.resize(keep_count);
+    }
 }
 
 void Benchmark::ycsb_exe_load(
-    std::vector<std::pair<uint64_t, uint64_t>>& ycsb_exe_vec,
-    std::string path) {
+    std::vector<std::pair<uint64_t, uint64_t>>& ycsb_exe_vec, std::string path,
+    double load_factor_, BlastHT* available_keys) {
+
     // Use a larger buffer size for better performance
     const size_t BUFFER_SIZE = 1 << 20;  // 1MB buffer
 
@@ -497,6 +507,163 @@ void Benchmark::ycsb_exe_load(
 
     delete[] buffer;
     fclose(file);
+
+    // Apply load factor proportionally while maintaining EXACT order and ensuring key existence
+    if (load_factor_ < 1.0 && ycsb_exe_vec.size() > 0) {
+        // Count original operation types
+        size_t original_inserts = 0;
+        size_t original_reads = 0;
+        for (const auto& op : ycsb_exe_vec) {
+            if (op.first == 1)
+                original_inserts++;
+            else
+                original_reads++;
+        }
+
+        // Calculate target counts to maintain ratio
+        size_t target_inserts =
+            static_cast<size_t>(std::round(original_inserts * load_factor_));
+        size_t target_reads =
+            static_cast<size_t>(std::round(original_reads * load_factor_));
+        size_t target_total = target_inserts + target_reads;
+
+        // Build available keys set (loaded keys + run phase inserts we'll keep)
+
+        // Two-pass algorithm to maintain exact order and validate keys
+
+        // Pass 1: Mark inserts to keep and build available keys
+        std::vector<bool> keep_op(ycsb_exe_vec.size(), false);
+        size_t inserts_kept = 0;
+
+        for (size_t i = 0;
+             i < ycsb_exe_vec.size() && inserts_kept < target_inserts; ++i) {
+            if (ycsb_exe_vec[i].first == 1) {  // INSERT
+                keep_op[i] = true;
+                available_keys->Insert(ycsb_exe_vec[i].second, 0);
+                inserts_kept++;
+            }
+        }
+
+        // Pass 2: Mark reads to keep (only valid ones that reference available keys)
+        size_t reads_kept = 0;
+        std::vector<size_t> invalid_read_indices;
+
+        for (size_t i = 0; i < ycsb_exe_vec.size() && reads_kept < target_reads;
+             ++i) {
+            if (ycsb_exe_vec[i].first == 0) {  // READ
+                uint64_t value;
+                if (available_keys->Query(ycsb_exe_vec[i].second, &value)) {
+                    keep_op[i] = true;
+                    reads_kept++;
+                } else {
+                    invalid_read_indices.push_back(i);
+                }
+            }
+        }
+
+        // Pass 3: If we didn't reach target_reads, try to add more valid reads
+        size_t current_total = inserts_kept + reads_kept;
+
+        if (current_total < target_total) {
+            for (size_t i = 0;
+                 i < ycsb_exe_vec.size() && current_total < target_total; ++i) {
+                if (!keep_op[i] && ycsb_exe_vec[i].first == 0) {
+                    keep_op[i] = true;
+                    current_total++;
+                }
+            }
+        }
+
+        // Build final vector maintaining EXACT original order
+        std::vector<std::pair<uint64_t, uint64_t>> kept_ops;
+        for (size_t i = 0; i < ycsb_exe_vec.size(); ++i) {
+            if (keep_op[i]) {
+                kept_ops.push_back(ycsb_exe_vec[i]);
+            }
+        }
+
+        ycsb_exe_vec = std::move(kept_ops);
+    }
+}
+
+void Benchmark::ycsb_del_load(
+    std::vector<std::pair<uint64_t, uint64_t>>& ycsb_exe_vec, std::string path,
+    double load_factor) {
+
+    // Use a larger buffer size for better performance
+    const size_t BUFFER_SIZE = 1 << 20;  // 1MB buffer
+
+    FILE* file = fopen(path.c_str(), "r");
+    if (!file)
+        return;
+
+    fseek(file, 0, SEEK_END);
+    long fileSize = ftell(file);
+    fseek(file, 0, SEEK_SET);
+
+    char* buffer = new char[BUFFER_SIZE];
+
+    std::string partialLine;
+
+    while (!feof(file)) {
+        size_t bytesRead = fread(buffer, 1, BUFFER_SIZE - 1, file);
+        if (bytesRead == 0)
+            break;
+
+        buffer[bytesRead] = '\0';
+
+        // Process each line in the buffer
+        char* pos = buffer;
+        char* end = buffer + bytesRead;
+
+        while (pos < end) {
+            char* lineEnd = strchr(pos, '\n');
+
+            if (!lineEnd) {
+                if (feof(file)) {
+                    uint64_t key;
+                    key = strtoull(pos + 7, nullptr, 10);
+                    ycsb_exe_vec.emplace_back(2, key);
+                } else {
+                    partialLine += pos;
+                }
+                break;
+            }
+
+            *lineEnd = '\0';  // Terminate the line
+
+            if (!partialLine.empty()) {
+                partialLine += pos;
+                uint64_t key;
+                key = strtoull(partialLine.c_str() + 7, nullptr, 10);
+                ycsb_exe_vec.emplace_back(2, key);
+                partialLine.clear();
+            } else {
+                uint64_t key;
+                key = strtoull(pos + 7, nullptr, 10);
+                ycsb_exe_vec.emplace_back(2, key);
+            }
+
+            pos = lineEnd + 1;
+        }
+    }
+
+    // Process any remaining partial line from the last buffer
+    if (!partialLine.empty()) {
+        uint64_t key;
+        key = strtoull(partialLine.c_str() + 7, nullptr, 10);
+        ycsb_exe_vec.emplace_back(2, key);
+    }
+
+    delete[] buffer;
+    fclose(file);
+
+    // Apply load factor to keep only a portion of the keys
+    if (load_factor < 1.0 && ycsb_exe_vec.size() > 0) {
+        size_t keep_count =
+            static_cast<size_t>(ycsb_exe_vec.size() * load_factor);
+        ycsb_exe_vec.resize(keep_count);
+    }
 }
 
 void Benchmark::vec_to_ops(
@@ -605,6 +772,11 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
             uint64_t part_num = 16;
             obj = new BenchmarkResizableBlastHT(table_size / part_num, part_num,
                                                 thread_num);
+        } break;
+        case BenchmarkObjectType::STAGGER_BYTEARRAYCHAINEDHT: {
+            uint64_t part_num = 16;
+            obj = new BenchmarkStaggerByteArrayHT(table_size / part_num,
+                                                  part_num, thread_num);
         } break;
         case BenchmarkObjectType::HASH_DISTRIBUTION:
             obj = new BenchmarkHashDistribution(table_size);
@@ -1341,10 +1513,77 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
         case BenchmarkCaseType::YCSB_NEG_C:
             run = [this, para]() {
                 std::vector<uint64_t> ycsb_keys;
-                ycsb_load(ycsb_keys, para.ycsb_load_path);
+                ycsb_load(ycsb_keys, para.ycsb_load_path, load_factor);
+
+                BlastHT* available_keys;
+                if (load_factor < 1.0) {
+                    available_keys = new BlastHT(ycsb_keys.size() * 3, false);
+                    for (const auto& key : ycsb_keys) {
+                        available_keys->Insert(key, 0);
+                    }
+                }
 
                 std::vector<std::pair<uint64_t, uint64_t>> ycsb_exe_vec;
-                ycsb_exe_load(ycsb_exe_vec, para.ycsb_run_path);
+                ycsb_exe_load(ycsb_exe_vec, para.ycsb_run_path, load_factor,
+                              available_keys);
+
+                auto start = std::chrono::high_resolution_clock::now();
+
+                obj->YCSBFill(ycsb_keys, para.thread_num);
+
+                auto start_fill = std::chrono::high_resolution_clock::now();
+                auto fill_duration =
+                    std::chrono::duration_cast<std::chrono::milliseconds>(
+                        start_fill - start)
+                        .count();
+
+                obj->YCSBRun(ycsb_exe_vec, para.thread_num);
+
+                auto start_run = std::chrono::high_resolution_clock::now();
+                auto run_duration =
+                    std::chrono::duration_cast<std::chrono::milliseconds>(
+                        start_run - start_fill)
+                        .count();
+
+                auto end = std::chrono::high_resolution_clock::now();
+                auto duration =
+                    std::chrono::duration_cast<std::chrono::milliseconds>(end -
+                                                                          start)
+                        .count();
+
+                int fill_op_cnt = ycsb_keys.size();
+                int run_op_cnt = ycsb_exe_vec.size();
+
+                output_stream << "CPU Time: " << duration << " ms" << std::endl;
+                output_stream << "Fill Time: " << fill_duration << " ms"
+                              << std::endl;
+                output_stream << "Run Time: " << run_duration << " ms"
+                              << std::endl;
+                output_stream
+                    << "Fill Latency: "
+                    << int(fill_duration * 1000000.0 / double(fill_op_cnt))
+                    << " ns/op" << std::endl;
+                output_stream
+                    << "Run Latency: "
+                    << int(run_duration * 1000000.0 / double(run_op_cnt))
+                    << " ns/op" << std::endl;
+                output_stream
+                    << "Fill Throughput: "
+                    << int(double(fill_op_cnt) / (fill_duration / 1000.0))
+                    << " ops/s" << std::endl;
+                output_stream
+                    << "Run Throughput: "
+                    << int(double(run_op_cnt) / (run_duration / 1000.0))
+                    << " ops/s" << std::endl;
+            };
+            break;
+        case BenchmarkCaseType::YCSB_DEL_C:
+            run = [this, para]() {
+                std::vector<uint64_t> ycsb_keys;
+                ycsb_load(ycsb_keys, para.ycsb_load_path, load_factor);
+
+                std::vector<std::pair<uint64_t, uint64_t>> ycsb_exe_vec;
+                ycsb_del_load(ycsb_exe_vec, para.ycsb_run_path, load_factor);
 
                 auto start = std::chrono::high_resolution_clock::now();
 
@@ -1400,10 +1639,20 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
         case BenchmarkCaseType::YCSB_NEG_A_PERCENTILE:
             run = [this, para]() {
                 std::vector<uint64_t> ycsb_keys;
-                ycsb_load(ycsb_keys, para.ycsb_load_path);
+                ycsb_load(ycsb_keys, para.ycsb_load_path, load_factor);
+
+                BlastHT* available_keys;
+
+                if (load_factor < 1.0) {
+                    available_keys = new BlastHT(ycsb_keys.size() * 3, false);
+                    for (const auto& key : ycsb_keys) {
+                        available_keys->Insert(key, 0);
+                    }
+                }
 
                 std::vector<std::pair<uint64_t, uint64_t>> ycsb_exe_vec;
-                ycsb_exe_load(ycsb_exe_vec, para.ycsb_run_path);
+                ycsb_exe_load(ycsb_exe_vec, para.ycsb_run_path, load_factor,
+                              available_keys);
 
                 auto start = std::chrono::high_resolution_clock::now();
 
@@ -1449,23 +1698,34 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
         case BenchmarkCaseType::HASH_DISTRUBUTION:
             run = [this, para]() {
                 auto* hash_dist = dynamic_cast<BenchmarkHashDistribution*>(obj);
-                
+
                 // Test different key generation strategies
-                std::vector<std::pair<std::string, std::vector<uint64_t>>> key_sets = {
-                    {"Random Keys", hash_dist->Generate_Random_Keys(opt_num, para.thread_num)},
-                    {"Sequential Keys", hash_dist->Generate_Sequential_Keys(opt_num, para.thread_num)},
-                    {"Low Hamming Weight Keys", hash_dist->Generate_Low_Hamming_Weight_Keys(opt_num, para.thread_num)},
-                    {"High Hamming Weight Keys", hash_dist->Generate_High_Hamming_Weight_Keys(opt_num, para.thread_num)}
-                };
-                
+                std::vector<std::pair<std::string, std::vector<uint64_t>>>
+                    key_sets = {
+                        {"Random Keys", hash_dist->Generate_Random_Keys(
+                                            opt_num, para.thread_num)},
+                        {"Sequential Keys", hash_dist->Generate_Sequential_Keys(
+                                                opt_num, para.thread_num)},
+                        {"Low Hamming Weight Keys",
+                         hash_dist->Generate_Low_Hamming_Weight_Keys(
+                             opt_num, para.thread_num)},
+                        {"High Hamming Weight Keys",
+                         hash_dist->Generate_High_Hamming_Weight_Keys(
+                             opt_num, para.thread_num)}};
+
                 for (const auto& key_set : key_sets) {
-                    output_stream << "=== " << key_set.first << " ===" << std::endl;
-                    hash_dist->Concurrent_Simulation(key_set.second, para.thread_num);
+                    output_stream << "=== " << key_set.first
+                                  << " ===" << std::endl;
+                    hash_dist->Concurrent_Simulation(key_set.second,
+                                                     para.thread_num);
                     auto res = hash_dist->Occupancy_Distribution();
-                    output_stream << "Operation Count: " << key_set.second.size() << std::endl;
+                    output_stream
+                        << "Operation Count: " << key_set.second.size()
+                        << std::endl;
                     output_stream << "Bin Occupancy, Count: " << std::endl;
                     for (auto& i : res) {
-                        output_stream << i.first << ", " << i.second << std::endl;
+                        output_stream << i.first << ", " << i.second
+                                      << std::endl;
                     }
                     output_stream << std::endl;
                 }
@@ -1520,7 +1780,8 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
                 uint64_t record_num = 10000;
 
                 // Define the percentiles to calculate
-                std::vector<double> percentiles = {50.0, 95.0, 99.0, 99.9, 99.99, 100.0};
+                std::vector<double> percentiles = {50.0, 95.0,  99.0,
+                                                   99.9, 99.99, 100.0};
 
                 start = std::chrono::high_resolution_clock::now();
 
@@ -1561,17 +1822,17 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
                 std::vector<uint64_t> operation_counts;
                 memory_measurements.reserve(50);
                 operation_counts.reserve(50);
-                
+
                 // Calculate the intervals for 50 even points
                 uint64_t interval = opt_num / 50;
                 uint64_t current_target = interval;
-                
+
                 // Function to get current max memory usage (VmHWM in KB)
                 auto get_memory_usage = []() -> uint64_t {
                     std::ifstream status_file("/proc/self/status");
                     std::string line;
                     while (std::getline(status_file, line)) {
-                        if (line.substr(0, 6) == "VmHWM:") { 
+                        if (line.substr(0, 6) == "VmHWM:") {
                             // Extract the number (in KB)
                             std::istringstream iss(line.substr(6));
                             uint64_t memory_kb;
@@ -1581,29 +1842,29 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
                     }
                     return 0;
                 };
-                
+
                 // Record initial memory
                 uint64_t initial_memory = get_memory_usage();
                 memory_measurements.push_back(initial_memory);
                 operation_counts.push_back(0);
-                
+
                 auto start = std::chrono::high_resolution_clock::now();
-                
+
                 // Perform insertions and measure memory at intervals
                 for (uint64_t i = 1; i <= opt_num; ++i) {
                     // Generate random key and value for memory-free insertion
                     uint64_t key = gen_key_hittable();
                     uint64_t value = gen_value();
-                    
+
                     // Perform the insertion
                     obj->Insert(key, value);
-                    
+
                     // Check if we've reached a measurement point
                     if (i == current_target || i == opt_num) {
                         uint64_t current_memory = get_memory_usage();
                         memory_measurements.push_back(current_memory);
                         operation_counts.push_back(i);
-                        
+
                         // Move to next target
                         if (current_target < opt_num) {
                             current_target += interval;
@@ -1613,41 +1874,67 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
                         }
                     }
                 }
-                
+
                 auto end = std::chrono::high_resolution_clock::now();
-                auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-                
+                auto duration =
+                    std::chrono::duration_cast<std::chrono::milliseconds>(end -
+                                                                          start)
+                        .count();
+
                 // Output results
-                output_stream << "Memory Measurement Along Insertions" << std::endl;
+                output_stream << "Memory Measurement Along Insertions"
+                              << std::endl;
                 output_stream << "Total Operations: " << opt_num << std::endl;
                 output_stream << "CPU Time: " << duration << " ms" << std::endl;
-                output_stream << "Throughput: " << int(double(opt_num) / (duration / 1000.0)) << " ops/s" << std::endl;
-                output_stream << "Average Latency: " << int(duration * 1000000.0 / double(opt_num)) << " ns/op" << std::endl;
+                output_stream << "Throughput: "
+                              << int(double(opt_num) / (duration / 1000.0))
+                              << " ops/s" << std::endl;
+                output_stream << "Average Latency: "
+                              << int(duration * 1000000.0 / double(opt_num))
+                              << " ns/op" << std::endl;
                 output_stream << std::endl;
-                
+
                 // Output memory measurements
                 output_stream << "Memory Usage Measurements:" << std::endl;
-                output_stream << "Completion %, Memory Usage (MB), Memory Growth (MB)" << std::endl;
-                
+                output_stream
+                    << "Completion %, Memory Usage (MB), Memory Growth (MB)"
+                    << std::endl;
+
                 for (size_t i = 0; i < memory_measurements.size(); ++i) {
-                    double completion_percent = (double(operation_counts[i]) / opt_num) * 100.0;
-                    double memory_mb = memory_measurements[i] / 1024.0;  // Convert KB to MB
-                    double memory_growth_mb = (memory_measurements[i] - initial_memory) / 1024.0;
-                    output_stream << std::fixed << std::setprecision(2) << completion_percent << ", " 
-                                 << std::fixed << std::setprecision(2) << memory_mb << ", " 
-                                 << std::fixed << std::setprecision(2) << memory_growth_mb << std::endl;
+                    double completion_percent =
+                        (double(operation_counts[i]) / opt_num) * 100.0;
+                    double memory_mb =
+                        memory_measurements[i] / 1024.0;  // Convert KB to MB
+                    double memory_growth_mb =
+                        (memory_measurements[i] - initial_memory) / 1024.0;
+                    output_stream << std::fixed << std::setprecision(2)
+                                  << completion_percent << ", " << std::fixed
+                                  << std::setprecision(2) << memory_mb << ", "
+                                  << std::fixed << std::setprecision(2)
+                                  << memory_growth_mb << std::endl;
                 }
-                
+
                 // Calculate and output memory efficiency metrics
-                uint64_t max_memory = *std::max_element(memory_measurements.begin(), memory_measurements.end());
+                uint64_t max_memory = *std::max_element(
+                    memory_measurements.begin(), memory_measurements.end());
                 uint64_t total_memory_growth = max_memory - initial_memory;
-                
+
                 output_stream << std::endl;
                 output_stream << "Memory Efficiency Metrics:" << std::endl;
-                output_stream << "Initial Memory: " << std::fixed << std::setprecision(2) << (initial_memory / 1024.0) << " MB" << std::endl;
-                output_stream << "Peak Memory: " << std::fixed << std::setprecision(2) << (max_memory / 1024.0) << " MB" << std::endl;
-                output_stream << "Total Memory Growth: " << std::fixed << std::setprecision(2) << (total_memory_growth / 1024.0) << " MB" << std::endl;
-                output_stream << "Memory per Operation: " << std::fixed << std::setprecision(2) << (total_memory_growth / 1024.0) / opt_num << " MB/op" << std::endl;
+                output_stream
+                    << "Initial Memory: " << std::fixed << std::setprecision(2)
+                    << (initial_memory / 1024.0) << " MB" << std::endl;
+                output_stream << "Peak Memory: " << std::fixed
+                              << std::setprecision(2) << (max_memory / 1024.0)
+                              << " MB" << std::endl;
+                output_stream << "Total Memory Growth: " << std::fixed
+                              << std::setprecision(2)
+                              << (total_memory_growth / 1024.0) << " MB"
+                              << std::endl;
+                output_stream << "Memory per Operation: " << std::fixed
+                              << std::setprecision(2)
+                              << (total_memory_growth / 1024.0) / opt_num
+                              << " MB/op" << std::endl;
             };
             break;
 

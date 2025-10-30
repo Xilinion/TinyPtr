@@ -99,6 +99,8 @@ void BenchmarkCuckoo::YCSBRun(std::vector<std::pair<uint64_t, uint64_t>>& ops,
             for (size_t j = start_index; j < end_index; ++j) {
                 if (ops[j].first == 1) {
                     insert_wrapper(ops[j].second, 0);
+                } else if (ops[j].first == 2) {
+                    erase_wrapper(ops[j].second);
                 } else {
                     find_wrapper(ops[j].second, value);
                 }
