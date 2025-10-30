@@ -104,6 +104,8 @@ class Benchmark {
     void ycsb_exe_load(std::vector<std::pair<uint64_t, uint64_t>>& ycsb_exe_vec,
                        std::string path, double load_factor,
                        BlastHT* available_keys);
+    void ycsb_del_load(std::vector<std::pair<uint64_t, uint64_t>>& ycsb_exe_vec,
+                       std::string path, double load_factor);
 
     void vec_to_ops(std::vector<uint64_t>& key_vec,
                     std::vector<std::tuple<uint64_t, uint64_t, uint64_t>>& ops,

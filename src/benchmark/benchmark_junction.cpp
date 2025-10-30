@@ -126,6 +126,8 @@ void BenchmarkJunction::YCSBRun(std::vector<std::pair<uint64_t, uint64_t>>& ops,
                     uint64_t  value;
                     if (ops[j].first == 1) {
                         assign_wrapper(ops[j].second, 0);
+                    } else if (ops[j].first == 2) {
+                        erase_wrapper(ops[j].second);
                     } else {
                         value = get_wrapper(ops[j].second);
                     }

@@ -586,6 +586,69 @@ void Benchmark::ycsb_exe_load(
     }
 }
 
+void Benchmark::ycsb_del_load(
+    std::vector<std::pair<uint64_t, uint64_t>>& ycsb_exe_vec, std::string path,
+    double load_factor) {
+
+    // Use a larger buffer size for better performance
+    const size_t BUFFER_SIZE = 1 << 20;  // 1MB buffer
+
+    FILE* file = fopen(path.c_str(), "r");
+    if (!file)
+        return;
+
+    fseek(file, 0, SEEK_END);
+    long fileSize = ftell(file);
+    fseek(file, 0, SEEK_SET);
+
+    char* buffer = new char[BUFFER_SIZE];
+
+    std::string partialLine;
+
+    while (!feof(file)) {
+        size_t bytesRead = fread(buffer, 1, BUFFER_SIZE - 1, file);
+        if (bytesRead == 0)
+            break;
+
+        buffer[bytesRead] = '\0';
+
+        // Process each line in the buffer
+        char* pos = buffer;
+        char* end = buffer + bytesRead;
+
+        while (pos < end) {
+            char* lineEnd = strchr(pos, '\n');
+
+            if (!lineEnd) {
+                if (feof(file)) {
+                    uint64_t key;
+                    key = strtoull(pos + 7, nullptr, 10);
+                    ycsb_exe_vec.emplace_back(2, key);
+                } else {
+                    partialLine += pos;
+                }
+                break;
+            }
+
+            *lineEnd = '\0';  // Terminate the line
+
+            if (!partialLine.empty()) {
+                partialLine += pos;
+                uint64_t key;
+                key = strtoull(partialLine.c_str() + 7, nullptr, 10);
+                ycsb_exe_vec.emplace_back(2, key);
+                partialLine.clear();
+            } else {
+                uint64_t key;
+                key = strtoull(pos + 7, nullptr, 10);
+                ycsb_exe_vec.emplace_back(2, key);
+            }
+
+            pos = lineEnd + 1;
+        }
+    }
+}
+
 void Benchmark::vec_to_ops(
     std::vector<uint64_t>& key_vec,
     std::vector<std::tuple<uint64_t, uint64_t, uint64_t>>& ops,
@@ -1446,6 +1509,64 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
                 std::vector<std::pair<uint64_t, uint64_t>> ycsb_exe_vec;
                 ycsb_exe_load(ycsb_exe_vec, para.ycsb_run_path, load_factor,
                               available_keys);
+
+                auto start = std::chrono::high_resolution_clock::now();
+
+                obj->YCSBFill(ycsb_keys, para.thread_num);
+
+                auto start_fill = std::chrono::high_resolution_clock::now();
+                auto fill_duration =
+                    std::chrono::duration_cast<std::chrono::milliseconds>(
+                        start_fill - start)
+                        .count();
+
+                obj->YCSBRun(ycsb_exe_vec, para.thread_num);
+
+                auto start_run = std::chrono::high_resolution_clock::now();
+                auto run_duration =
+                    std::chrono::duration_cast<std::chrono::milliseconds>(
+                        start_run - start_fill)
+                        .count();
+
+                auto end = std::chrono::high_resolution_clock::now();
+                auto duration =
+                    std::chrono::duration_cast<std::chrono::milliseconds>(end -
+                                                                          start)
+                        .count();
+
+                int fill_op_cnt = ycsb_keys.size();
+                int run_op_cnt = ycsb_exe_vec.size();
+
+                output_stream << "CPU Time: " << duration << " ms" << std::endl;
+                output_stream << "Fill Time: " << fill_duration << " ms"
+                              << std::endl;
+                output_stream << "Run Time: " << run_duration << " ms"
+                              << std::endl;
+                output_stream
+                    << "Fill Latency: "
+                    << int(fill_duration * 1000000.0 / double(fill_op_cnt))
+                    << " ns/op" << std::endl;
+                output_stream
+                    << "Run Latency: "
+                    << int(run_duration * 1000000.0 / double(run_op_cnt))
+                    << " ns/op" << std::endl;
+                output_stream
+                    << "Fill Throughput: "
+                    << int(double(fill_op_cnt) / (fill_duration / 1000.0))
+                    << " ops/s" << std::endl;
+                output_stream
+                    << "Run Throughput: "
+                    << int(double(run_op_cnt) / (run_duration / 1000.0))
+                    << " ops/s" << std::endl;
+            };
+            break;
+        case BenchmarkCaseType::YCSB_DEL_C:
+            run = [this, para]() {
+                std::vector<uint64_t> ycsb_keys;
+                ycsb_load(ycsb_keys, para.ycsb_load_path, load_factor);
+
+                std::vector<std::pair<uint64_t, uint64_t>> ycsb_exe_vec;
+                ycsb_del_load(ycsb_exe_vec, para.ycsb_run_path, load_factor);
 
                 auto start = std::chrono::high_resolution_clock::now();
 

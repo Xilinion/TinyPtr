@@ -89,6 +89,8 @@ void BenchmarkResizableByteArrayChainedHT::YCSBRun(
             for (size_t j = start_index; j < end_index; ++j) {
                 if (ops[j].first == 1) {
                     tab->Insert(handle, ops[j].second, 0);
+                } else if (ops[j].first == 2) {
+                    tab->Erase(handle, ops[j].second);
                 } else {
                     tab->Query(handle, ops[j].second, &value);
                 }

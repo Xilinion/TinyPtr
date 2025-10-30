@@ -65,6 +65,8 @@ void BenchmarkConcSkulkerHT::YCSBRun(
             for (size_t j = start_index; j < end_index; ++j) {
                 if (ops[j].first == 1) {
                     tab->Insert(ops[j].second, 0);
+                } else if (ops[j].first == 2) {
+                    tab->Free(ops[j].second);
                 } else {
                     tab->Query(ops[j].second, &value);
                 }
