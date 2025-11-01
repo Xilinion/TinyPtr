@@ -662,6 +662,14 @@ void Benchmark::ycsb_del_load(
     if (load_factor < 1.0 && ycsb_exe_vec.size() > 0) {
         size_t keep_count =
             static_cast<size_t>(ycsb_exe_vec.size() * load_factor);
+
+        ycsb_exe_vec.resize(keep_count);
+
+        std::random_device rd;
+        std::mt19937 g(rd());
+        std::shuffle(ycsb_exe_vec.begin(), ycsb_exe_vec.end(), g);
+
+        keep_count = static_cast<size_t>(ycsb_exe_vec.size() * 5 / 7);
         ycsb_exe_vec.resize(keep_count);
     }
 }
