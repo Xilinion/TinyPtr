@@ -35,7 +35,13 @@ struct BenchmarkObjectType {
         NONCONC_BLAST = 23,
         TBB = 24,
         STAGGER_BYTEARRAYCHAINEDHT = 25,
-        COUNT = 26
+        BUCKET_TABLE = 26,
+        GRP_CHAINING = 27,
+        CLEARY_PLAIN = 28,
+        CLEARY_SPARSE = 29,
+        LAYERED_PLAIN = 30,
+        LAYERED_SPARSE = 31,
+        COUNT = 32
     };
 
     BenchmarkObjectType(const BenchmarkObjectType& b) = default;

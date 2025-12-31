@@ -31,6 +31,7 @@
 #include "benchmark_cuckoo.h"
 #include "benchmark_dereftab64.h"
 #include "benchmark_hash_distribution.h"
+#include "benchmark_hashbench_tables.h"
 // #include "benchmark_growt.h"
 #include <iomanip>
 #include "benchmark_iceberg.h"
@@ -794,6 +795,24 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
             break;
         case BenchmarkObjectType::TBB:
             obj = new BenchmarkTBB(table_size);
+            break;
+        case BenchmarkObjectType::BUCKET_TABLE:
+            obj = new BenchmarkBucketTable(table_size);
+            break;
+        case BenchmarkObjectType::GRP_CHAINING:
+            obj = new BenchmarkGroupChaining(table_size);
+            break;
+        case BenchmarkObjectType::CLEARY_PLAIN:
+            obj = new BenchmarkClearyPlain(table_size);
+            break;
+        case BenchmarkObjectType::CLEARY_SPARSE:
+            obj = new BenchmarkClearySparse(table_size);
+            break;
+        case BenchmarkObjectType::LAYERED_PLAIN:
+            obj = new BenchmarkLayeredPlain(table_size);
+            break;
+        case BenchmarkObjectType::LAYERED_SPARSE:
+            obj = new BenchmarkLayeredSparse(table_size);
             break;
         default:
             abort();
