@@ -35,7 +35,8 @@ struct BenchmarkCaseType {
         QUERY_HIT_CUSTOM_LOAD_FACTOR_ONLY_PERCENTILE = 26,
         MEMORY_MEASUREMENT_INSERTIONS = 27,
         YCSB_DEL_C = 28,
-        COUNT = 29
+        PROGRESSIVE_INSERTION_THROUGHPUT = 29,
+        COUNT = 30
     };
 
     BenchmarkCaseType() = default;
