@@ -117,6 +117,11 @@ build_hashbench_tables()
 add_dependencies(benchmark_lib hashbench_tables)
 target_link_libraries(benchmark_lib PUBLIC hashbench_tables)
 
+include(third_party_tinypointers)
+build_third_party_tinypointers()
+add_dependencies(benchmark_lib third_party_tinypointers_lib)
+target_link_libraries(benchmark_lib PUBLIC third_party_tinypointers_lib)
+
 
 # Add test support
 include(FetchContent)
