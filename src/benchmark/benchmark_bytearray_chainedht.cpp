@@ -37,6 +37,37 @@ void BenchmarkByteArrayChained::Erase(uint64_t key, uint8_t ptr) {
     tab->Free(key);
 }
 
+void BenchmarkByteArrayChained::ConcurrentRun(
+    std::vector<std::tuple<uint64_t, uint64_t, uint64_t>>& ops,
+    int num_threads) {
+    std::vector<std::thread> threads;
+    size_t chunk_size = ops.size() / num_threads;
+
+    for (int i = 0; i < num_threads; ++i) {
+        size_t start_index = i * chunk_size;
+        size_t end_index =
+            (i == num_threads - 1) ? ops.size() : start_index + chunk_size;
+
+        threads.emplace_back([this, &ops, start_index, end_index]() {
+            for (size_t j = start_index; j < end_index; ++j) {
+                if (std::get<0>(ops[j]) == ConcOptType::INSERT) {
+                    Insert(std::get<1>(ops[j]), std::get<2>(ops[j]));
+                } else if (std::get<0>(ops[j]) == ConcOptType::QUERY) {
+                    Query(std::get<1>(ops[j]), uint8_t(0));
+                } else if (std::get<0>(ops[j]) == ConcOptType::UPDATE) {
+                    Update(std::get<1>(ops[j]), 0, std::get<2>(ops[j]));
+                } else if (std::get<0>(ops[j]) == ConcOptType::ERASE) {
+                    Erase(std::get<1>(ops[j]), 0);
+                }
+            }
+        });
+    }
+
+    for (auto& thread : threads) {
+        thread.join();
+    }
+}
+
 double BenchmarkByteArrayChained::AvgChainLength() {
     return tab->AvgChainLength();
 }

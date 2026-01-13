@@ -42,7 +42,7 @@ struct BenchmarkBucketTable::BucketImpl {
     explicit BucketImpl(int expected) {
         // const size_t reserve_size =
         //     expected > 0 ? static_cast<size_t>(expected) : size_t(1);
-        // table.reserve(reserve_size);
+        table.reserve(1 << 16);
     }
 };
 
@@ -63,9 +63,10 @@ struct BenchmarkGroupChaining::GroupImpl {
     group_table_t table;
 
     explicit GroupImpl(int expected) : table(64, 64) {
-        const size_t reserve_size =
-            expected > 0 ? static_cast<size_t>(expected) : size_t(1);
-        table.reserve(reserve_size / 64);
+        // const size_t reserve_size =
+        //     expected > 0 ? static_cast<size_t>(expected) : size_t(1);
+        // table.reserve(reserve_size / 64);
+        table.reserve(1 << 16);
     }
 };
 
@@ -117,13 +118,15 @@ void BenchmarkBucketTable::Erase(uint64_t key, uint8_t /*ptr*/) {
 }
 
 void BenchmarkBucketTable::ConcurrentRun(
-    std::vector<std::tuple<uint64_t, uint64_t, uint64_t>>& ops, int num_threads) {
+    std::vector<std::tuple<uint64_t, uint64_t, uint64_t>>& ops,
+    int num_threads) {
     std::vector<std::thread> threads;
     size_t chunk_size = ops.size() / num_threads;
 
     for (int i = 0; i < num_threads; ++i) {
         size_t start_index = i * chunk_size;
-        size_t end_index = (i == num_threads - 1) ? ops.size() : start_index + chunk_size;
+        size_t end_index =
+            (i == num_threads - 1) ? ops.size() : start_index + chunk_size;
 
         threads.emplace_back([this, &ops, start_index, end_index]() {
             for (size_t j = start_index; j < end_index; ++j) {
@@ -144,7 +147,6 @@ void BenchmarkBucketTable::ConcurrentRun(
         thread.join();
     }
 }
-
 
 const BenchmarkObjectType BenchmarkGroupChaining::TYPE =
     BenchmarkObjectType::GRP_CHAINING;
@@ -175,13 +177,15 @@ void BenchmarkGroupChaining::Erase(uint64_t key, uint8_t /*ptr*/) {
 }
 
 void BenchmarkGroupChaining::ConcurrentRun(
-    std::vector<std::tuple<uint64_t, uint64_t, uint64_t>>& ops, int num_threads) {
+    std::vector<std::tuple<uint64_t, uint64_t, uint64_t>>& ops,
+    int num_threads) {
     std::vector<std::thread> threads;
     size_t chunk_size = ops.size() / num_threads;
 
     for (int i = 0; i < num_threads; ++i) {
         size_t start_index = i * chunk_size;
-        size_t end_index = (i == num_threads - 1) ? ops.size() : start_index + chunk_size;
+        size_t end_index =
+            (i == num_threads - 1) ? ops.size() : start_index + chunk_size;
 
         threads.emplace_back([this, &ops, start_index, end_index]() {
             for (size_t j = start_index; j < end_index; ++j) {
@@ -202,7 +206,6 @@ void BenchmarkGroupChaining::ConcurrentRun(
         thread.join();
     }
 }
-
 
 struct BenchmarkClearyPlain::ClearyPlainImpl {
     using map_type = tdc::compact_hash::map::plain_cv_hashmap_t<uint64_t>;
@@ -257,13 +260,15 @@ void BenchmarkClearyPlain::Erase(uint64_t /*key*/, uint8_t /*ptr*/) {
 }
 
 void BenchmarkClearyPlain::ConcurrentRun(
-    std::vector<std::tuple<uint64_t, uint64_t, uint64_t>>& ops, int num_threads) {
+    std::vector<std::tuple<uint64_t, uint64_t, uint64_t>>& ops,
+    int num_threads) {
     std::vector<std::thread> threads;
     size_t chunk_size = ops.size() / num_threads;
 
     for (int i = 0; i < num_threads; ++i) {
         size_t start_index = i * chunk_size;
-        size_t end_index = (i == num_threads - 1) ? ops.size() : start_index + chunk_size;
+        size_t end_index =
+            (i == num_threads - 1) ? ops.size() : start_index + chunk_size;
 
         threads.emplace_back([this, &ops, start_index, end_index]() {
             for (size_t j = start_index; j < end_index; ++j) {
@@ -338,13 +343,15 @@ void BenchmarkClearySparse::Erase(uint64_t /*key*/, uint8_t /*ptr*/) {
 }
 
 void BenchmarkClearySparse::ConcurrentRun(
-    std::vector<std::tuple<uint64_t, uint64_t, uint64_t>>& ops, int num_threads) {
+    std::vector<std::tuple<uint64_t, uint64_t, uint64_t>>& ops,
+    int num_threads) {
     std::vector<std::thread> threads;
     size_t chunk_size = ops.size() / num_threads;
 
     for (int i = 0; i < num_threads; ++i) {
         size_t start_index = i * chunk_size;
-        size_t end_index = (i == num_threads - 1) ? ops.size() : start_index + chunk_size;
+        size_t end_index =
+            (i == num_threads - 1) ? ops.size() : start_index + chunk_size;
 
         threads.emplace_back([this, &ops, start_index, end_index]() {
             for (size_t j = start_index; j < end_index; ++j) {
@@ -419,13 +426,15 @@ void BenchmarkLayeredPlain::Erase(uint64_t /*key*/, uint8_t /*ptr*/) {
 }
 
 void BenchmarkLayeredPlain::ConcurrentRun(
-    std::vector<std::tuple<uint64_t, uint64_t, uint64_t>>& ops, int num_threads) {
+    std::vector<std::tuple<uint64_t, uint64_t, uint64_t>>& ops,
+    int num_threads) {
     std::vector<std::thread> threads;
     size_t chunk_size = ops.size() / num_threads;
 
     for (int i = 0; i < num_threads; ++i) {
         size_t start_index = i * chunk_size;
-        size_t end_index = (i == num_threads - 1) ? ops.size() : start_index + chunk_size;
+        size_t end_index =
+            (i == num_threads - 1) ? ops.size() : start_index + chunk_size;
 
         threads.emplace_back([this, &ops, start_index, end_index]() {
             for (size_t j = start_index; j < end_index; ++j) {
@@ -500,13 +509,15 @@ void BenchmarkLayeredSparse::Erase(uint64_t /*key*/, uint8_t /*ptr*/) {
 }
 
 void BenchmarkLayeredSparse::ConcurrentRun(
-    std::vector<std::tuple<uint64_t, uint64_t, uint64_t>>& ops, int num_threads) {
+    std::vector<std::tuple<uint64_t, uint64_t, uint64_t>>& ops,
+    int num_threads) {
     std::vector<std::thread> threads;
     size_t chunk_size = ops.size() / num_threads;
 
     for (int i = 0; i < num_threads; ++i) {
         size_t start_index = i * chunk_size;
-        size_t end_index = (i == num_threads - 1) ? ops.size() : start_index + chunk_size;
+        size_t end_index =
+            (i == num_threads - 1) ? ops.size() : start_index + chunk_size;
 
         threads.emplace_back([this, &ops, start_index, end_index]() {
             for (size_t j = start_index; j < end_index; ++j) {
