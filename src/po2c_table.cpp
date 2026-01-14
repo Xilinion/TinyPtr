@@ -7,18 +7,18 @@ Po2CTable::Bin::Bin() {
         bin[i].key = i + 2;
 }
 
-bool Po2CTable::Bin::full() {
+inline bool Po2CTable::Bin::full() {
     return cnt == DereferenceTable64::kBinSize;
 }
 
-uint8_t Po2CTable::Bin::count() {
+inline uint8_t Po2CTable::Bin::count() {
     return cnt;
 }
 
 // 0 for null
 // i+1 for position i
 // there're at most 2 same value in the key field: 1) the pointer of free list 2) the key
-uint8_t Po2CTable::Bin::find(uint64_t key) {
+inline uint8_t Po2CTable::Bin::find(uint64_t key) {
     uint8_t key_cnt = 0;
     uint8_t key_pos[2];
     // not duplicate key
@@ -43,9 +43,10 @@ uint8_t Po2CTable::Bin::find(uint64_t key) {
     return 0;
 }
 
-bool Po2CTable::Bin::query(uint64_t key, uint8_t ptr, uint64_t* value_ptr) {
-    assert(ptr < (1 << 7));
-    assert(ptr);
+inline bool Po2CTable::Bin::query(uint64_t key, uint8_t ptr,
+                                  uint64_t* value_ptr) {
+    // assert(ptr < (1 << 7));
+    // assert(ptr);
     --ptr;
 
     if (bin[ptr].key == key) {
@@ -68,11 +69,12 @@ bool Po2CTable::Bin::insert_check(uint64_t key) {
 // 0 for null (duplicate key), note this should hold higher priority than full bin
 // ~0 for full bin
 // i+1 for position i
-uint8_t Po2CTable::Bin::insert(uint64_t key, uint64_t value) {
-    if (!this->insert_check(key))
-        return 0;
+__attribute__((always_inline)) inline uint8_t Po2CTable::Bin::insert(
+    uint64_t key, uint64_t value) {
+    // if (!this->insert_check(key))
+    //     return 0;
 
-    if (this->full())
+    if (cnt == DereferenceTable64::kBinSize)
         return ~0;
 
     ++cnt;
@@ -84,7 +86,8 @@ uint8_t Po2CTable::Bin::insert(uint64_t key, uint64_t value) {
     return tmp;
 }
 
-bool Po2CTable::Bin::update(uint64_t key, uint8_t ptr, uint64_t value) {
+__attribute__((always_inline)) inline bool Po2CTable::Bin::update(
+    uint64_t key, uint8_t ptr, uint64_t value) {
     assert(ptr < (1 << 7));
     assert(ptr);
     --ptr;
@@ -97,7 +100,8 @@ bool Po2CTable::Bin::update(uint64_t key, uint8_t ptr, uint64_t value) {
     return 0;
 }
 
-bool Po2CTable::Bin::free(uint64_t key, uint8_t ptr) {
+__attribute__((always_inline)) inline bool Po2CTable::Bin::free(uint64_t key,
+                                                                uint8_t ptr) {
     assert(ptr < (1 << 7));
     assert(ptr);
     --ptr;
@@ -117,34 +121,39 @@ Po2CTable::Po2CTable(int n) {
         (n + DereferenceTable64::kBinSize - 1) / DereferenceTable64::kBinSize;
     tab = new Bin[bin_num];
     srand(time(0));
-    int hash_seed[2] = {rand(), rand()};
-    while (hash_seed[1] == hash_seed[0])
-        hash_seed[1] = rand();
-    for (int i = 0; i < 2; ++i)
-        HashBin[i] =
-            std::function<uint64_t(uint64_t)>([=](uint64_t key) -> uint64_t {
-                return SlowXXHash64::hash(&key, sizeof(uint64_t), hash_seed[i]) %
-                       bin_num;
-            });
+    hash_seed0 = rand();
+    hash_seed1 = rand();
+    while (hash_seed1 == hash_seed0)
+        hash_seed1 = rand();
 }
 
 uint8_t Po2CTable::Allocate(uint64_t key, uint64_t value) {
-    uint64_t hashbin[2];
-    for (int i = 0; i < 2; ++i) {
-        hashbin[i] = HashBin[i](key);
-        if (!tab[hashbin[i]].insert_check(key))
-            return 0;
+    const uint64_t hashbin0 = HashBin0(key);
+    const uint64_t hashbin1 = HashBin1(key);
+
+    Bin* bin0 = tab + hashbin0;
+    Bin* bin1 = tab + hashbin1;
+
+    const bool bin0_full = bin0->cnt == DereferenceTable64::kBinSize;
+    const bool bin1_full = bin1->cnt == DereferenceTable64::kBinSize;
+    if (bin0_full && bin1_full) {
+        return ~0;  // both bins full
     }
 
-    uint8_t flag = tab[hashbin[0]].count() > tab[hashbin[1]].count();
+    Bin* target = bin0_full
+                      ? bin1
+                      : (bin1_full ? bin0
+                                   : (bin0->cnt > bin1->cnt ? bin1 : bin0));
+    const uint8_t flag = (target == bin1);
 
-    uint8_t ptr = tab[hashbin[flag]].insert(key, value);
-    // ptr should not be 0 after the previous check in both bins
-    assert(ptr);
+    const uint8_t head = target->head;
+    KV* slot = target->bin + (head - 1);
+    target->head = static_cast<uint8_t>(slot->key);
+    slot->key = key;
+    slot->value = value;
+    ++target->cnt;
 
-    ptr ^=
-        flag * (ptr != DereferenceTable64::kOverflowTinyPtr) * ((1 << 8) - 1);
-    return ptr;
+    return flag ? static_cast<uint8_t>(head ^ ((1 << 8) - 1)) : head;
 }
 
 bool Po2CTable::Update(uint64_t key, uint8_t ptr, uint64_t value) {
@@ -153,7 +162,7 @@ bool Po2CTable::Update(uint64_t key, uint8_t ptr, uint64_t value) {
 
     uint8_t flag = (ptr >= (1 << 7));
     ptr ^= flag * ((1 << 8) - 1);
-    return tab[HashBin[flag](key)].update(key, ptr, value);
+    return tab[flag ? HashBin1(key) : HashBin0(key)].update(key, ptr, value);
 }
 
 bool Po2CTable::Query(uint64_t key, uint8_t ptr, uint64_t* value_ptr) {
@@ -162,7 +171,7 @@ bool Po2CTable::Query(uint64_t key, uint8_t ptr, uint64_t* value_ptr) {
 
     uint8_t flag = (ptr >= (1 << 7));
     ptr ^= flag * ((1 << 8) - 1);
-    return tab[HashBin[flag](key)].query(key, ptr, value_ptr);
+    return tab[flag ? HashBin1(key) : HashBin0(key)].query(key, ptr, value_ptr);
 }
 
 bool Po2CTable::Free(uint64_t key, uint8_t ptr) {
@@ -171,7 +180,7 @@ bool Po2CTable::Free(uint64_t key, uint8_t ptr) {
 
     uint8_t flag = (ptr >= (1 << 7));
     ptr ^= flag * ((1 << 8) - 1);
-    return tab[HashBin[flag](key)].free(key, ptr);
+    return tab[flag ? HashBin1(key) : HashBin0(key)].free(key, ptr);
 }
 
 }  // namespace tinyptr

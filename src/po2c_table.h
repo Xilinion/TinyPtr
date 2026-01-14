@@ -3,7 +3,6 @@
 #include <bitset>
 #include <cassert>
 #include <cstdlib>
-#include <functional>
 #include <map>
 #include "common.h"
 #include "dereference_table_64.h"
@@ -20,6 +19,9 @@ class Po2CTable {
        public:
         Bin();
         ~Bin() = default;
+
+       private:
+        friend class Po2CTable;
 
        public:
         bool full();
@@ -50,7 +52,16 @@ class Po2CTable {
     bool Free(uint64_t key, uint8_t ptr);
 
    private:
-    std::function<uint64_t(uint64_t)> HashBin[2];
+    uint64_t hash_seed0;
+    uint64_t hash_seed1;
+    __attribute__((always_inline)) inline uint64_t HashBin0(
+        uint64_t key) const {
+        return HASH_FUNCTION(&key, sizeof(uint64_t), hash_seed0) % bin_num;
+    }
+    __attribute__((always_inline)) inline uint64_t HashBin1(
+        uint64_t key) const {
+        return HASH_FUNCTION(&key, sizeof(uint64_t), hash_seed1) % bin_num;
+    }
     uint64_t bin_num;
     Bin* tab;
 };
