@@ -343,7 +343,7 @@ resize_object_ids=(6 7 15 18 21 24)
 rss_object_ids=(6 7 15 18 21 24 25)
 
 compact_object_ids=(4 23 26 27 28 29 30 31)
-tinypointers_comparison_ids=(35 32 33 34)
+tinypointers_comparison_ids=(32 33 34 35)
 
 # YCSB with resize
 
@@ -379,9 +379,9 @@ enable_core_binding=true
 for case_id in 29; do
 	for object_id in "${rss_object_ids[@]}"; do
 		entry_id=2000
-		for table_size in 16777215; do
+		for table_size in 1048575; do
 			#0.7
-			opt_num=23488101
+			opt_num=16777215
 			RunWithRetry "Run"
 			let "entry_id++"
 		done
@@ -493,7 +493,7 @@ enable_core_binding=false
 
 thread_num=0
 enable_core_binding=false
-for case_id in 1 3 6 7; do # Various benchmark cases
+for case_id in 1 3 6 7; do
 	for object_id in "${tinypointers_comparison_ids[@]}"; do
 		entry_id=3000
 		for table_size in 16777215; do # 2^24 - 1
@@ -543,7 +543,7 @@ enable_core_binding=false
 
 thread_num=0
 enable_core_binding=true
-for case_id in 1 3 9 10; do
+for case_id in 1 9 10; do
 	for object_id in "${no_resize_object_ids[@]}"; do
 		entry_id=5000
 		for table_size in 2047; do
