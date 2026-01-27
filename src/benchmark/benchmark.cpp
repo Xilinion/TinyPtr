@@ -2059,6 +2059,102 @@ Benchmark::Benchmark(BenchmarkCLIPara& para)
                 }
             };
             break;
+        case BenchmarkCaseType::SLIDING_WINDOW_INSERTION_THROUGHPUT:
+            run = [this]() {
+                // Configuration parameters
+                const uint64_t target_output_points = 100;  // Number of output windows
+                const uint64_t k = 1000;  // Record timestamp after every k operations per thread
+                
+                // Calculate window size based on total operations and target output points
+                // We want approximately target_output_points windows
+                const uint64_t window_size_ops = opt_num / target_output_points;
+
+                output_stream << "Sliding Window Insertion Throughput" << std::endl;
+                output_stream << "Total Operations: " << opt_num << std::endl;
+                output_stream << "Threads: " << (thread_num ? thread_num : 1) << std::endl;
+                output_stream << "Timestamp Interval (k): " << k << " ops/thread" << std::endl;
+                output_stream << "Window Size: " << window_size_ops << " ops" << std::endl;
+                output_stream << "Window, Window Start (ops), Window End (ops), "
+                                 "Time Span (ns), Throughput (ops/s)"
+                              << std::endl;
+
+                std::vector<uint64_t> key_vec, value_vec;
+                obj_fill_vec_prepare(key_vec, value_vec, opt_num);
+
+                std::vector<std::tuple<uint64_t, uint64_t, uint64_t>> ops;
+                vec_to_ops(key_vec, value_vec, ops, ConcOptType::INSERT);
+
+                // Record timestamps during insertion
+                // Use thread_num if available, otherwise use 1 (sequential)
+                int effective_threads = thread_num ? thread_num : 1;
+                auto timestamps = obj->ConcurrentInsertWithTimestampRecording(
+                    ops, effective_threads, k);
+
+                if (timestamps.empty()) {
+                    output_stream << "No timestamps recorded" << std::endl;
+                    return;
+                }
+
+                // Sort timestamps for rank-based estimation.
+                std::sort(std::execution::par, timestamps.begin(), timestamps.end());
+
+                // Compute sliding windows using rank-based op estimation (ops ~= k * rank).
+                uint64_t total_ranks = timestamps.size();
+                if (total_ranks < 2) {
+                    output_stream << "Not enough timestamps recorded" << std::endl;
+                    return;
+                }
+
+                uint64_t window_size_ranks = window_size_ops / k;
+                if (window_size_ranks == 0) {
+                    window_size_ranks = 1;
+                }
+
+                uint64_t max_start = (total_ranks > window_size_ranks)
+                                         ? (total_ranks - window_size_ranks)
+                                         : 0;
+                if (max_start == 0) {
+                    output_stream << "Window size too large for timestamps" << std::endl;
+                    return;
+                }
+
+                // Calculate window step to get approximately target_output_points windows
+                uint64_t window_step_ranks = 1;
+                if (max_start > 1 && target_output_points > 1) {
+                    window_step_ranks = max_start / (target_output_points - 1);
+                    if (window_step_ranks == 0) window_step_ranks = 1;
+                }
+
+                // Calculate number of windows we can actually create
+                uint64_t num_windows =
+                    (max_start / window_step_ranks) + 1;
+                num_windows = std::min(num_windows, target_output_points);
+
+                for (uint64_t w = 0; w < num_windows; ++w) {
+                    uint64_t start_idx = w * window_step_ranks;
+                    uint64_t end_idx = start_idx + window_size_ranks;
+                    if (end_idx >= total_ranks) {
+                        break;
+                    }
+
+                    uint64_t time_span_ns =
+                        timestamps[end_idx] - timestamps[start_idx];
+                    uint64_t ops_in_window = (end_idx - start_idx) * k;
+                    uint64_t window_start_ops = (start_idx + 1) * k;
+                    uint64_t window_end_ops = (end_idx + 1) * k;
+
+                    if (time_span_ns > 0 && ops_in_window > 0) {
+                        double throughput =
+                            (double(ops_in_window) / (time_span_ns / 1e9));
+
+                        output_stream << (w + 1) << ", " << window_start_ops
+                                      << ", " << window_end_ops
+                                      << ", " << time_span_ns << ", "
+                                      << int(throughput) << std::endl;
+                    }
+                }
+            };
+            break;
 
         default:
             abort();

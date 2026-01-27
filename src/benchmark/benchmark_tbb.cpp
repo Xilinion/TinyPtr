@@ -135,59 +135,7 @@ BenchmarkTBB::YCSBRunWithLatencyRecording(
         thread.join();
     }
 
-    // Combine all thread results
-    std::vector<std::pair<uint64_t, uint64_t>> all_latencies;
-    for (const auto& thread_result : thread_latencies) {
-        all_latencies.insert(all_latencies.end(), thread_result.begin(),
-                             thread_result.end());
-    }
-
-    // Separate insert and query latencies
-    std::vector<uint64_t> insert_latencies;
-    std::vector<uint64_t> query_latencies;
-
-    for (const auto& latency_pair : all_latencies) {
-        if (latency_pair.first == 1) {  // Insert operation
-            insert_latencies.push_back(latency_pair.second);
-        } else {  // Query operation
-            query_latencies.push_back(latency_pair.second);
-        }
-    }
-
-    // Sort both vectors for percentile analysis
-    std::sort(std::execution::par, insert_latencies.begin(),
-              insert_latencies.end());
-    std::sort(std::execution::par, query_latencies.begin(),
-              query_latencies.end());
-
-    // Calculate percentiles for both operation types
-    std::vector<std::tuple<uint64_t, double, uint64_t>> result;
-
-    // Calculate percentiles for insert latencies
-    if (!insert_latencies.empty()) {
-        for (double percentile : percentiles) {
-            size_t index =
-                (percentile == 100.0)
-                    ? insert_latencies.size() - 1
-                    : static_cast<size_t>((percentile / 100.0) *
-                                          (insert_latencies.size() - 1));
-            result.emplace_back(1, percentile, insert_latencies[index]);
-        }
-    }
-
-    // Calculate percentiles for query latencies
-    if (!query_latencies.empty()) {
-        for (double percentile : percentiles) {
-            size_t index =
-                (percentile == 100.0)
-                    ? query_latencies.size() - 1
-                    : static_cast<size_t>((percentile / 100.0) *
-                                          (query_latencies.size() - 1));
-            result.emplace_back(0, percentile, query_latencies[index]);
-        }
-    }
-
-    return result;
+    return ComputeYCSBLatencyPercentiles(thread_latencies, percentiles);
 }
 
 void BenchmarkTBB::ConcurrentRun(
@@ -278,97 +226,19 @@ BenchmarkTBB::ConcurrentRunWithLatencyRecording(
         thread.join();
     }
 
-    // Combine all thread results
-    std::vector<std::pair<uint64_t, uint64_t>> all_latencies;
-    for (const auto& thread_result : thread_latencies) {
-        all_latencies.insert(all_latencies.end(), thread_result.begin(),
-                             thread_result.end());
-    }
+    return ComputeConcurrentLatencyPercentiles(thread_latencies, percentiles);
+}
 
-    // Separate latencies by operation type
-    std::vector<uint64_t> insert_latencies;
-    std::vector<uint64_t> query_latencies;
-    std::vector<uint64_t> update_latencies;
-    std::vector<uint64_t> erase_latencies;
-
-    for (const auto& latency_pair : all_latencies) {
-        if (latency_pair.first == ConcOptType::INSERT) {
-            insert_latencies.push_back(latency_pair.second);
-        } else if (latency_pair.first == ConcOptType::QUERY) {
-            query_latencies.push_back(latency_pair.second);
-        } else if (latency_pair.first == ConcOptType::UPDATE) {
-            update_latencies.push_back(latency_pair.second);
-        } else if (latency_pair.first == ConcOptType::ERASE) {
-            erase_latencies.push_back(latency_pair.second);
-        }
-    }
-
-    // Sort all vectors for percentile analysis
-    std::sort(std::execution::par, insert_latencies.begin(),
-              insert_latencies.end());
-    std::sort(std::execution::par, query_latencies.begin(),
-              query_latencies.end());
-    std::sort(std::execution::par, update_latencies.begin(),
-              update_latencies.end());
-    std::sort(std::execution::par, erase_latencies.begin(),
-              erase_latencies.end());
-
-    // Calculate percentiles for all operation types
-    std::vector<std::tuple<uint64_t, double, uint64_t>> result;
-
-    // Calculate percentiles for insert latencies
-    if (!insert_latencies.empty()) {
-        for (double percentile : percentiles) {
-            size_t index =
-                (percentile == 100.0)
-                    ? insert_latencies.size() - 1
-                    : static_cast<size_t>((percentile / 100.0) *
-                                          (insert_latencies.size() - 1));
-            result.emplace_back(ConcOptType::INSERT, percentile,
-                                insert_latencies[index]);
-        }
-    }
-
-    // Calculate percentiles for query latencies
-    if (!query_latencies.empty()) {
-        for (double percentile : percentiles) {
-            size_t index =
-                (percentile == 100.0)
-                    ? query_latencies.size() - 1
-                    : static_cast<size_t>((percentile / 100.0) *
-                                          (query_latencies.size() - 1));
-            result.emplace_back(ConcOptType::QUERY, percentile,
-                                query_latencies[index]);
-        }
-    }
-
-    // Calculate percentiles for update latencies
-    if (!update_latencies.empty()) {
-        for (double percentile : percentiles) {
-            size_t index =
-                (percentile == 100.0)
-                    ? update_latencies.size() - 1
-                    : static_cast<size_t>((percentile / 100.0) *
-                                          (update_latencies.size() - 1));
-            result.emplace_back(ConcOptType::UPDATE, percentile,
-                                update_latencies[index]);
-        }
-    }
-
-    // Calculate percentiles for erase latencies
-    if (!erase_latencies.empty()) {
-        for (double percentile : percentiles) {
-            size_t index =
-                (percentile == 100.0)
-                    ? erase_latencies.size() - 1
-                    : static_cast<size_t>((percentile / 100.0) *
-                                          (erase_latencies.size() - 1));
-            result.emplace_back(ConcOptType::ERASE, percentile,
-                                erase_latencies[index]);
-        }
-    }
-
-    return result;
+std::vector<uint64_t> BenchmarkTBB::ConcurrentInsertWithTimestampRecording(
+    std::vector<std::tuple<uint64_t, uint64_t, uint64_t>>& ops, int num_threads, uint64_t k) {
+    return RecordInsertionTimestamps(
+        ops, num_threads, k,
+        [this, &ops](size_t j, int /*thread_id*/) {
+            // Execute the actual insertion operation
+            if (std::get<0>(ops[j]) == ConcOptType::INSERT) {
+                tab.insert(std::make_pair(std::get<1>(ops[j]), std::get<2>(ops[j])));
+            }
+        });
 }
 
 }  // namespace tinyptr

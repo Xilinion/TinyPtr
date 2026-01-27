@@ -36,7 +36,8 @@ struct BenchmarkCaseType {
         MEMORY_MEASUREMENT_INSERTIONS = 27,
         YCSB_DEL_C = 28,
         PROGRESSIVE_INSERTION_THROUGHPUT = 29,
-        COUNT = 30
+        SLIDING_WINDOW_INSERTION_THROUGHPUT = 30,
+        COUNT = 31
     };
 
     BenchmarkCaseType() = default;

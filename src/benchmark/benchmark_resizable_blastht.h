@@ -43,6 +43,9 @@ class BenchmarkResizableBlastHT : public BenchmarkObject64 {
         std::vector<std::tuple<uint64_t, uint64_t, uint64_t>>& ops, int num_threads, uint64_t record_num,
         const std::vector<double>& percentiles);
 
+    std::vector<uint64_t> ConcurrentInsertWithTimestampRecording(
+        std::vector<std::tuple<uint64_t, uint64_t, uint64_t>>& ops, int num_threads, uint64_t k);
+
    private:
     ResizableBlastHT* tab;
     uint64_t single_handle;

@@ -40,6 +40,9 @@ class BenchmarkCuckoo : public BenchmarkObject64 {
         std::vector<std::tuple<uint64_t, uint64_t, uint64_t>>& ops, int num_threads, uint64_t record_num,
         const std::vector<double>& percentiles);
 
+    std::vector<uint64_t> ConcurrentInsertWithTimestampRecording(
+        std::vector<std::tuple<uint64_t, uint64_t, uint64_t>>& ops, int num_threads, uint64_t k);
+
    private:
     libcuckoo::cuckoohash_map<uint64_t, uint64_t>* tab;
 

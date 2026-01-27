@@ -56,7 +56,7 @@ def main():
     valid_object_ids = [4, 23, 26, 27, 28, 29, 30, 31]
     load_factors = [0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45,
                     0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 0.99]
-    num_repetitions = 1  # per benchmark.sh for compact hash tables
+    num_repetitions = 10  # per benchmark.sh for compact hash tables
 
     for case_id in valid_case_ids:
         for object_id in valid_object_ids:
@@ -75,26 +75,36 @@ def main():
                 else:
                     real_range, virtual_range = 0.0, 0.0
 
-                throughput = None
-                latency = None
-                # only one repetition, but keep structure
-                filename = f"object_{object_id}_case_{case_id}_entry_{entry_id}_.txt"
-                file_path = os.path.join(base_dir, filename)
-                if os.path.exists(file_path):
-                    throughput, latency = extract_throughput(
-                        file_path, case_id)
-                if throughput is None or latency is None:
-                    print(
-                        f"Warning: missing throughput/latency for {filename}")
+                throughputs = []
+                latencies = []
+                for rep in range(num_repetitions):
+                    entry_id = base_entry_id + rep
+                    filename = (
+                        f"object_{object_id}_case_{case_id}_entry_{entry_id}_.txt"
+                    )
+                    file_path = os.path.join(base_dir, filename)
+                    if os.path.exists(file_path):
+                        throughput, latency = extract_throughput(
+                            file_path, case_id)
+                        if throughput is None or latency is None:
+                            print(
+                                "Warning: missing throughput/latency for "
+                                f"{filename}"
+                            )
+                            continue
+                        throughputs.append(throughput)
+                        latencies.append(latency)
 
-                if throughput is not None and latency is not None:
+                if throughputs:
+                    avg_throughput = sum(throughputs) / len(throughputs)
+                    avg_latency = sum(latencies) / len(latencies)
                     collected_rows.append(
                         {
                             "case_id": case_id,
                             "object_id": object_id,
                             "load_factor": load_factor,
-                            "throughput (ops/s)": throughput,
-                            "latency (ns/op)": latency,
+                            "throughput (ops/s)": avg_throughput,
+                            "latency (ns/op)": avg_latency,
                             "real_memory (MB)": real_range,
                             "virtual_memory (MB)": virtual_range,
                         }

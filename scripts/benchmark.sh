@@ -390,6 +390,25 @@ done
 thread_num=0
 enable_core_binding=false
 
+
+# Sliding Window Insertion Throughput
+
+thread_num=16
+enable_core_binding=true
+for case_id in 30; do
+	for object_id in "${rss_object_ids[@]}"; do
+		entry_id=6000
+		for table_size in 1048575; do
+			#0.7
+			opt_num=16777215
+			RunWithRetry "Run"
+			let "entry_id++"
+		done
+	done
+done
+thread_num=0
+enable_core_binding=false
+
 # resize memory footprint
 
 thread_num=0
@@ -512,7 +531,7 @@ enable_core_binding=false
 # Compact Hash Tables
 
 # Number of repetitions for each configuration
-num_rep=1
+num_rep=10
 
 thread_num=0
 enable_core_binding=true
