@@ -339,8 +339,8 @@ bin_size=127
 
 no_resize_object_ids=(6 7 15 17 20 24)
 space_eff_object_ids=(6 7 15 17 23 24)
-resize_object_ids=(6 7 15 18 21 24)
 rss_object_ids=(6 7 15 18 21 24 25)
+staggering_test_object_ids=(18 25)
 
 compact_object_ids=(4 23 26 27 28 29 30 31)
 tinypointers_comparison_ids=(32 33 34 35)
@@ -352,6 +352,21 @@ enable_core_binding=true
 for case_id in 17 18 19 20 21 22; do
 	entry_id=1
 	for object_id in "${resize_object_ids[@]}"; do
+		for table_size in 33554432; do
+			RunWithRetry "RunYCSB"
+		done
+	done
+done
+thread_num=0
+enable_core_binding=false
+
+# YCSB resizing test with staggering
+
+thread_num=16
+enable_core_binding=true
+for case_id in 17 18 19 20 21 22; do
+	entry_id=10
+	for object_id in "${staggering_test_object_ids[@]}"; do
 		for table_size in 33554432; do
 			RunWithRetry "RunYCSB"
 		done

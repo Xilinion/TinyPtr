@@ -54,6 +54,7 @@ python3 ./resizing_rss_to_csv.py
 python3 ./small_table_to_csv.py
 python3 ./tinypointers_comparison_to_csv.py
 python3 ./throughput_space_eff_compact_to_csv.py
+python3 ./ycsb_resizing_staggering_to_csv.py
 python3 ./progressive_resizing_to_csv.py
 python3 ./progressive_resizing_sliding_window_to_csv.py
 python3 ./throughput_space_eff_compact_to_csv.py

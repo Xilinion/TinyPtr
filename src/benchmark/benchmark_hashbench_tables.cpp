@@ -94,6 +94,7 @@ BenchmarkBucketTable::BenchmarkBucketTable(int n)
 BenchmarkBucketTable::~BenchmarkBucketTable() = default;
 
 uint8_t BenchmarkBucketTable::Insert(uint64_t key, uint64_t value) {
+    key |= 1;
     auto navigator = impl_->table.find_or_insert(
         key, typename BucketImpl::bucket_table_t::value_type(value));
     (void)navigator;
@@ -101,6 +102,7 @@ uint8_t BenchmarkBucketTable::Insert(uint64_t key, uint64_t value) {
 }
 
 uint64_t BenchmarkBucketTable::Query(uint64_t key, uint8_t /*ptr*/) {
+    key |= 1;
     uint64_t value = QueryBucketImpl(*impl_, key);
     asm volatile("nop" ::: "memory");
     return value;
@@ -157,11 +159,13 @@ BenchmarkGroupChaining::BenchmarkGroupChaining(int n)
 BenchmarkGroupChaining::~BenchmarkGroupChaining() = default;
 
 uint8_t BenchmarkGroupChaining::Insert(uint64_t key, uint64_t value) {
+    key |= 1;
     impl_->table[key] = value;
     return 0;
 }
 
 uint64_t BenchmarkGroupChaining::Query(uint64_t key, uint8_t /*ptr*/) {
+    key |= 1;
     uint64_t value = QueryGroupImpl(*impl_, key);
     asm volatile("nop" ::: "memory");
     return value;
@@ -239,12 +243,14 @@ BenchmarkClearyPlain::BenchmarkClearyPlain(int n)
 BenchmarkClearyPlain::~BenchmarkClearyPlain() = default;
 
 uint8_t BenchmarkClearyPlain::Insert(uint64_t key, uint64_t value) {
+    key |= 1;
     impl_->map_.insert(key,
                        typename ClearyPlainImpl::map_type::value_type(value));
     return 0;
 }
 
 uint64_t BenchmarkClearyPlain::Query(uint64_t key, uint8_t /*ptr*/) {
+    key |= 1;
     uint64_t value = QueryClearyImpl(*impl_, key);
     asm volatile("nop" ::: "memory");
     return value;
@@ -322,12 +328,14 @@ BenchmarkClearySparse::BenchmarkClearySparse(int n)
 BenchmarkClearySparse::~BenchmarkClearySparse() = default;
 
 uint8_t BenchmarkClearySparse::Insert(uint64_t key, uint64_t value) {
+    key |= 1;
     impl_->map_.insert(key,
                        typename ClearySparseImpl::map_type::value_type(value));
     return 0;
 }
 
 uint64_t BenchmarkClearySparse::Query(uint64_t key, uint8_t /*ptr*/) {
+    key |= 1;
     uint64_t value = QueryClearyImpl(*impl_, key);
     asm volatile("nop" ::: "memory");
     return value;
@@ -405,12 +413,14 @@ BenchmarkLayeredPlain::BenchmarkLayeredPlain(int n)
 BenchmarkLayeredPlain::~BenchmarkLayeredPlain() = default;
 
 uint8_t BenchmarkLayeredPlain::Insert(uint64_t key, uint64_t value) {
+    key |= 1;
     impl_->map_.insert(key,
                        typename LayeredPlainImpl::map_type::value_type(value));
     return 0;
 }
 
 uint64_t BenchmarkLayeredPlain::Query(uint64_t key, uint8_t /*ptr*/) {
+    key |= 1;
     uint64_t value = QueryClearyImpl(*impl_, key);
     asm volatile("nop" ::: "memory");
     return value;
@@ -488,12 +498,14 @@ BenchmarkLayeredSparse::BenchmarkLayeredSparse(int n)
 BenchmarkLayeredSparse::~BenchmarkLayeredSparse() = default;
 
 uint8_t BenchmarkLayeredSparse::Insert(uint64_t key, uint64_t value) {
+    key |= 1;
     impl_->map_.insert(key,
                        typename LayeredSparseImpl::map_type::value_type(value));
     return 0;
 }
 
 uint64_t BenchmarkLayeredSparse::Query(uint64_t key, uint8_t /*ptr*/) {
+    key |= 1;
     uint64_t value = QueryClearyImpl(*impl_, key);
     asm volatile("nop" ::: "memory");
     return value;
