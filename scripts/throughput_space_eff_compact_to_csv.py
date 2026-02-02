@@ -58,11 +58,15 @@ def main():
                     0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 0.99]
     num_repetitions = 10  # per benchmark.sh for compact hash tables
 
+    min_load_factor_object_ids = {26, 27, 29, 31}
     for case_id in valid_case_ids:
         for object_id in valid_object_ids:
             base_entry_id = 4000
 
             for load_factor in load_factors:
+                if object_id in min_load_factor_object_ids and load_factor < 0.5:
+                    base_entry_id += num_repetitions
+                    continue
                 entry_id = base_entry_id
 
                 memuse_filename = (
@@ -119,6 +123,31 @@ def main():
                 "virtual_memory (MB)"
             ]
 
+    trimmed_object_ids = {28, 29, 30, 31}
+    allowed_load_factors = {oid: set() for oid in trimmed_object_ids}
+    for object_id in trimmed_object_ids:
+        case1_rows = [
+            row
+            for row in collected_rows
+            if row["object_id"] == object_id and row["case_id"] == 1
+        ]
+        case1_rows.sort(key=lambda row: row["load_factor"])
+        prev_space_eff = None
+        for row in case1_rows:
+            key = (row["object_id"], row["load_factor"])
+            virtual_case1 = virtual_mem_case1.get(
+                key, row["virtual_memory (MB)"]
+            )
+            if virtual_case1 > 0:
+                space_eff = 256 * row["load_factor"] / virtual_case1
+            else:
+                space_eff = 0.0
+
+            if prev_space_eff is not None and space_eff < prev_space_eff:
+                break
+            allowed_load_factors[object_id].add(row["load_factor"])
+            prev_space_eff = space_eff
+
     csv_filename = "throughput_space_eff_compact_results.csv"
     csv_path = os.path.join(output_dir, csv_filename)
 
@@ -140,6 +169,10 @@ def main():
         )
 
         for row in collected_rows:
+            if row["object_id"] in trimmed_object_ids:
+                if row["load_factor"] not in allowed_load_factors[row["object_id"]]:
+                    continue
+
             key = (row["object_id"], row["load_factor"])
             virtual_case1 = virtual_mem_case1.get(
                 key, row["virtual_memory (MB)"]
@@ -166,7 +199,8 @@ def main():
             )
 
     print(f"Created {csv_path}")
-    print(f"Total data points: {len(collected_rows)}")
+    print(f"Total data points collected: {len(collected_rows)}")
+    print(f"Total data points written: {len([r for r in collected_rows if (r['object_id'] not in trimmed_object_ids or r['load_factor'] in allowed_load_factors[r['object_id']])])}")
 
 
 if __name__ == "__main__":
