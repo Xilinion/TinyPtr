@@ -34,13 +34,18 @@ def main():
 
     # Entry id range and sizes order as defined in benchmark.sh
     entry_start = 1000
-    table_sizes = [32767, 262143, 2097151, 16777215, 134217727]
+    table_sizes = [2047, 262143, 2097151, 16777215, 134217727]
+    small_table_entry_id = 5000
 
     rows = []
     for case_id in case_ids:
         for object_id in object_ids:
             for idx, table_size in enumerate(table_sizes):
-                entry_id = entry_start + idx
+                if table_size == 2047:
+                    # Use small-table run for L1-size table
+                    entry_id = small_table_entry_id
+                else:
+                    entry_id = entry_start + idx
                 filename = f"object_{object_id}_case_{case_id}_entry_{entry_id}_.txt"
                 file_path = os.path.join(base_dir, filename)
                 thr = extract_throughput(file_path, case_id)

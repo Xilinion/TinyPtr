@@ -45,7 +45,7 @@ def main():
 
     rows = []
     valid_object_ids = [6, 7, 15, 17, 20, 24]
-    valid_case_ids = [1, 9, 10]
+    valid_case_ids = [1, 3, 9, 10]
     thread_nums = [1]  # L1 sized table uses only one thread in benchmark.sh
 
     for case_id in valid_case_ids:

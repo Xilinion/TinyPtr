@@ -322,7 +322,7 @@ Init
 # ValgrindCompile
 
 compile_option=1
-compile_resize=0
+compile_resize=1
 CompileWithOption
 
 thread_num=0
@@ -344,39 +344,6 @@ staggering_test_object_ids=(18 25)
 
 compact_object_ids=(4 23 26 27 28 29 30 31)
 tinypointers_comparison_ids=(32 33 34 35)
-
-
-# Compact Hash Tables
-
-# Number of repetitions for each configuration
-num_rep=10
-
-thread_num=0
-enable_core_binding=true
-for case_id in 1 9 10; do
-	for object_id in "${compact_object_ids[@]}"; do
-		entry_id=4000
-		for table_size in 16777215; do
-			for load_factor in 0.05 0.1 0.15 0.2 0.25 0.3 0.35 0.4 0.45 0.5 0.55 0.6 0.65 0.7 0.75 0.8 0.85 0.9 0.95 0.99; do
-				opt_num=$(printf "%.0f" $(echo "$table_size * $load_factor" | bc -l))
-
-				thread_num=0
-				output=$(RunRandMemFree)
-				echo "$output"
-				thread_num=1
-
-				for ((rep = 1; rep <= num_rep; rep++)); do
-					RunWithRetry "Run"
-					let "entry_id++"
-				done
-			done
-		done
-	done
-done
-thread_num=0
-enable_core_binding=false
-
-exit
 
 # YCSB with resize
 
@@ -437,7 +404,6 @@ for case_id in 29; do
 done
 thread_num=0
 enable_core_binding=false
-
 
 # Sliding Window Insertion Throughput
 
@@ -537,13 +503,31 @@ done
 thread_num=0
 enable_core_binding=false
 
+# L1 Sized Table
+
+enable_core_binding=false
+thread_num=0
+for case_id in 1 3 9 10; do
+	for object_id in "${no_resize_object_ids[@]}"; do
+		entry_id=5000
+		for table_size in 2047; do
+			load_factor=0.699
+			opt_num=$(printf "%.0f" $(echo "$table_size * $load_factor" | bc -l))
+			RunWithRetry "Run"
+			let "entry_id++"
+		done
+	done
+done
+thread_num=0
+enable_core_binding=false
+
 # data size scaling
 
 enable_core_binding=true
 for case_id in 1 3 9 10; do
 	for object_id in "${no_resize_object_ids[@]}"; do
 		entry_id=1000
-		for table_size in 32767 262143 2097151 16777215 134217727; do
+		for table_size in 2047 262143 2097151 16777215 134217727; do
 			load_factor=0.699
 			opt_num=$(printf "%.0f" $(echo "$table_size * $load_factor" | bc -l))
 			for thread_num in 1; do
@@ -599,26 +583,6 @@ for case_id in 1 9 10; do
 					RunWithRetry "Run"
 					let "entry_id++"
 				done
-			done
-		done
-	done
-done
-thread_num=0
-enable_core_binding=false
-
-# L1 Sized Table
-
-thread_num=0
-enable_core_binding=true
-for case_id in 1 9 10; do
-	for object_id in "${no_resize_object_ids[@]}"; do
-		entry_id=5000
-		for table_size in 2047; do
-			load_factor=0.699
-			opt_num=$(printf "%.0f" $(echo "$table_size * $load_factor" | bc -l))
-			for thread_num in 1; do
-				RunWithRetry "Run"
-				let "entry_id++"
 			done
 		done
 	done
