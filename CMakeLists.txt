@@ -42,6 +42,7 @@ include_directories(src)
 file(GLOB_RECURSE CORE_SOURCES "src/*.h" "src/*.cpp" "src/*.hpp")
 file(GLOB_RECURSE BENCHMARK_SOURCES "src/benchmark/*.h" "src/benchmark/*.cpp" "src/benchmark/*.hpp")
 list(REMOVE_ITEM CORE_SOURCES ${BENCHMARK_SOURCES})
+list(REMOVE_ITEM CORE_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp")
 
 # Test source files, only in test/
 file(GLOB_RECURSE TEST_SRC "test/*_test.cpp" "src/*_test.cpp")
@@ -109,6 +110,18 @@ include(junction)
 build_junction()
 add_dependencies(benchmark_lib junction)
 target_link_libraries(benchmark_lib PUBLIC junction_lib)
+
+
+include(HashbenchTables)
+build_hashbench_tables()
+add_dependencies(benchmark_lib hashbench_tables)
+target_link_libraries(benchmark_lib PUBLIC hashbench_tables)
+
+include(third_party_tinypointers)
+build_third_party_tinypointers()
+add_dependencies(benchmark_lib third_party_tinypointers_lib)
+target_link_libraries(benchmark_lib PUBLIC third_party_tinypointers_lib)
+
 
 # Add test support
 include(FetchContent)

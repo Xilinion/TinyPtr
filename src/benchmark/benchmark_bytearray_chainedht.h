@@ -2,6 +2,8 @@
 
 #include <cmath>
 #include <cstdint>
+#include <tuple>
+#include <vector>
 #include "../byte_array_chained_ht.h"
 #include "benchmark_chained.h"
 #include "benchmark_object_type.h"
@@ -23,6 +25,9 @@ class BenchmarkByteArrayChained : public BenchmarkChained {
     bool Query(uint64_t key, uint64_t* value_ptr);
     void Update(uint64_t key, uint8_t ptr, uint64_t value);
     void Erase(uint64_t key, uint8_t ptr);
+    void ConcurrentRun(
+        std::vector<std::tuple<uint64_t, uint64_t, uint64_t>>& ops,
+        int num_threads);
 
     double AvgChainLength();
     uint32_t MaxChainLength();
