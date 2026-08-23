@@ -1,5 +1,17 @@
 # Succinct and Fast Tiny Pointer Hash Tables
 
+This repository is the artifact evaluation code base for the paper:
+
+> Xilin Tang, Yuqi Mai, William Kuszmaul, Alex Conway.
+> **Succinct and Fast Tiny Pointer Hash Tables.**
+> Proceedings of the VLDB Endowment (PVLDB) 19(9), 2026.
+> [doi:10.14778/3819518.3819542](https://dl.acm.org/doi/10.14778/3819518.3819542) ·
+> [arXiv:2607.28892](https://arxiv.org/abs/2607.28892)
+
+For an industrial, dependency-free C11 implementation of the paper's hash
+tables — single `tpht.c`/`tpht.h` pair, sequential and concurrent variants,
+online resizing — see [TPHT](https://github.com/Xilinion/TPHT).
+
 ## Abstract
 
 Hash tables sit on the critical path of many systems, yet modern designs still force a trade-off between fast operations and high memory overhead. We revisit this trade-off and present Tiny Pointer Hash Tables (TPHT), a family of practical hash tables that make two ideas from theory work at system scale: compressing pointers down to a byte, and encoding keys compactly so less metadata is needed. We engineer these ideas into two complementary designs. Chained-TPHT targets maximal space savings, demonstrating that a real hash table can have a total footprint at or even below the raw size of the stored data. Flattened-TPHT targets latency, organizing data to keep the common case within a single cache miss while retaining strong space efficiency. Both variants support dynamic resizing without global pauses and integrate cleanly with 64-bit keys and values.
